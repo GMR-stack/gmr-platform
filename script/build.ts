@@ -37,8 +37,7 @@ async function buildAll() {
 
   // Set Vite environment variables before build
   process.env.VITE_SUPABASE_URL = 'https://glcjcsxvfojwvyvdebi.supabase.co';
-  process.env.VITE_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsY2pjc3h2Zm9qd3Z5dmRlYmkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczOTUzOTkwOCwiZXhwIjoyMDU1MTE1OTA4fQ.6pPAB7LSFgE9Cqh0GKNH-m4DxZqpJBN8jgGhm0kFNoc';
-
+  process.env.VITE_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsY2pjc3h2Zm9qd3Z5aXZkZWJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3NTUxMDUsImV4cCI6MjA4NjMzMTEwNX0.Smk4YHbGS291sP3nmBhJdRB0g51g6fU4celNWjP1lv8';
 
   console.log("building client...");
   await viteBuild({
