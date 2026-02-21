@@ -42,12 +42,7 @@ async function buildAll() {
 
   console.log("building client...");
   await viteBuild({
-    mode: 'production',
-    envFile: false, // .env 파일 자동 로드 비활성화
-    define: {
-      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL || 'https://glcjcsxvfojwvyvdebi.supabase.co'),
-      'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsY2pjc3h2Zm9qd3Z5dmRlYmkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczOTUzOTkwOCwiZXhwIjoyMDU1MTE1OTA4fQ.6pPAB7LSFgE9Cqh0GKNH-m4DxZqpJBN8jgGhm0kFNoc'),
-    },
+    mode: 'production'
   });
 
   console.log("building server...");
