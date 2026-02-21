@@ -4,6 +4,10 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 export default defineConfig({
+  define: {
+    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL || 'https://glcjcsxvfojwvyvdebi.supabase.co'),
+    'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsY2pjc3h2Zm9qd3Z5aXZkZWJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3NTUxMDUsImV4cCI6MjA4NjMzMTEwNX0.Smk4YHbGS291sP3nmBhJdRB0g51g6fU4celNWjP1lv8'),
+  },
   plugins: [
     react(),
     runtimeErrorOverlay(),
