@@ -35,6 +35,11 @@ const allowlist = [
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
 
+  // Set Vite environment variables before build
+  process.env.VITE_SUPABASE_URL = 'https://glcjcsxvfojwvyvdebi.supabase.co';
+  process.env.VITE_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsY2pjc3h2Zm9qd3Z5dmRlYmkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczOTUzOTkwOCwiZXhwIjoyMDU1MTE1OTA4fQ.6pPAB7LSFgE9Cqh0GKNH-m4DxZqpJBN8jgGhm0kFNoc';
+
+
   console.log("building client...");
   await viteBuild({
     mode: 'production',
