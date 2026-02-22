@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "wouter";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GmrLogo } from "@/components/gmr-logo";
+import { useToast } from "@/hooks/use-toast";
 import {
   Archive,
   Settings,
@@ -25,10 +26,11 @@ import { useState, useMemo } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 
-const DAY_FILTERS = ["all", "monday", "tuesday", "wednesday", "thursday", "friday"] as const;
+const DAY_FILTERS = ["all", "monday", "tuesday", "wednesday", "thursday", "friday", "free"] as const;
 
 function reportTypeLabel(type: string) {
   const labels: Record<string, string> = {
+    free: "Free",
     monday: "Monday",
     tuesday: "Tuesday",
     wednesday: "Wednesday",
@@ -53,6 +55,7 @@ export default function ArchivePage() {
   const { user, signOut } = useAuth();
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [filterType, setFilterType] = useState<string>("all");
+  const { toast } = useToast(); 
 
   const { data: reports, isLoading } = useQuery<Report[]>({
     queryKey: ["/api/reports"],
@@ -276,7 +279,13 @@ export default function ArchivePage() {
               <Card
                 key={report.id}
                 className="p-5 hover-elevate cursor-pointer"
-                onClick={() => setSelectedReport(report)}
+                onClick={() => {
+                  if (report.reportType === "free" || isSubscribed) {
+                    setSelectedReport(report);
+                  } else {
+                    toast({ title: "구독이 필요합니다", description: "이 리포트는 구독자 전용입니다." });
+                  }
+                }}
                 data-testid={`card-archive-report-${report.id}`}
               >
                 <div className="flex items-start justify-between gap-4 flex-wrap">

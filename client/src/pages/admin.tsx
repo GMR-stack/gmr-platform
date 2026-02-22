@@ -49,6 +49,7 @@ type CreateReportForm = z.infer<typeof createReportSchema>;
 
 function reportTypeLabel(type: string) {
   const labels: Record<string, string> = {
+    free: "Free",
     monday: "Monday",
     tuesday: "Tuesday",
     wednesday: "Wednesday",
@@ -224,6 +225,7 @@ export default function AdminPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="free">Free</SelectItem>
                     <SelectItem value="monday">Monday</SelectItem>
                     <SelectItem value="tuesday">Tuesday</SelectItem>
                     <SelectItem value="wednesday">Wednesday</SelectItem>

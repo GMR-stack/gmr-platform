@@ -30,7 +30,9 @@ export const reports = pgTable("reports", {
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({ id: true, createdAt: true });
-export const insertReportSchema = createInsertSchema(reports).omit({ id: true, publishedAt: true });
+export const insertReportSchema = createInsertSchema(reports).omit({ id: true, publishedAt: true }).extend({
+  reportType: z.enum(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Free"]),
+});
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
