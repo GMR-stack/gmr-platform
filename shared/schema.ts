@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, serial, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, uuid, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -13,7 +13,7 @@ export const users = pgTable("users", {
 });
 
 export const subscriptions = pgTable("subscriptions", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
   lemonsqueezySubscriptionId: text("lemonsqueezy_subscription_id"),
   status: text("status").notNull().default("active"),
@@ -21,7 +21,7 @@ export const subscriptions = pgTable("subscriptions", {
 });
 
 export const reports = pgTable("reports", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
   content: text("content").notNull(),
   reportType: text("report_type").notNull().default("market_analysis"),
