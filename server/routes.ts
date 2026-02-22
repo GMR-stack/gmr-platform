@@ -89,8 +89,8 @@ export async function registerRoutes(
 
   app.get("/api/reports/:id", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid report id" });
+      const id = req.params.id;
+      if (!id) return res.status(400).json({ message: "Invalid report id" });
       const report = await storage.getReport(id);
       if (!report) return res.status(404).json({ message: "Report not found" });
       return res.json(report);
@@ -115,8 +115,8 @@ export async function registerRoutes(
 
   app.delete("/api/reports/:id", requireAuth, requireAdmin, async (req, res) => {
     try {
-      const id = parseInt(req.params.id as string);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid report id" });
+      const id = req.params.id;
+      if (!id) return res.status(400).json({ message: "Invalid report id" });
       await storage.deleteReport(id);
       return res.status(204).send();
     } catch (err: any) {

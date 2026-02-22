@@ -19,9 +19,9 @@ export interface IStorage {
 
   getReports(): Promise<Report[]>;
   getRecentReports(limit?: number): Promise<Report[]>;
-  getReport(id: number): Promise<Report | undefined>;
+  getReport(id: string): Promise<Report | undefined>;
   createReport(report: InsertReport): Promise<Report>;
-  deleteReport(id: number): Promise<void>;
+  deleteReport(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -68,7 +68,7 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(reports).orderBy(desc(reports.publishedAt)).limit(limit);
   }
 
-  async getReport(id: number): Promise<Report | undefined> {
+  async getReport(id: string): Promise<Report | undefined> {
     const [report] = await db.select().from(reports).where(eq(reports.id, id));
     return report;
   }
@@ -78,7 +78,7 @@ export class DatabaseStorage implements IStorage {
     return r;
   }
 
-  async deleteReport(id: number): Promise<void> {
+  async deleteReport(id: string): Promise<void> {
     await db.delete(reports).where(eq(reports.id, id));
   }
 }
