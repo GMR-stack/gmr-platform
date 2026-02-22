@@ -279,7 +279,8 @@ export default function ArchivePage() {
               <Card
                 key={report.id}
                 className="p-5 hover-elevate cursor-pointer"
-                onClick={() => {
+                onClick={(e: React.MouseEvent) => {
+                  e.preventDefault();
                   if (report.reportType === "free" || isSubscribed) {
                     setSelectedReport(report);
                   } else {
