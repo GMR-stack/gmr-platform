@@ -293,7 +293,11 @@ export default function AdminPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => deleteMutation.mutate(report.id)}
+                      onClick={() => {
+                        if (window.confirm("이 리포트를 삭제하시겠습니까?")) {
+                          deleteMutation.mutate(report.id);
+                        }
+                      }}
                       disabled={deleteMutation.isPending}
                       data-testid={`button-delete-report-${report.id}`}
                     >
