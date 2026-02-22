@@ -115,7 +115,7 @@ export async function registerRoutes(
 
   app.delete("/api/reports/:id", requireAuth, requireAdmin, async (req, res) => {
     try {
-      const id = req.params.id;
+      const id = req.params.id as string;
       if (!id) return res.status(400).json({ message: "Invalid report id" });
       await storage.deleteReport(id);
       return res.status(204).send();
