@@ -12,12 +12,12 @@ import DashboardPage from "@/pages/dashboard";
 import ArchivePage from "@/pages/archive";
 import AdminPage from "@/pages/admin";
 import OAuthConsentPage from "@/pages/oauth-consent";
-import { Redirect } from "wouter";
+import LandingPage from "@/pages/landing";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={() => <Redirect to="/login" />} />
+      <Route path="/" component={LandingPage} />
       <Route path="/login" component={LoginPage} />
       <Route path="/dashboard">
         <ProtectedRoute>
