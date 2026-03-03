@@ -3,7 +3,7 @@ import { GmrLogo } from "@/components/gmr-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText, Globe, TrendingUp, Check } from "lucide-react";
+import { FileText, Globe, TrendingUp, Check, ShieldCheck } from "lucide-react";
 
 const sampleReport = `## Weekly Macro Overview — Feb 27, 2026
 
@@ -76,7 +76,7 @@ export default function LandingPage() {
                 </div>
                 <h3 className="font-semibold text-lg" data-testid="text-feature-daily">Daily Reports</h3>
                 <p className="text-sm text-muted-foreground">
-                  Monday through Friday market briefings covering equities, FX, rates, and commodities.
+                  Monday through Friday market briefings covering equities, FX, rates, commodities, and geopolitical analysis with market impact assessment.
                 </p>
               </CardContent>
             </Card>
@@ -172,6 +172,20 @@ export default function LandingPage() {
               </Link>
             </CardContent>
           </Card>
+        </div>
+      </section>
+
+      <section className="py-16 px-4" data-testid="section-refund">
+        <div className="max-w-2xl mx-auto text-center space-y-4">
+          <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+            <ShieldCheck className="w-7 h-7 text-primary" />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold" data-testid="text-refund-title">
+            7-Day Money Back Guarantee
+          </h2>
+          <p className="text-muted-foreground text-base max-w-lg mx-auto" data-testid="text-refund-description">
+            Not satisfied? Request a full refund within 7 days of your subscription. No questions asked.
+          </p>
         </div>
       </section>
 
