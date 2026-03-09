@@ -8,7 +8,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "wouter";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GmrLogo } from "@/components/gmr-logo";
-import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Archive,
   Settings,
@@ -71,7 +77,7 @@ export default function ArchivePage() {
   const { user, signOut } = useAuth();
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [filterType, setFilterType] = useState<string>("all");
-  const { toast } = useToast();
+  const [showLockedModal, setShowLockedModal] = useState(false);
 
   const { data: reports, isLoading } = useQuery<Report[]>({
     queryKey: ["/api/reports"],
@@ -357,10 +363,7 @@ export default function ArchivePage() {
                   if (report.reportType === "free" || isSubscribed) {
                     setSelectedReport(report);
                   } else {
-                    toast({
-                      title: "Subscription required",
-                      description: "This report is for subscribers only.",
-                    });
+                    setShowLockedModal(true);
                   }
                 }}
                 data-testid={`card-archive-report-${report.id}`}
@@ -420,6 +423,22 @@ export default function ArchivePage() {
           GMR &middot; Global Market Radar
         </p>
       </footer>
+
+      <Dialog open={showLockedModal} onOpenChange={setShowLockedModal}>
+        <DialogContent data-testid="dialog-locked-report">
+          <DialogHeader>
+            <DialogTitle data-testid="text-locked-title">Premium Report</DialogTitle>
+            <DialogDescription data-testid="text-locked-description">
+              This report is for subscribers only. Upgrade to access all GMR reports.
+            </DialogDescription>
+          </DialogHeader>
+          <Link href="/">
+            <Button className="w-full" data-testid="button-upgrade-premium">
+              Upgrade to Premium
+            </Button>
+          </Link>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
