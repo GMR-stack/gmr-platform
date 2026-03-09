@@ -27,7 +27,15 @@ import { useSearch } from "wouter";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 
-const DAY_FILTERS = ["all", "monday", "tuesday", "wednesday", "thursday", "friday", "free"] as const;
+const DAY_FILTERS = [
+  "all",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "free",
+] as const;
 
 function reportTypeLabel(type: string) {
   const labels: Record<string, string> = {
@@ -47,8 +55,15 @@ function reportTypeLabel(type: string) {
 }
 
 function reportTypeVariant(type: string): "default" | "secondary" | "outline" {
-  if (type === "monday" || type === "wednesday" || type === "market_analysis" || type === "macro_outlook") return "default";
-  if (type === "tuesday" || type === "thursday" || type === "equity_research") return "secondary";
+  if (
+    type === "monday" ||
+    type === "wednesday" ||
+    type === "market_analysis" ||
+    type === "macro_outlook"
+  )
+    return "default";
+  if (type === "tuesday" || type === "thursday" || type === "equity_research")
+    return "secondary";
   return "outline";
 }
 
@@ -56,7 +71,7 @@ export default function ArchivePage() {
   const { user, signOut } = useAuth();
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [filterType, setFilterType] = useState<string>("all");
-  const { toast } = useToast(); 
+  const { toast } = useToast();
 
   const { data: reports, isLoading } = useQuery<Report[]>({
     queryKey: ["/api/reports"],
@@ -67,16 +82,20 @@ export default function ArchivePage() {
   const searchParams = new URLSearchParams(searchString);
   const reportIdFromUrl = searchParams.get("report");
 
-  const { data: subscription, isLoading: subLoading } = useQuery<Subscription | null>({
-    queryKey: ["/api/subscriptions", "me"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
-  });
+  const { data: subscription, isLoading: subLoading } =
+    useQuery<Subscription | null>({
+      queryKey: ["/api/subscriptions", "me"],
+      queryFn: getQueryFn({ on401: "returnNull" }),
+    });
 
   const isSubscribed = subscription?.status === "active";
 
   const sortedReports = useMemo(() => {
     if (!reports) return [];
-    return [...reports].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+    return [...reports].sort(
+      (a, b) =>
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+    );
   }, [reports]);
 
   const filteredReports = useMemo(() => {
@@ -94,7 +113,12 @@ export default function ArchivePage() {
   }, [reportIdFromUrl, reports, isSubscribed]);
 
   const initials = user?.name
-    ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
     : user?.email?.charAt(0).toUpperCase() || "?";
 
   if (!isSubscribed && !subLoading && subscription !== undefined) {
@@ -111,7 +135,11 @@ export default function ArchivePage() {
                 </Button>
               </Link>
               <Link href="/archive">
-                <Button variant="ghost" size="sm" data-testid="link-archive-active">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid="link-archive-active"
+                >
                   <Archive className="w-4 h-4 mr-1.5" />
                   Archive
                 </Button>
@@ -131,7 +159,12 @@ export default function ArchivePage() {
                 <AvatarImage src={user?.avatarUrl || undefined} />
                 <AvatarFallback className="text-xs">{initials}</AvatarFallback>
               </Avatar>
-              <Button variant="ghost" size="icon" onClick={signOut} data-testid="button-logout">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={signOut}
+                data-testid="button-logout"
+              >
                 <LogOut className="w-4 h-4" />
               </Button>
             </div>
@@ -141,13 +174,20 @@ export default function ArchivePage() {
         <main className="flex-1 flex items-center justify-center p-6">
           <Card className="p-8 max-w-md w-full text-center space-y-4">
             <Lock className="w-12 h-12 mx-auto text-muted-foreground" />
-            <h2 className="text-xl font-serif font-bold" data-testid="text-subscribe-title">
+            <h2
+              className="text-xl font-serif font-bold"
+              data-testid="text-subscribe-title"
+            >
               Subscribe to Access Premium Reports
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              The report archive is available exclusively to premium subscribers. Upgrade your plan to browse our full library of financial research, market analysis, and investment insights.
+              The report archive is available exclusively to premium
+              subscribers. Upgrade your plan to browse our full library of
+              financial research, market analysis, and investment insights.
             </p>
-            <Button data-testid="button-subscribe-cta">Upgrade to Premium</Button>
+            <Button data-testid="button-subscribe-cta">
+              Upgrade to Premium
+            </Button>
           </Card>
         </main>
 
@@ -168,7 +208,12 @@ export default function ArchivePage() {
       <div className="min-h-screen bg-background flex flex-col">
         <header className="sticky top-0 z-50 border-b bg-background">
           <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap px-6 py-3">
-            <Button variant="ghost" size="sm" onClick={() => setSelectedReport(null)} data-testid="button-back">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedReport(null)}
+              data-testid="button-back"
+            >
               <ArrowLeft className="w-4 h-4 mr-1.5" />
               Back to Archive
             </Button>
@@ -188,7 +233,10 @@ export default function ArchivePage() {
                   {format(new Date(selectedReport.publishedAt), "MMMM d, yyyy")}
                 </span>
               </div>
-              <h1 className="text-3xl font-serif font-bold tracking-tight" data-testid="text-report-title">
+              <h1
+                className="text-3xl font-serif font-bold tracking-tight"
+                data-testid="text-report-title"
+              >
                 {selectedReport.title}
               </h1>
             </div>
@@ -218,7 +266,11 @@ export default function ArchivePage() {
               </Button>
             </Link>
             <Link href="/archive">
-              <Button variant="ghost" size="sm" data-testid="link-archive-active">
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="link-archive-active"
+              >
                 <Archive className="w-4 h-4 mr-1.5" />
                 Archive
               </Button>
@@ -239,7 +291,12 @@ export default function ArchivePage() {
               <AvatarImage src={user?.avatarUrl || undefined} />
               <AvatarFallback className="text-xs">{initials}</AvatarFallback>
             </Avatar>
-            <Button variant="ghost" size="icon" onClick={signOut} data-testid="button-logout">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={signOut}
+              data-testid="button-logout"
+            >
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
@@ -248,7 +305,10 @@ export default function ArchivePage() {
 
       <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8 space-y-6">
         <div className="space-y-1">
-          <h1 className="text-2xl font-serif font-bold tracking-tight" data-testid="text-archive-title">
+          <h1
+            className="text-2xl font-serif font-bold tracking-tight"
+            data-testid="text-archive-title"
+          >
             Report Archive
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -297,7 +357,10 @@ export default function ArchivePage() {
                   if (report.reportType === "free" || isSubscribed) {
                     setSelectedReport(report);
                   } else {
-                    toast({ title: "구독이 필요합니다", description: "이 리포트는 구독자 전용입니다." });
+                    toast({
+                      title: "Subscription required",
+                      description: "This report is for subscribers only.",
+                    });
                   }
                 }}
                 data-testid={`card-archive-report-${report.id}`}
@@ -305,16 +368,31 @@ export default function ArchivePage() {
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="space-y-1.5 flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-sm" data-testid={`text-report-title-${report.id}`}>{report.title}</h3>
-                      <Badge variant={reportTypeVariant(report.reportType)} className="text-xs" data-testid={`badge-type-${report.id}`}>
+                      <h3
+                        className="font-semibold text-sm"
+                        data-testid={`text-report-title-${report.id}`}
+                      >
+                        {report.title}
+                      </h3>
+                      <Badge
+                        variant={reportTypeVariant(report.reportType)}
+                        className="text-xs"
+                        data-testid={`badge-type-${report.id}`}
+                      >
                         {reportTypeLabel(report.reportType)}
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2" data-testid={`text-report-preview-${report.id}`}>
+                    <p
+                      className="text-xs text-muted-foreground line-clamp-2"
+                      data-testid={`text-report-preview-${report.id}`}
+                    >
                       {report.content.replace(/[#*_`\[\]]/g, "").slice(0, 200)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0" data-testid={`text-report-date-${report.id}`}>
+                  <div
+                    className="flex items-center gap-1 text-xs text-muted-foreground shrink-0"
+                    data-testid={`text-report-date-${report.id}`}
+                  >
                     <Clock className="w-3 h-3" />
                     {format(new Date(report.publishedAt), "MMM d, yyyy")}
                   </div>
@@ -325,7 +403,10 @@ export default function ArchivePage() {
         ) : (
           <Card className="p-8 text-center">
             <Archive className="w-8 h-8 mx-auto text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground" data-testid="text-no-reports">
+            <p
+              className="text-sm text-muted-foreground"
+              data-testid="text-no-reports"
+            >
               {filterType !== "all"
                 ? `No ${reportTypeLabel(filterType)} reports found.`
                 : "No reports available yet."}
