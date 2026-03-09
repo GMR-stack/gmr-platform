@@ -50,6 +50,18 @@ function reportTypeVariant(type: string): "default" | "secondary" | "outline" {
   return "outline";
 }
 
+function reportTypeBorderColor(type: string): string {
+  const colors: Record<string, string> = {
+    monday: "#2563eb",
+    tuesday: "#9333ea",
+    wednesday: "#0d9488",
+    thursday: "#ea580c",
+    friday: "#16a34a",
+    free: "#6b7280",
+  };
+  return colors[type] || "#6b7280";
+}
+
 export default function DashboardPage() {
   const { user, session, signOut } = useAuth();
   const { toast } = useToast();
@@ -165,21 +177,29 @@ export default function DashboardPage() {
       </header>
 
       <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8 space-y-8">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-serif font-bold tracking-tight" data-testid="text-welcome">
-            Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Your latest financial research and market insights.
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-serif font-bold tracking-tight" data-testid="text-welcome">
+              Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Your latest financial research and market insights.
+            </p>
+          </div>
+          <p className="text-sm text-muted-foreground pt-1" data-testid="text-today-date">
+            {format(new Date(), "EEEE, MMMM d, yyyy")}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="p-5 space-y-2 md:col-span-2" data-testid="card-subscription-status">
+          <Card
+            className={`p-5 space-y-2 md:col-span-2 ${userIsSubscribed ? "bg-[#1a1f36] text-white border-[#1a1f36]" : ""}`}
+            data-testid="card-subscription-status"
+          >
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Subscription</p>
+              <p className={`text-xs font-medium uppercase tracking-wider ${userIsSubscribed ? "text-white/60" : "text-muted-foreground"}`}>Subscription</p>
               {userIsSubscribed ? (
-                <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-xs">Active</Badge>
+                <Badge className="bg-emerald-500 hover:bg-emerald-500 text-white text-xs">Active</Badge>
               ) : (
                 <Badge variant="secondary" className="text-xs">Inactive</Badge>
               )}
@@ -187,7 +207,7 @@ export default function DashboardPage() {
             <p className="text-2xl font-bold tracking-tight" data-testid="text-subscription-tier">
               {userIsSubscribed ? "Premium" : "Free"}
             </p>
-            <p className="text-xs text-muted-foreground" data-testid="text-subscription-detail">
+            <p className={`text-xs ${userIsSubscribed ? "text-white/60" : "text-muted-foreground"}`} data-testid="text-subscription-detail">
               {userIsSubscribed
                 ? subscription?.createdAt
                   ? `Member since ${format(new Date(subscription.createdAt), "MMMM d, yyyy")}`
@@ -243,7 +263,11 @@ export default function DashboardPage() {
                   href={`/archive?report=${report.id}`}
                   onClick={() => handleReportClick(report.id)}
                 >
-                  <Card className="p-5 hover-elevate cursor-pointer" data-testid={`card-report-${report.id}`}>
+                  <Card
+                    className="p-5 hover-elevate cursor-pointer"
+                    style={{ borderLeft: `4px solid ${reportTypeBorderColor(report.reportType)}` }}
+                    data-testid={`card-report-${report.id}`}
+                  >
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                       <div className="space-y-1.5 flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
