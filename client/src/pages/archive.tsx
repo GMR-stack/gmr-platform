@@ -127,85 +127,6 @@ export default function ArchivePage() {
         .slice(0, 2)
     : user?.email?.charAt(0).toUpperCase() || "?";
 
-  if (!isSubscribed && !subLoading && subscription !== undefined) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <header className="sticky top-0 z-50 border-b bg-background">
-          <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 flex-wrap px-6 py-3">
-            <GmrLogo showTagline />
-            <nav className="flex items-center gap-1">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm" data-testid="link-dashboard">
-                  <BarChart3 className="w-4 h-4 mr-1.5" />
-                  Dashboard
-                </Button>
-              </Link>
-              <Link href="/archive">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  data-testid="link-archive-active"
-                >
-                  <Archive className="w-4 h-4 mr-1.5" />
-                  Archive
-                </Button>
-              </Link>
-              {user?.email === "globalmarketradar@gmail.com" && (
-                <Link href="/admin">
-                  <Button variant="ghost" size="sm" data-testid="link-admin">
-                    <Settings className="w-4 h-4 mr-1.5" />
-                    Admin
-                  </Button>
-                </Link>
-              )}
-            </nav>
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={user?.avatarUrl || undefined} />
-                <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-              </Avatar>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={signOut}
-                data-testid="button-logout"
-              >
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </header>
-
-        <main className="flex-1 flex items-center justify-center p-6">
-          <Card className="p-8 max-w-md w-full text-center space-y-4">
-            <Lock className="w-12 h-12 mx-auto text-muted-foreground" />
-            <h2
-              className="text-xl font-serif font-bold"
-              data-testid="text-subscribe-title"
-            >
-              Subscribe to Access Premium Reports
-            </h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              The report archive is available exclusively to premium
-              subscribers. Upgrade your plan to browse our full library of
-              financial research, market analysis, and investment insights.
-            </p>
-            <Button data-testid="button-subscribe-cta">
-              Upgrade to Premium
-            </Button>
-          </Card>
-        </main>
-
-        <footer className="border-t px-6 py-4 text-center">
-          <p className="text-xs text-muted-foreground">
-            GMR &middot; Global Market Radar
-          </p>
-        </footer>
-      </div>
-    );
-  }
-
   if (selectedReport) {
     const rawHtml = marked.parse(selectedReport.content) as string;
     const htmlContent = DOMPurify.sanitize(rawHtml);
@@ -425,15 +346,18 @@ export default function ArchivePage() {
       </footer>
 
       <Dialog open={showLockedModal} onOpenChange={setShowLockedModal}>
-        <DialogContent data-testid="dialog-locked-report">
-          <DialogHeader>
-            <DialogTitle data-testid="text-locked-title">Premium Report</DialogTitle>
-            <DialogDescription data-testid="text-locked-description">
-              This report is for subscribers only. Upgrade to access all GMR reports.
+        <DialogContent className="max-w-md text-center" data-testid="dialog-locked-report">
+          <DialogHeader className="flex flex-col items-center space-y-3">
+            <Lock className="w-12 h-12 text-muted-foreground" />
+            <DialogTitle className="text-xl font-serif font-bold" data-testid="text-locked-title">
+              Subscribe to Access Premium Reports
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed" data-testid="text-locked-description">
+              The report archive is available exclusively to premium subscribers. Upgrade your plan to browse our full library of financial research, market analysis, and investment insights.
             </DialogDescription>
           </DialogHeader>
           <Link href="/">
-            <Button className="w-full" data-testid="button-upgrade-premium">
+            <Button className="w-full bg-[#1a1f36] hover:bg-[#2a2f46] text-white" data-testid="button-upgrade-premium">
               Upgrade to Premium
             </Button>
           </Link>
