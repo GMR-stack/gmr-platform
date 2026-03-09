@@ -58,6 +58,11 @@ function reportTypeBorderColor(type: string): string {
     thursday: "#ea580c",
     friday: "#16a34a",
     free: "#6b7280",
+    market_analysis: "#2563eb",
+    equity_research: "#9333ea",
+    macro_outlook: "#0d9488",
+    sector_review: "#ea580c",
+    weekly_digest: "#16a34a",
   };
   return colors[type] || "#6b7280";
 }
