@@ -158,29 +158,26 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="p-5 space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="p-5 space-y-2 md:col-span-2" data-testid="card-subscription-status">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Subscription</p>
-              <Badge variant={userIsSubscribed ? "default" : "secondary"} className="text-xs">
-                {userIsSubscribed ? "Active" : "Inactive"}
-              </Badge>
+              {userIsSubscribed ? (
+                <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-xs">Active</Badge>
+              ) : (
+                <Badge variant="secondary" className="text-xs">Inactive</Badge>
+              )}
             </div>
-            <p className="text-lg font-semibold">{userIsSubscribed ? "Premium" : "Free"}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-2xl font-bold tracking-tight" data-testid="text-subscription-tier">
+              {userIsSubscribed ? "Premium" : "Free"}
+            </p>
+            <p className="text-xs text-muted-foreground" data-testid="text-subscription-detail">
               {userIsSubscribed
-                ? "Full access to all reports"
+                ? subscription?.createdAt
+                  ? `Member since ${format(new Date(subscription.createdAt), "MMMM d, yyyy")}`
+                  : "Active member"
                 : "Subscribe for full access"}
             </p>
-          </Card>
-
-          <Card className="p-5 space-y-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Reports</p>
-              <FileText className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <p className="text-lg font-semibold">{recentReports?.length || 0}</p>
-            <p className="text-xs text-muted-foreground">Available in archive</p>
           </Card>
 
           <Card className="p-5 space-y-2">
@@ -194,6 +191,15 @@ export default function DashboardPage() {
                 : "---"}
             </p>
             <p className="text-xs text-muted-foreground">Most recent publication</p>
+          </Card>
+
+          <Card className="p-5 space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Reports</p>
+              <FileText className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <p className="text-lg font-semibold">{recentReports?.length || 0}</p>
+            <p className="text-xs text-muted-foreground">Available in archive</p>
           </Card>
         </div>
 
