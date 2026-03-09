@@ -22,7 +22,8 @@ import {
 import type { Report, Subscription } from "@shared/schema";
 import { getQueryFn } from "@/lib/queryClient";
 import { format } from "date-fns";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearch } from "wouter";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 
@@ -62,12 +63,15 @@ export default function ArchivePage() {
     queryFn: getQueryFn({ on401: "throw" }),
   });
 
-  const { data: subscription } = useQuery<Subscription | null>({
+  const searchString = useSearch();
+  const searchParams = new URLSearchParams(searchString);
+  const reportIdFromUrl = searchParams.get("report");
+
+  const { data: subscription, isLoading: subLoading } = useQuery<Subscription | null>({
     queryKey: ["/api/subscriptions", "me"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
-  // TODO: Re-enable subscription check after LemonSqueezy integration
   const isSubscribed = subscription?.status === "active";
 
   const sortedReports = useMemo(() => {
@@ -80,11 +84,20 @@ export default function ArchivePage() {
     return sortedReports.filter((r) => r.reportType === filterType);
   }, [sortedReports, filterType]);
 
+  useEffect(() => {
+    if (reportIdFromUrl && reports) {
+      const found = reports.find((r) => r.id === reportIdFromUrl);
+      if (found && (found.reportType === "free" || isSubscribed)) {
+        setSelectedReport(found);
+      }
+    }
+  }, [reportIdFromUrl, reports, isSubscribed]);
+
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : user?.email?.charAt(0).toUpperCase() || "?";
 
-  if (!isSubscribed && !isLoading) {
+  if (!isSubscribed && !subLoading && subscription !== undefined) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <header className="sticky top-0 z-50 border-b bg-background">
