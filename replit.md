@@ -27,6 +27,7 @@ A subscription newsletter platform for financial content. Users log in via Supab
 - **users**: id, email, name, avatarUrl, isAdmin, supabaseId
 - **subscriptions**: id, userId, paypalSubscriptionId, status, createdAt
 - **reports**: id, title, content (markdown), reportType, publishedAt
+- **report_reads**: id (uuid), userId, reportId, readAt — tracks which reports a user has read
 
 ## API Routes
 - `POST /api/auth/sync` - Sync Supabase user to local DB
@@ -39,6 +40,8 @@ A subscription newsletter platform for financial content. Users log in via Supab
 - `POST /api/paypal/create-subscription` - Save PayPal subscription after approval
 - `POST /api/paypal/webhook` - PayPal webhook for subscription status updates
 - `GET /api/subscriptions/me` - Get user's subscription
+- `GET /api/report-reads` - Get IDs of reports the current user has read
+- `POST /api/report-reads/:reportId` - Mark a report as read for the current user
 
 ## Environment Variables
 - `DATABASE_URL` - PostgreSQL connection (auto-set)

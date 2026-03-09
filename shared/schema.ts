@@ -28,6 +28,13 @@ export const reports = pgTable("reports", {
   publishedAt: timestamp("published_at").defaultNow().notNull(),
 });
 
+export const reportReads = pgTable("report_reads", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  reportId: uuid("report_id").notNull().references(() => reports.id),
+  readAt: timestamp("read_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({ id: true, createdAt: true });
 export const insertReportSchema = createInsertSchema(reports).omit({ id: true, publishedAt: true }).extend({
@@ -38,5 +45,8 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 export type Subscription = typeof subscriptions.$inferSelect;
+export const insertReportReadSchema = createInsertSchema(reportReads).omit({ id: true, readAt: true });
 export type InsertReport = z.infer<typeof insertReportSchema>;
 export type Report = typeof reports.$inferSelect;
+export type InsertReportRead = z.infer<typeof insertReportReadSchema>;
+export type ReportRead = typeof reportReads.$inferSelect;

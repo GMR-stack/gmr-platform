@@ -1,5 +1,5 @@
 import { useAuth } from "@/lib/auth-context";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -100,8 +100,32 @@ export default function ArchivePage() {
       queryFn: getQueryFn({ on401: "returnNull" }),
     });
 
+  const { data: readReportIds } = useQuery<string[]>({
+    queryKey: ["/api/report-reads"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+  });
+
+  const queryClient = useQueryClient();
+
   const isSubscribed = subscription?.status === "active";
   const isAdmin = user?.email === "globalmarketradar@gmail.com";
+
+  const isNewReport = (report: Report) => {
+    const hoursAgo = (Date.now() - new Date(report.publishedAt).getTime()) / (1000 * 60 * 60);
+    return hoursAgo <= 36 && !(readReportIds || []).includes(report.id);
+  };
+
+  const markAsRead = async (reportId: string) => {
+    try {
+      const token = session?.access_token;
+      if (!token) return;
+      await fetch(`/api/report-reads/${reportId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/report-reads"] });
+    } catch {}
+  };
 
   useEffect(() => {
     fetch("/api/paypal/client-id")
@@ -128,6 +152,7 @@ export default function ArchivePage() {
       const found = reports.find((r) => r.id === reportIdFromUrl);
       if (found && (found.reportType === "free" || isSubscribed)) {
         setSelectedReport(found);
+        markAsRead(found.id);
       }
     }
   }, [reportIdFromUrl, reports, isSubscribed]);
@@ -244,7 +269,7 @@ export default function ArchivePage() {
               </Button>
             )}
             <Avatar className="w-8 h-8">
-              <AvatarImage src={user?.avatarUrl || undefined} />
+              <AvatarImage src={user?.avatarUrl || undefined} alt={user?.name || "User"} />
               <AvatarFallback className="text-xs">{initials}</AvatarFallback>
             </Avatar>
             <Button
@@ -312,6 +337,7 @@ export default function ArchivePage() {
                   e.preventDefault();
                   if (report.reportType === "free" || isSubscribed) {
                     setSelectedReport(report);
+                    markAsRead(report.id);
                   } else {
                     setShowLockedModal(true);
                   }
@@ -334,6 +360,11 @@ export default function ArchivePage() {
                       >
                         {reportTypeLabel(report.reportType)}
                       </Badge>
+                      {isNewReport(report) && (
+                        <Badge className="bg-red-600 hover:bg-red-600 text-white text-[10px] px-1.5 py-0" data-testid={`badge-new-${report.id}`}>
+                          NEW
+                        </Badge>
+                      )}
                     </div>
                     <p
                       className="text-xs text-muted-foreground line-clamp-2"

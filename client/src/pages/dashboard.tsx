@@ -65,8 +65,18 @@ export default function DashboardPage() {
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
+  const { data: readReportIds } = useQuery<string[]>({
+    queryKey: ["/api/report-reads"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+  });
+
   const isSubscribed = subscription?.status === "active";
   const isAdmin = user?.email === "globalmarketradar@gmail.com";
+
+  const isNewReport = (report: Report) => {
+    const hoursAgo = (Date.now() - new Date(report.publishedAt).getTime()) / (1000 * 60 * 60);
+    return hoursAgo <= 36 && !(readReportIds || []).includes(report.id);
+  };
   const [showPaypalModal, setShowPaypalModal] = useState(false);
 
   useEffect(() => {
@@ -223,6 +233,11 @@ export default function DashboardPage() {
                           <Badge variant={reportTypeVariant(report.reportType)} className="text-xs">
                             {reportTypeLabel(report.reportType)}
                           </Badge>
+                          {isNewReport(report) && (
+                            <Badge className="bg-red-600 hover:bg-red-600 text-white text-[10px] px-1.5 py-0" data-testid={`badge-new-${report.id}`}>
+                              NEW
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground line-clamp-2">
                           {report.content.replace(/[#*_`]/g, "").slice(0, 200)}...

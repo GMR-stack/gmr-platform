@@ -189,6 +189,27 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/report-reads", requireAuth, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const readIds = await storage.getReadReportIds(user.id);
+      return res.json(readIds);
+    } catch (err: any) {
+      return res.status(500).json({ message: "Failed to fetch read reports" });
+    }
+  });
+
+  app.post("/api/report-reads/:reportId", requireAuth, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const { reportId } = req.params;
+      const read = await storage.markReportRead(user.id, reportId);
+      return res.json(read);
+    } catch (err: any) {
+      return res.status(500).json({ message: "Failed to mark report as read" });
+    }
+  });
+
   app.get("/api/subscriptions/me", requireAuth, async (req, res) => {
     try {
       const user = (req as any).user;

@@ -1,10 +1,11 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { db } from "./db";
 import {
-  users, subscriptions, reports,
+  users, subscriptions, reports, reportReads,
   type User, type InsertUser,
   type Subscription, type InsertSubscription,
   type Report, type InsertReport,
+  type ReportRead,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -24,6 +25,9 @@ export interface IStorage {
   getReport(id: string): Promise<Report | undefined>;
   createReport(report: InsertReport): Promise<Report>;
   deleteReport(id: string): Promise<void>;
+
+  getReadReportIds(userId: string): Promise<string[]>;
+  markReportRead(userId: string, reportId: string): Promise<ReportRead>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -92,6 +96,18 @@ export class DatabaseStorage implements IStorage {
 
   async deleteReport(id: string): Promise<void> {
     await db.delete(reports).where(eq(reports.id, id));
+  }
+
+  async getReadReportIds(userId: string): Promise<string[]> {
+    const rows = await db.select({ reportId: reportReads.reportId }).from(reportReads).where(eq(reportReads.userId, userId));
+    return rows.map((r) => r.reportId);
+  }
+
+  async markReportRead(userId: string, reportId: string): Promise<ReportRead> {
+    const [read] = await db.insert(reportReads).values({ userId, reportId }).onConflictDoNothing().returning();
+    if (read) return read;
+    const [existing] = await db.select().from(reportReads).where(and(eq(reportReads.userId, userId), eq(reportReads.reportId, reportId)));
+    return existing;
   }
 }
 
