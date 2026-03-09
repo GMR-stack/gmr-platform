@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { GmrLogo } from "@/components/gmr-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -28,6 +28,7 @@ China's January credit data surprised to the upside (CNY 6.2T new loans), but pr
 function PayPalSubscribeButton({ planId }: { planId: string }) {
   const { session } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   if (!planId) return null;
 
@@ -35,6 +36,10 @@ function PayPalSubscribeButton({ planId }: { planId: string }) {
     <PayPalButtons
       style={{ shape: "rect", color: "gold", layout: "vertical", label: "subscribe" }}
       createSubscription={(_data, actions) => {
+        if (!session?.access_token) {
+          setLocation("/login?redirect=/");
+          return Promise.reject(new Error("Login required"));
+        }
         return actions.subscription.create({
           plan_id: planId,
         });
@@ -43,7 +48,7 @@ function PayPalSubscribeButton({ planId }: { planId: string }) {
         try {
           const token = session?.access_token;
           if (!token) {
-            toast({ title: "Please log in first to subscribe", variant: "destructive" });
+            setLocation("/login?redirect=/");
             return;
           }
           const res = await fetch("/api/paypal/create-subscription", {
@@ -63,9 +68,7 @@ function PayPalSubscribeButton({ planId }: { planId: string }) {
           toast({ title: "Something went wrong", variant: "destructive" });
         }
       }}
-      onError={() => {
-        toast({ title: "PayPal error occurred", variant: "destructive" });
-      }}
+      onError={() => {}}
       data-testid="paypal-subscribe-button"
     />
   );
@@ -230,7 +233,7 @@ export default function LandingPage() {
                 </li>
               </ul>
               {paypalClientId && paypalPlanId ? (
-                <PayPalScriptProvider options={{ clientId: paypalClientId, vault: true, intent: "subscription" }}>
+                <PayPalScriptProvider options={{ clientId: paypalClientId, vault: true, intent: "subscription", locale: "en_US" }}>
                   <PayPalSubscribeButton planId={paypalPlanId} />
                 </PayPalScriptProvider>
               ) : (

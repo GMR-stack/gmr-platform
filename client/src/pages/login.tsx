@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { Redirect } from "wouter";
+import { Redirect, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,8 +22,11 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
+  const searchString = useSearch();
+  const redirectTo = new URLSearchParams(searchString).get("redirect") || "/dashboard";
+
   if (!loading && user) {
-    return <Redirect to="/dashboard" />;
+    return <Redirect to={redirectTo} />;
   }
 
   function resetForm() {
