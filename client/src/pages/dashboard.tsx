@@ -50,22 +50,6 @@ function reportTypeVariant(type: string): "default" | "secondary" | "outline" {
   return "outline";
 }
 
-function reportTypeBorderColor(type: string): string {
-  const colors: Record<string, string> = {
-    monday: "#2563eb",
-    tuesday: "#9333ea",
-    wednesday: "#0d9488",
-    thursday: "#ea580c",
-    friday: "#16a34a",
-    free: "#6b7280",
-    market_analysis: "#2563eb",
-    equity_research: "#9333ea",
-    macro_outlook: "#0d9488",
-    sector_review: "#ea580c",
-    weekly_digest: "#16a34a",
-  };
-  return colors[type] || "#6b7280";
-}
 
 export default function DashboardPage() {
   const { user, session, signOut } = useAuth();
@@ -268,11 +252,7 @@ export default function DashboardPage() {
                   href={`/archive?report=${report.id}`}
                   onClick={() => handleReportClick(report.id)}
                 >
-                  <Card
-                    className="p-5 hover-elevate cursor-pointer"
-                    style={{ borderLeft: `4px solid ${reportTypeBorderColor(report.reportType)}` }}
-                    data-testid={`card-report-${report.id}`}
-                  >
+                  <Card className="p-5 hover-elevate cursor-pointer" data-testid={`card-report-${report.id}`}>
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                       <div className="space-y-1.5 flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
