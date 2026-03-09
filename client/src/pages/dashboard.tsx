@@ -1,5 +1,5 @@
 import { useAuth } from "@/lib/auth-context";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +53,7 @@ function reportTypeVariant(type: string): "default" | "secondary" | "outline" {
 export default function DashboardPage() {
   const { user, session, signOut } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
   const paypalPlanId = import.meta.env.VITE_PAYPAL_PLAN_ID || "";
 
@@ -76,8 +77,23 @@ export default function DashboardPage() {
 
   const isNewReport = (report: Report) => {
     const hoursAgo = (Date.now() - new Date(report.publishedAt).getTime()) / (1000 * 60 * 60);
-    return hoursAgo <= 36 && !(readReportIds || []).includes(report.id);
+    return hoursAgo <= 24 && !(readReportIds || []).includes(report.id);
   };
+
+  const handleReportClick = async (reportId: string) => {
+    if (session?.access_token) {
+      try {
+        await fetch(`/api/report-reads/${reportId}`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/report-reads"] });
+      } catch {
+        // silent fail
+      }
+    }
+  };
+
   const [showPaypalModal, setShowPaypalModal] = useState(false);
 
   useEffect(() => {
@@ -158,7 +174,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="p-5 space-y-2 md:col-span-2" data-testid="card-subscription-status">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Subscription</p>
@@ -192,15 +208,6 @@ export default function DashboardPage() {
             </p>
             <p className="text-xs text-muted-foreground">Most recent publication</p>
           </Card>
-
-          <Card className="p-5 space-y-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Reports</p>
-              <FileText className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <p className="text-lg font-semibold">{recentReports?.length || 0}</p>
-            <p className="text-xs text-muted-foreground">Available in archive</p>
-          </Card>
         </div>
 
         <div className="space-y-4">
@@ -231,7 +238,11 @@ export default function DashboardPage() {
           ) : recentReports && recentReports.length > 0 ? (
             <div className="space-y-3">
               {recentReports.slice(0, 5).map((report) => (
-                <Link key={report.id} href={`/archive?report=${report.id}`}>
+                <Link
+                  key={report.id}
+                  href={`/archive?report=${report.id}`}
+                  onClick={() => handleReportClick(report.id)}
+                >
                   <Card className="p-5 hover-elevate cursor-pointer" data-testid={`card-report-${report.id}`}>
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                       <div className="space-y-1.5 flex-1 min-w-0">
