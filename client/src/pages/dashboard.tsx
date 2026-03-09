@@ -28,6 +28,7 @@ import {
   Clock,
 } from "lucide-react";
 import type { Report, Subscription } from "@shared/schema";
+import { isAdmin as checkIsAdmin, isSubscribed as checkIsSubscribed } from "@/lib/access";
 import { getQueryFn } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
@@ -70,8 +71,8 @@ export default function DashboardPage() {
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
-  const isSubscribed = subscription?.status === "active";
-  const isAdmin = user?.email === "globalmarketradar@gmail.com";
+  const userIsAdmin = checkIsAdmin(user);
+  const userIsSubscribed = checkIsSubscribed(subscription);
 
   const isNewReport = (report: Report) => {
     const hoursAgo = (Date.now() - new Date(report.publishedAt).getTime()) / (1000 * 60 * 60);
@@ -109,7 +110,7 @@ export default function DashboardPage() {
                 Archive
               </Button>
             </Link>
-            {user?.email === "globalmarketradar@gmail.com" && (
+            {userIsAdmin && (
               <Link href="/admin">
                 <Button variant="ghost" size="sm" data-testid="link-admin">
                   <Settings className="w-4 h-4 mr-1.5" />
@@ -121,12 +122,12 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            {!isAdmin && isSubscribed && (
+            {!userIsAdmin && userIsSubscribed && (
               <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[10px] px-2 py-0.5" data-testid="badge-premium">
                 Premium
               </Badge>
             )}
-            {!isAdmin && !isSubscribed && (
+            {!userIsAdmin && !userIsSubscribed && (
               <Button
                 size="sm"
                 className="bg-[#1a1f36] hover:bg-[#2a2f46] text-white text-xs px-3 h-7"
@@ -161,13 +162,13 @@ export default function DashboardPage() {
           <Card className="p-5 space-y-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Subscription</p>
-              <Badge variant={subscription?.status === "active" ? "default" : "secondary"} className="text-xs">
-                {subscription?.status === "active" ? "Active" : "Inactive"}
+              <Badge variant={userIsSubscribed ? "default" : "secondary"} className="text-xs">
+                {userIsSubscribed ? "Active" : "Inactive"}
               </Badge>
             </div>
-            <p className="text-lg font-semibold">{subscription?.status === "active" ? "Premium" : "Free"}</p>
+            <p className="text-lg font-semibold">{userIsSubscribed ? "Premium" : "Free"}</p>
             <p className="text-xs text-muted-foreground">
-              {subscription?.status === "active"
+              {userIsSubscribed
                 ? "Full access to all reports"
                 : "Subscribe for full access"}
             </p>

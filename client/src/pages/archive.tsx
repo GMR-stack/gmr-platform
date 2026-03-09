@@ -26,6 +26,7 @@ import {
   Lock,
 } from "lucide-react";
 import type { Report, Subscription } from "@shared/schema";
+import { canAccessReport, isAdmin as checkIsAdmin, isSubscribed as checkIsSubscribed } from "@/lib/access";
 import { getQueryFn } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
@@ -107,8 +108,8 @@ export default function ArchivePage() {
 
   const queryClient = useQueryClient();
 
-  const isSubscribed = subscription?.status === "active";
-  const isAdmin = user?.email === "globalmarketradar@gmail.com";
+  const userIsAdmin = checkIsAdmin(user);
+  const userIsSubscribed = checkIsSubscribed(subscription);
 
   const isNewReport = (report: Report) => {
     const hoursAgo = (Date.now() - new Date(report.publishedAt).getTime()) / (1000 * 60 * 60);
@@ -150,12 +151,12 @@ export default function ArchivePage() {
   useEffect(() => {
     if (reportIdFromUrl && reports) {
       const found = reports.find((r) => r.id === reportIdFromUrl);
-      if (found && (found.reportType === "free" || isSubscribed)) {
+      if (found && canAccessReport(user, found, subscription)) {
         setSelectedReport(found);
         markAsRead(found.id);
       }
     }
-  }, [reportIdFromUrl, reports, isSubscribed]);
+  }, [reportIdFromUrl, reports, user, subscription]);
 
   const initials = user?.name
     ? user.name
@@ -241,7 +242,7 @@ export default function ArchivePage() {
                 Archive
               </Button>
             </Link>
-            {user?.email === "globalmarketradar@gmail.com" && (
+            {userIsAdmin && (
               <Link href="/admin">
                 <Button variant="ghost" size="sm" data-testid="link-admin">
                   <Settings className="w-4 h-4 mr-1.5" />
@@ -253,12 +254,12 @@ export default function ArchivePage() {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            {!isAdmin && isSubscribed && (
+            {!userIsAdmin && userIsSubscribed && (
               <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[10px] px-2 py-0.5" data-testid="badge-premium">
                 Premium
               </Badge>
             )}
-            {!isAdmin && !isSubscribed && (
+            {!userIsAdmin && !userIsSubscribed && (
               <Button
                 size="sm"
                 className="bg-[#1a1f36] hover:bg-[#2a2f46] text-white text-xs px-3 h-7"
@@ -335,7 +336,7 @@ export default function ArchivePage() {
                 className="p-5 hover-elevate cursor-pointer"
                 onClick={(e: React.MouseEvent) => {
                   e.preventDefault();
-                  if (report.reportType === "free" || isSubscribed) {
+                  if (canAccessReport(user, report, subscription)) {
                     setSelectedReport(report);
                     markAsRead(report.id);
                   } else {

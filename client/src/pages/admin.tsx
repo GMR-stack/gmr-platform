@@ -30,14 +30,13 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import type { Report } from "@shared/schema";
+import { isAdmin as checkIsAdmin } from "@/lib/access";
 import { apiRequest, getQueryFn, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMemo } from "react";
-
-const ADMIN_EMAIL = "globalmarketradar@gmail.com";
 
 const createReportSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -131,7 +130,7 @@ export default function AdminPage() {
     );
   }
 
-  if (!user || user.email !== ADMIN_EMAIL) {
+  if (!user || !checkIsAdmin(user)) {
     return <Redirect to="/dashboard" />;
   }
 
