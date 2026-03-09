@@ -37,7 +37,7 @@ function PayPalSubscribeButton({ planId }: { planId: string }) {
       style={{ shape: "rect", color: "gold", layout: "vertical", label: "subscribe" }}
       createSubscription={(_data, actions) => {
         if (!session?.access_token) {
-          setLocation("/login?redirect=/");
+          setLocation("/login?mode=signup");
           return Promise.reject(new Error("Login required"));
         }
         return actions.subscription.create({
@@ -48,7 +48,7 @@ function PayPalSubscribeButton({ planId }: { planId: string }) {
         try {
           const token = session?.access_token;
           if (!token) {
-            setLocation("/login?redirect=/");
+            setLocation("/login?mode=signup");
             return;
           }
           const res = await fetch("/api/paypal/create-subscription", {
@@ -75,6 +75,8 @@ function PayPalSubscribeButton({ planId }: { planId: string }) {
 }
 
 export default function LandingPage() {
+  const { user, loading } = useAuth();
+  const [, setLocation] = useLocation();
   const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
   const [paypalPlanId] = useState(import.meta.env.VITE_PAYPAL_PLAN_ID || "");
 
@@ -84,6 +86,14 @@ export default function LandingPage() {
       .then((data) => setPaypalClientId(data.clientId))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!loading && user) {
+      setLocation("/dashboard");
+    }
+  }, [user, loading, setLocation]);
+
+  if (!loading && user) return null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -97,7 +107,7 @@ export default function LandingPage() {
                 Log In
               </Button>
             </Link>
-            <Link href="/login">
+            <Link href="/login?mode=signup">
               <Button size="sm" data-testid="link-signup-header">
                 Sign Up
               </Button>
@@ -117,7 +127,7 @@ export default function LandingPage() {
             Stay ahead of global markets with GMR's daily reports.
           </p>
           <div className="pt-4">
-            <Link href="/login">
+            <Link href="/login?mode=signup">
               <Button size="lg" className="text-base px-8" data-testid="button-hero-signup">
                 Sign Up Free
               </Button>
@@ -188,7 +198,7 @@ export default function LandingPage() {
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" style={{ top: "40%" }} />
             <div className="absolute bottom-0 left-0 right-0 backdrop-blur-sm bg-background/60 py-8 flex flex-col items-center gap-4 rounded-b-lg">
               <p className="font-medium text-base" data-testid="text-sample-cta">Subscribe to read full reports</p>
-              <Link href="/login">
+              <Link href="/login?mode=signup">
                 <Button data-testid="button-sample-signup">Sign Up Free</Button>
               </Link>
             </div>
@@ -237,7 +247,7 @@ export default function LandingPage() {
                   <PayPalSubscribeButton planId={paypalPlanId} />
                 </PayPalScriptProvider>
               ) : (
-                <Link href="/login">
+                <Link href="/login?mode=signup">
                   <Button className="w-full" size="lg" data-testid="button-subscribe">
                     Subscribe Now
                   </Button>
@@ -270,7 +280,7 @@ export default function LandingPage() {
           <p className="text-muted-foreground text-lg">
             Join investors and analysts who rely on GMR for their daily market edge.
           </p>
-          <Link href="/login">
+          <Link href="/login?mode=signup">
             <Button size="lg" className="text-base px-8 mt-4" data-testid="button-cta-signup">
               Sign Up Free
             </Button>

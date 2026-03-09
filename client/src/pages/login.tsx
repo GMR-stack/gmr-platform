@@ -14,7 +14,9 @@ type AuthView = "login" | "signup" | "forgot";
 
 export default function LoginPage() {
   const { user, loading, signIn, signUp, resetPassword } = useAuth();
-  const [view, setView] = useState<AuthView>("login");
+  const searchString = useSearch();
+  const modeParam = new URLSearchParams(searchString).get("mode");
+  const [view, setView] = useState<AuthView>(modeParam === "signup" ? "signup" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -22,11 +24,8 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-  const searchString = useSearch();
-  const redirectTo = new URLSearchParams(searchString).get("redirect") || "/dashboard";
-
   if (!loading && user) {
-    return <Redirect to={redirectTo} />;
+    return <Redirect to="/dashboard" />;
   }
 
   function resetForm() {

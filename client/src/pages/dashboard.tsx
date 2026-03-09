@@ -8,6 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "wouter";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GmrLogo } from "@/components/gmr-logo";
+import { useToast } from "@/hooks/use-toast";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import {
   FileText,
   Archive,
@@ -17,10 +19,12 @@ import {
   ChevronRight,
   BarChart3,
   Clock,
+  Sparkles,
 } from "lucide-react";
 import type { Report, Subscription } from "@shared/schema";
 import { getQueryFn } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { useState, useEffect } from "react";
 
 function reportTypeLabel(type: string) {
   const labels: Record<string, string> = {
@@ -40,7 +44,10 @@ function reportTypeVariant(type: string): "default" | "secondary" | "outline" {
 }
 
 export default function DashboardPage() {
-  const { user, signOut } = useAuth();
+  const { user, session, signOut } = useAuth();
+  const { toast } = useToast();
+  const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
+  const paypalPlanId = import.meta.env.VITE_PAYPAL_PLAN_ID || "";
 
   const { data: recentReports, isLoading: reportsLoading } = useQuery<Report[]>({
     queryKey: ["/api/reports", "recent"],
@@ -51,6 +58,15 @@ export default function DashboardPage() {
     queryKey: ["/api/subscriptions", "me"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
+
+  const isSubscribed = subscription?.status === "active";
+
+  useEffect(() => {
+    fetch("/api/paypal/client-id")
+      .then((r) => r.json())
+      .then((data) => setPaypalClientId(data.clientId))
+      .catch(() => {});
+  }, []);
 
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
@@ -148,6 +164,59 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">Most recent publication</p>
           </Card>
         </div>
+
+        {!isSubscribed && (
+          <Card className="p-6 border-2 border-primary/30 bg-primary/5" data-testid="card-subscribe-banner">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  <h3 className="font-semibold text-base">Unlock Premium Access</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Subscribe to access all daily reports, full archive, and expert market analysis.
+                </p>
+              </div>
+              {paypalClientId && paypalPlanId ? (
+                <div className="w-full sm:w-64">
+                  <PayPalScriptProvider options={{ clientId: paypalClientId, vault: true, intent: "subscription", locale: "en_US" }}>
+                    <PayPalButtons
+                      style={{ shape: "rect", color: "gold", layout: "vertical", label: "subscribe" }}
+                      createSubscription={(_data, actions) => {
+                        return actions.subscription.create({ plan_id: paypalPlanId });
+                      }}
+                      onApprove={async (data) => {
+                        try {
+                          const token = session?.access_token;
+                          if (!token) return;
+                          const res = await fetch("/api/paypal/create-subscription", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ subscriptionId: data.subscriptionID }),
+                          });
+                          if (res.ok) {
+                            toast({ title: "Subscription activated! Welcome to GMR." });
+                            window.location.reload();
+                          } else {
+                            toast({ title: "Failed to activate subscription", variant: "destructive" });
+                          }
+                        } catch {
+                          toast({ title: "Something went wrong", variant: "destructive" });
+                        }
+                      }}
+                      onError={() => {}}
+                      data-testid="paypal-dashboard-subscribe"
+                    />
+                  </PayPalScriptProvider>
+                </div>
+              ) : (
+                <Link href="/">
+                  <Button data-testid="button-subscribe-banner">Subscribe Now</Button>
+                </Link>
+              )}
+            </div>
+          </Card>
+        )}
 
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
