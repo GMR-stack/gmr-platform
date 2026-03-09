@@ -185,7 +185,7 @@ export default function DashboardPage() {
             className={`p-5 space-y-2 md:col-span-2 ${userIsSubscribed ? "bg-[#1a1f36] text-white border-[#1a1f36]" : ""}`}
             data-testid="card-subscription-status"
           >
-            <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
               <p className={`text-xs font-medium uppercase tracking-wider ${userIsSubscribed ? "text-white/60" : "text-muted-foreground"}`}>Subscription</p>
               {userIsSubscribed ? (
                 <Badge className="bg-emerald-500 hover:bg-emerald-500 text-white text-xs">Active</Badge>
