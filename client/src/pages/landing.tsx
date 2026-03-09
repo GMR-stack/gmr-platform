@@ -203,9 +203,13 @@ export default function LandingPage() {
           </p>
           <Card className="border-2 border-primary shadow-lg">
             <CardContent className="p-8 space-y-6">
-              <div>
-                <span className="text-4xl font-bold" data-testid="text-price">$12</span>
-                <span className="text-muted-foreground">/month</span>
+              <div className="space-y-1">
+                <div className="text-xs font-semibold uppercase tracking-widest text-yellow-500">⚡ Founding Member Price</div>
+                <div>
+                  <span className="text-4xl font-bold" data-testid="text-price">$12</span>
+                  <span className="text-muted-foreground">/month</span>
+                </div>
+                <div className="text-xs text-muted-foreground">Regular price $19 · Lock in now before April 1</div>
               </div>
               <ul className="text-left space-y-3 text-sm">
                 <li className="flex items-center gap-2">
