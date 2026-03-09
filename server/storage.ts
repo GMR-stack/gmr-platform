@@ -15,7 +15,9 @@ export interface IStorage {
   updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
 
   getSubscription(userId: string): Promise<Subscription | undefined>;
+  getSubscriptionByPaypalId(paypalSubscriptionId: string): Promise<Subscription | undefined>;
   createSubscription(sub: InsertSubscription): Promise<Subscription>;
+  updateSubscriptionStatus(paypalSubscriptionId: string, status: string): Promise<Subscription | undefined>;
 
   getReports(): Promise<Report[]>;
   getRecentReports(limit?: number): Promise<Report[]>;
@@ -55,9 +57,19 @@ export class DatabaseStorage implements IStorage {
     return sub;
   }
 
+  async getSubscriptionByPaypalId(paypalSubscriptionId: string): Promise<Subscription | undefined> {
+    const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.paypalSubscriptionId, paypalSubscriptionId));
+    return sub;
+  }
+
   async createSubscription(sub: InsertSubscription): Promise<Subscription> {
     const [subscription] = await db.insert(subscriptions).values(sub).returning();
     return subscription;
+  }
+
+  async updateSubscriptionStatus(paypalSubscriptionId: string, status: string): Promise<Subscription | undefined> {
+    const [sub] = await db.update(subscriptions).set({ status }).where(eq(subscriptions.paypalSubscriptionId, paypalSubscriptionId)).returning();
+    return sub;
   }
 
   async getReports(): Promise<Report[]> {

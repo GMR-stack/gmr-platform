@@ -1,9 +1,13 @@
 import { Link } from "wouter";
+import { useState, useEffect } from "react";
 import { GmrLogo } from "@/components/gmr-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Globe, TrendingUp, Check, ShieldCheck } from "lucide-react";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { useAuth } from "@/lib/auth-context";
+import { useToast } from "@/hooks/use-toast";
 
 const sampleReport = `## Weekly Macro Overview — Feb 27, 2026
 
@@ -21,7 +25,63 @@ ECB delivered a 25bp cut to 3.50%, citing weaker growth outlook. Eurozone PMI co
 ### Asia-Pacific
 China's January credit data surprised to the upside (CNY 6.2T new loans), but property sector headwinds persist. PBoC maintained accommodative stance with targeted RRR cuts. Japan's Q4 GDP contracted -0.1% QoQ, complicating BoJ's normalization path.`;
 
+function PayPalSubscribeButton({ planId }: { planId: string }) {
+  const { session } = useAuth();
+  const { toast } = useToast();
+
+  if (!planId) return null;
+
+  return (
+    <PayPalButtons
+      style={{ shape: "rect", color: "gold", layout: "vertical", label: "subscribe" }}
+      createSubscription={(_data, actions) => {
+        return actions.subscription.create({
+          plan_id: planId,
+        });
+      }}
+      onApprove={async (data) => {
+        try {
+          const token = session?.access_token;
+          if (!token) {
+            toast({ title: "Please log in first to subscribe", variant: "destructive" });
+            return;
+          }
+          const res = await fetch("/api/paypal/create-subscription", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ subscriptionId: data.subscriptionID }),
+          });
+          if (res.ok) {
+            toast({ title: "Subscription activated! Welcome to GMR." });
+          } else {
+            toast({ title: "Failed to activate subscription", variant: "destructive" });
+          }
+        } catch {
+          toast({ title: "Something went wrong", variant: "destructive" });
+        }
+      }}
+      onError={() => {
+        toast({ title: "PayPal error occurred", variant: "destructive" });
+      }}
+      data-testid="paypal-subscribe-button"
+    />
+  );
+}
+
 export default function LandingPage() {
+  const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
+  const [paypalPlanId] = useState(import.meta.env.VITE_PAYPAL_PLAN_ID || "");
+
+  useEffect(() => {
+    fetch("/api/paypal/client-id")
+      .then((r) => r.json())
+      .then((data) => setPaypalClientId(data.clientId))
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -150,7 +210,7 @@ export default function LandingPage() {
               <ul className="text-left space-y-3 text-sm">
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span>Daily market briefings (Mon–Fri)</span>
+                  <span>Daily market briefings (Mon-Fri)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-primary flex-shrink-0" />
@@ -165,11 +225,17 @@ export default function LandingPage() {
                   <span>Free weekly report included</span>
                 </li>
               </ul>
-              <Link href="/login">
-                <Button className="w-full" size="lg" data-testid="button-subscribe">
-                  Subscribe Now
-                </Button>
-              </Link>
+              {paypalClientId && paypalPlanId ? (
+                <PayPalScriptProvider options={{ clientId: paypalClientId, vault: true, intent: "subscription" }}>
+                  <PayPalSubscribeButton planId={paypalPlanId} />
+                </PayPalScriptProvider>
+              ) : (
+                <Link href="/login">
+                  <Button className="w-full" size="lg" data-testid="button-subscribe">
+                    Subscribe Now
+                  </Button>
+                </Link>
+              )}
             </CardContent>
           </Card>
         </div>

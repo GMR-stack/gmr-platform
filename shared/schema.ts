@@ -15,7 +15,7 @@ export const users = pgTable("users", {
 export const subscriptions = pgTable("subscriptions", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
-  lemonsqueezySubscriptionId: text("lemonsqueezy_subscription_id"),
+  paypalSubscriptionId: text("paypal_subscription_id"),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

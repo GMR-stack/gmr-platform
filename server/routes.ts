@@ -124,6 +124,71 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/paypal/client-id", (_req, res) => {
+    const clientId = process.env.PAYPAL_CLIENT_ID;
+    if (!clientId) {
+      return res.status(500).json({ message: "PayPal client ID not configured" });
+    }
+    return res.json({ clientId });
+  });
+
+  app.post("/api/paypal/create-subscription", requireAuth, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const { subscriptionId } = req.body;
+      if (!subscriptionId) {
+        return res.status(400).json({ message: "Missing subscriptionId" });
+      }
+
+      const existing = await storage.getSubscription(user.id);
+      if (existing && existing.status === "active") {
+        return res.json({ message: "Already subscribed", subscription: existing });
+      }
+
+      const subscription = await storage.createSubscription({
+        userId: user.id,
+        paypalSubscriptionId: subscriptionId,
+        status: "active",
+      });
+
+      return res.status(201).json(subscription);
+    } catch (err: any) {
+      console.error("PayPal create subscription error:", err);
+      return res.status(500).json({ message: "Failed to create subscription" });
+    }
+  });
+
+  app.post("/api/paypal/webhook", async (req, res) => {
+    try {
+      const event = req.body;
+      const eventType = event?.event_type;
+
+      if (eventType === "BILLING.SUBSCRIPTION.ACTIVATED") {
+        const subscriptionId = event?.resource?.id;
+        if (subscriptionId) {
+          const existing = await storage.getSubscriptionByPaypalId(subscriptionId);
+          if (existing) {
+            await storage.updateSubscriptionStatus(subscriptionId, "active");
+          }
+        }
+      } else if (
+        eventType === "BILLING.SUBSCRIPTION.CANCELLED" ||
+        eventType === "BILLING.SUBSCRIPTION.EXPIRED" ||
+        eventType === "BILLING.SUBSCRIPTION.SUSPENDED"
+      ) {
+        const subscriptionId = event?.resource?.id;
+        if (subscriptionId) {
+          await storage.updateSubscriptionStatus(subscriptionId, "cancelled");
+        }
+      }
+
+      return res.status(200).json({ received: true });
+    } catch (err: any) {
+      console.error("PayPal webhook error:", err);
+      return res.status(500).json({ message: "Webhook processing failed" });
+    }
+  });
+
   app.get("/api/subscriptions/me", requireAuth, async (req, res) => {
     try {
       const user = (req as any).user;

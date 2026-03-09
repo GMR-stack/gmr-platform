@@ -25,7 +25,7 @@ A subscription newsletter platform for financial content. Users log in via Supab
 
 ## Database Schema
 - **users**: id, email, name, avatarUrl, isAdmin, supabaseId
-- **subscriptions**: id, userId, lemonsqueezySubscriptionId, status, createdAt
+- **subscriptions**: id, userId, paypalSubscriptionId, status, createdAt
 - **reports**: id, title, content (markdown), reportType, publishedAt
 
 ## API Routes
@@ -35,12 +35,18 @@ A subscription newsletter platform for financial content. Users log in via Supab
 - `GET /api/reports/:id` - Single report
 - `POST /api/reports` - Create report (admin)
 - `DELETE /api/reports/:id` - Delete report (admin)
+- `GET /api/paypal/client-id` - Get PayPal client ID for frontend
+- `POST /api/paypal/create-subscription` - Save PayPal subscription after approval
+- `POST /api/paypal/webhook` - PayPal webhook for subscription status updates
 - `GET /api/subscriptions/me` - Get user's subscription
 
 ## Environment Variables
 - `DATABASE_URL` - PostgreSQL connection (auto-set)
 - `VITE_SUPABASE_URL` - Supabase project URL (user must set)
 - `VITE_SUPABASE_ANON_KEY` - Supabase anon key (user must set)
+- `PAYPAL_CLIENT_ID` - PayPal app client ID
+- `PAYPAL_CLIENT_SECRET` - PayPal app client secret
+- `VITE_PAYPAL_PLAN_ID` - PayPal subscription plan ID (optional, for landing page PayPal button)
 
 ## Running
 - `npm run dev` starts the dev server on port 5000
