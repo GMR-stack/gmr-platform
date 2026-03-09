@@ -11,6 +11,13 @@ import { GmrLogo } from "@/components/gmr-logo";
 import { useToast } from "@/hooks/use-toast";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   FileText,
   Archive,
   Settings,
@@ -19,7 +26,6 @@ import {
   ChevronRight,
   BarChart3,
   Clock,
-  Sparkles,
 } from "lucide-react";
 import type { Report, Subscription } from "@shared/schema";
 import { getQueryFn } from "@/lib/queryClient";
@@ -60,6 +66,8 @@ export default function DashboardPage() {
   });
 
   const isSubscribed = subscription?.status === "active";
+  const isAdmin = user?.email === "globalmarketradar@gmail.com";
+  const [showPaypalModal, setShowPaypalModal] = useState(false);
 
   useEffect(() => {
     fetch("/api/paypal/client-id")
@@ -103,15 +111,28 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <div className="flex items-center gap-2">
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={user?.avatarUrl || undefined} alt={user?.name || "User"} />
-                <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-              </Avatar>
-              <Button variant="ghost" size="icon" onClick={signOut} data-testid="button-logout">
-                <LogOut className="w-4 h-4" />
+            {!isAdmin && isSubscribed && (
+              <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[10px] px-2 py-0.5" data-testid="badge-premium">
+                Premium
+              </Badge>
+            )}
+            {!isAdmin && !isSubscribed && (
+              <Button
+                size="sm"
+                className="bg-[#1a1f36] hover:bg-[#2a2f46] text-white text-xs px-3 h-7"
+                onClick={() => setShowPaypalModal(true)}
+                data-testid="button-navbar-subscribe"
+              >
+                Subscribe
               </Button>
-            </div>
+            )}
+            <Avatar className="w-8 h-8">
+              <AvatarImage src={user?.avatarUrl || undefined} alt={user?.name || "User"} />
+              <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+            </Avatar>
+            <Button variant="ghost" size="icon" onClick={signOut} data-testid="button-logout">
+              <LogOut className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       </header>
@@ -164,59 +185,6 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">Most recent publication</p>
           </Card>
         </div>
-
-        {!isSubscribed && (
-          <Card className="p-6 border-2 border-primary/30 bg-primary/5" data-testid="card-subscribe-banner">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="flex-1 space-y-1">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                  <h3 className="font-semibold text-base">Unlock Premium Access</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Subscribe to access all daily reports, full archive, and expert market analysis.
-                </p>
-              </div>
-              {paypalClientId && paypalPlanId ? (
-                <div className="w-full sm:w-64">
-                  <PayPalScriptProvider options={{ clientId: paypalClientId, vault: true, intent: "subscription", locale: "en_US" }}>
-                    <PayPalButtons
-                      style={{ shape: "rect", color: "gold", layout: "vertical", label: "subscribe" }}
-                      createSubscription={(_data, actions) => {
-                        return actions.subscription.create({ plan_id: paypalPlanId });
-                      }}
-                      onApprove={async (data) => {
-                        try {
-                          const token = session?.access_token;
-                          if (!token) return;
-                          const res = await fetch("/api/paypal/create-subscription", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                            body: JSON.stringify({ subscriptionId: data.subscriptionID }),
-                          });
-                          if (res.ok) {
-                            toast({ title: "Subscription activated! Welcome to GMR." });
-                            window.location.reload();
-                          } else {
-                            toast({ title: "Failed to activate subscription", variant: "destructive" });
-                          }
-                        } catch {
-                          toast({ title: "Something went wrong", variant: "destructive" });
-                        }
-                      }}
-                      onError={() => {}}
-                      data-testid="paypal-dashboard-subscribe"
-                    />
-                  </PayPalScriptProvider>
-                </div>
-              ) : (
-                <Link href="/">
-                  <Button data-testid="button-subscribe-banner">Subscribe Now</Button>
-                </Link>
-              )}
-            </div>
-          </Card>
-        )}
 
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -284,6 +252,52 @@ export default function DashboardPage() {
           GMR &middot; Global Market Radar
         </p>
       </footer>
+
+      <Dialog open={showPaypalModal} onOpenChange={setShowPaypalModal}>
+        <DialogContent className="max-w-md" data-testid="dialog-subscribe">
+          <DialogHeader>
+            <DialogTitle data-testid="text-subscribe-modal-title">Subscribe to GMR Premium</DialogTitle>
+            <DialogDescription>
+              Get full access to all daily reports, archive, and expert market analysis for $12/month.
+            </DialogDescription>
+          </DialogHeader>
+          {paypalClientId && paypalPlanId ? (
+            <PayPalScriptProvider options={{ clientId: paypalClientId, vault: true, intent: "subscription", locale: "en_US" }}>
+              <PayPalButtons
+                style={{ shape: "rect", color: "gold", layout: "vertical", label: "subscribe" }}
+                createSubscription={(_data, actions) => {
+                  return actions.subscription.create({ plan_id: paypalPlanId });
+                }}
+                onApprove={async (data) => {
+                  try {
+                    const token = session?.access_token;
+                    if (!token) return;
+                    const res = await fetch("/api/paypal/create-subscription", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ subscriptionId: data.subscriptionID }),
+                    });
+                    if (res.ok) {
+                      toast({ title: "Subscription activated! Welcome to GMR." });
+                      window.location.reload();
+                    } else {
+                      toast({ title: "Failed to activate subscription", variant: "destructive" });
+                    }
+                  } catch {
+                    toast({ title: "Something went wrong", variant: "destructive" });
+                  }
+                }}
+                onError={() => {}}
+                data-testid="paypal-modal-subscribe"
+              />
+            </PayPalScriptProvider>
+          ) : (
+            <Link href="/">
+              <Button className="w-full" data-testid="button-modal-subscribe">View Plans</Button>
+            </Link>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
