@@ -68,7 +68,7 @@ export default function ArchivePage() {
   });
 
   // TODO: Re-enable subscription check after LemonSqueezy integration
-  const isSubscribed = true;
+  const isSubscribed = subscription?.status === "active";
 
   const sortedReports = useMemo(() => {
     if (!reports) return [];
