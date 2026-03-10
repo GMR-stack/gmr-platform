@@ -101,32 +101,10 @@ export default function ArchivePage() {
       queryFn: getQueryFn({ on401: "returnNull" }),
     });
 
-  const { data: readReportIds } = useQuery<string[]>({
-    queryKey: ["/api/report-reads"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
-  });
-
   const queryClient = useQueryClient();
 
   const userIsAdmin = checkIsAdmin(user);
   const userIsSubscribed = checkIsSubscribed(subscription);
-
-  const isNewReport = (report: Report) => {
-    const hoursAgo = (Date.now() - new Date(report.publishedAt).getTime()) / (1000 * 60 * 60);
-    return hoursAgo <= 36 && !(readReportIds || []).includes(report.id);
-  };
-
-  const markAsRead = async (reportId: string) => {
-    try {
-      const token = session?.access_token;
-      if (!token) return;
-      await fetch(`/api/report-reads/${reportId}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/report-reads"] });
-    } catch {}
-  };
 
   useEffect(() => {
     fetch("/api/paypal/client-id")
@@ -153,7 +131,6 @@ export default function ArchivePage() {
       const found = reports.find((r) => r.id === reportIdFromUrl);
       if (found && canAccessReport(user, found, subscription)) {
         setSelectedReport(found);
-        markAsRead(found.id);
       }
     }
   }, [reportIdFromUrl, reports, user, subscription]);
@@ -338,7 +315,6 @@ export default function ArchivePage() {
                   e.preventDefault();
                   if (canAccessReport(user, report, subscription)) {
                     setSelectedReport(report);
-                    markAsRead(report.id);
                   } else {
                     setShowLockedModal(true);
                   }
@@ -361,11 +337,6 @@ export default function ArchivePage() {
                       >
                         {reportTypeLabel(report.reportType)}
                       </Badge>
-                      {isNewReport(report) && (
-                        <Badge className="bg-red-600 hover:bg-red-600 text-white text-[10px] px-1.5 py-0" data-testid={`badge-new-${report.id}`}>
-                          NEW
-                        </Badge>
-                      )}
                     </div>
                     <p
                       className="text-xs text-muted-foreground line-clamp-2"
