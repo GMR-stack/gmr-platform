@@ -25,6 +25,7 @@ export interface IStorage {
   getReport(id: string): Promise<Report | undefined>;
   createReport(report: InsertReport): Promise<Report>;
   deleteReport(id: string): Promise<void>;
+  updateReport(id: string, data: Partial<InsertReport>): Promise<Report | undefined>;
 
   getReadReportIds(userId: string): Promise<string[]>;
   markReportRead(userId: string, reportId: string): Promise<ReportRead>;
@@ -95,7 +96,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteReport(id: string): Promise<void> {
+    await db.delete(reportReads).where(eq(reportReads.reportId, id));
     await db.delete(reports).where(eq(reports.id, id));
+  }
+
+  async updateReport(id: string, data: Partial<InsertReport>): Promise<Report | undefined> {
+    const [updated] = await db.update(reports).set(data).where(eq(reports.id, id)).returning();
+    return updated;
   }
 
   async getReadReportIds(userId: string): Promise<string[]> {

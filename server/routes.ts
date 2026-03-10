@@ -113,6 +113,23 @@ export async function registerRoutes(
     }
   });
 
+  app.put("/api/reports/:id", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const id = req.params.id as string;
+      if (!id) return res.status(400).json({ message: "Invalid report id" });
+      const parsed = insertReportSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid report data", errors: parsed.error.errors });
+      }
+      const updated = await storage.updateReport(id, parsed.data);
+      if (!updated) return res.status(404).json({ message: "Report not found" });
+      return res.json(updated);
+    } catch (err: any) {
+      console.error("Update report error:", err);
+      return res.status(500).json({ message: "Failed to update report" });
+    }
+  });
+
   app.delete("/api/reports/:id", requireAuth, requireAdmin, async (req, res) => {
     try {
       const id = req.params.id as string;
@@ -120,6 +137,7 @@ export async function registerRoutes(
       await storage.deleteReport(id);
       return res.status(204).send();
     } catch (err: any) {
+      console.error("Delete report error:", err);
       return res.status(500).json({ message: "Failed to delete report" });
     }
   });

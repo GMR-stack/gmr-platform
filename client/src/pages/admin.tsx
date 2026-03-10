@@ -19,6 +19,13 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { GmrLogo } from "@/components/gmr-logo";
 import { useToast } from "@/hooks/use-toast";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   Archive,
   Settings,
   LogOut,
@@ -26,6 +33,7 @@ import {
   FileText,
   Clock,
   Trash2,
+  Pencil,
   Loader2,
   ShieldAlert,
 } from "lucide-react";
@@ -36,7 +44,7 @@ import { format } from "date-fns";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 const createReportSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -121,6 +129,33 @@ export default function AdminPage() {
       toast({ title: "Failed to delete report", description: err.message, variant: "destructive" });
     },
   });
+
+  const [editingReport, setEditingReport] = useState<Report | null>(null);
+  const editForm = useForm<CreateReportForm>({
+    resolver: zodResolver(createReportSchema),
+    defaultValues: { title: "", content: "", reportType: "monday" },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: CreateReportForm & { id: string }) => {
+      const { id, ...body } = data;
+      const res = await apiRequest("PUT", `/api/reports/${id}`, body);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reports"] });
+      setEditingReport(null);
+      toast({ title: "Report updated successfully" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to update report", description: err.message, variant: "destructive" });
+    },
+  });
+
+  function openEditModal(report: Report) {
+    editForm.reset({ title: report.title, content: report.content, reportType: report.reportType });
+    setEditingReport(report);
+  }
 
   if (loading) {
     return (
@@ -289,19 +324,29 @@ export default function AdminPage() {
                         Published {format(new Date(report.publishedAt), "MMM d, yyyy 'at' h:mm a")}
                       </p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        if (window.confirm("이 리포트를 삭제하시겠습니까?")) {
-                          deleteMutation.mutate(report.id);
-                        }
-                      }}
-                      disabled={deleteMutation.isPending}
-                      data-testid={`button-delete-report-${report.id}`}
-                    >
-                      <Trash2 className="w-4 h-4 text-muted-foreground" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEditModal(report)}
+                        data-testid={`button-edit-report-${report.id}`}
+                      >
+                        <Pencil className="w-4 h-4 text-muted-foreground" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          if (window.confirm("이 리포트를 삭제하시겠습니까?")) {
+                            deleteMutation.mutate(report.id);
+                          }
+                        }}
+                        disabled={deleteMutation.isPending}
+                        data-testid={`button-delete-report-${report.id}`}
+                      >
+                        <Trash2 className="w-4 h-4 text-muted-foreground" />
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               ))}
@@ -321,6 +366,70 @@ export default function AdminPage() {
           GMR &middot; Global Market Radar
         </p>
       </footer>
+
+      <Dialog open={!!editingReport} onOpenChange={(open) => { if (!open) setEditingReport(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-edit-report">
+          <DialogHeader>
+            <DialogTitle data-testid="text-edit-report-title">Edit Report</DialogTitle>
+            <DialogDescription>Update the report details below.</DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={editForm.handleSubmit((data) => {
+              if (editingReport) updateMutation.mutate({ ...data, id: editingReport.id });
+            })}
+            className="space-y-4"
+            data-testid="form-edit-report"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="edit-title">Title</Label>
+              <Input id="edit-title" {...editForm.register("title")} data-testid="input-edit-title" />
+              {editForm.formState.errors.title && (
+                <p className="text-xs text-destructive">{editForm.formState.errors.title.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-type">Report Type</Label>
+              <Select
+                value={editForm.watch("reportType")}
+                onValueChange={(val) => editForm.setValue("reportType", val)}
+              >
+                <SelectTrigger data-testid="select-edit-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="monday">Monday</SelectItem>
+                  <SelectItem value="tuesday">Tuesday</SelectItem>
+                  <SelectItem value="wednesday">Wednesday</SelectItem>
+                  <SelectItem value="thursday">Thursday</SelectItem>
+                  <SelectItem value="friday">Friday</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-content">Content (Markdown)</Label>
+              <Textarea
+                id="edit-content"
+                {...editForm.register("content")}
+                rows={12}
+                className="font-mono text-sm"
+                data-testid="input-edit-content"
+              />
+              {editForm.formState.errors.content && (
+                <p className="text-xs text-destructive">{editForm.formState.errors.content.message}</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setEditingReport(null)} data-testid="button-cancel-edit">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateMutation.isPending} data-testid="button-save-edit">
+                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
