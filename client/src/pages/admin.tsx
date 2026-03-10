@@ -36,6 +36,7 @@ import {
   Pencil,
   Loader2,
   ShieldAlert,
+  Search,
 } from "lucide-react";
 import type { Report } from "@shared/schema";
 import { isAdmin as checkIsAdmin } from "@/lib/access";
@@ -86,12 +87,25 @@ export default function AdminPage() {
     queryFn: getQueryFn({ on401: "throw" }),
   });
 
-  const recentReports = useMemo(() => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(10);
+
+  const allSortedReports = useMemo(() => {
     if (!reports) return [];
-    return [...reports]
-      .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
-      .slice(0, 10);
+    return [...reports].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
   }, [reports]);
+
+  const filteredReports = useMemo(() => {
+    if (!searchQuery.trim()) return allSortedReports;
+    const q = searchQuery.toLowerCase();
+    return allSortedReports.filter((r) => r.title.toLowerCase().includes(q));
+  }, [allSortedReports, searchQuery]);
+
+  const visibleReports = useMemo(() => {
+    return filteredReports.slice(0, visibleCount);
+  }, [filteredReports, visibleCount]);
+
+  const hasMore = visibleCount < filteredReports.length;
 
   const form = useForm<CreateReportForm>({
     resolver: zodResolver(createReportSchema),
@@ -293,8 +307,19 @@ export default function AdminPage() {
 
         <div className="space-y-3">
           <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider" data-testid="text-recent-heading">
-            Recent Reports ({recentReports.length})
+            Reports ({filteredReports.length})
           </h2>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search reports by title..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(10); }}
+              className="pl-9"
+              data-testid="input-search-reports"
+            />
+          </div>
 
           {isLoading ? (
             <div className="space-y-3">
@@ -307,9 +332,9 @@ export default function AdminPage() {
                 </Card>
               ))}
             </div>
-          ) : recentReports.length > 0 ? (
+          ) : visibleReports.length > 0 ? (
             <div className="space-y-3">
-              {recentReports.map((report) => (
+              {visibleReports.map((report) => (
                 <Card key={report.id} className="p-5" data-testid={`card-admin-report-${report.id}`}>
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="space-y-1.5 flex-1 min-w-0">
@@ -350,12 +375,26 @@ export default function AdminPage() {
                   </div>
                 </Card>
               ))}
+              {hasMore && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setVisibleCount((c) => c + 10)}
+                  data-testid="button-load-more"
+                >
+                  Load More
+                </Button>
+              )}
             </div>
           ) : (
             <Card className="p-8 text-center">
               <FileText className="w-8 h-8 mx-auto text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground">No reports published yet.</p>
-              <p className="text-xs text-muted-foreground mt-1">Use the form above to publish your first report.</p>
+              <p className="text-sm text-muted-foreground">
+                {searchQuery ? "No reports matching your search." : "No reports published yet."}
+              </p>
+              {!searchQuery && (
+                <p className="text-xs text-muted-foreground mt-1">Use the form above to publish your first report.</p>
+              )}
             </Card>
           )}
         </div>

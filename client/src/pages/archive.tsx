@@ -24,6 +24,8 @@ import {
   FileText,
   ArrowLeft,
   Lock,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import type { Report, Subscription } from "@shared/schema";
 import { canAccessReport, isAdmin as checkIsAdmin, isSubscribed as checkIsSubscribed } from "@/lib/access";
@@ -125,6 +127,18 @@ export default function ArchivePage() {
     if (filterType === "all") return sortedReports;
     return sortedReports.filter((r) => r.reportType === filterType);
   }, [sortedReports, filterType]);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const reportsPerPage = 10;
+  const totalPages = Math.max(1, Math.ceil(filteredReports.length / reportsPerPage));
+  const paginatedReports = useMemo(() => {
+    const start = (currentPage - 1) * reportsPerPage;
+    return filteredReports.slice(start, start + reportsPerPage);
+  }, [filteredReports, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterType]);
 
   useEffect(() => {
     if (reportIdFromUrl && reports) {
@@ -307,7 +321,7 @@ export default function ArchivePage() {
           </div>
         ) : filteredReports.length > 0 ? (
           <div className="space-y-3">
-            {filteredReports.map((report) => (
+            {paginatedReports.map((report) => (
               <Card
                 key={report.id}
                 className="p-5 hover-elevate cursor-pointer"
@@ -355,6 +369,34 @@ export default function ArchivePage() {
                 </div>
               </Card>
             ))}
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 pt-4" data-testid="pagination-controls">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  data-testid="button-prev-page"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground" data-testid="text-page-info">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  data-testid="button-next-page"
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <Card className="p-8 text-center">
