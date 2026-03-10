@@ -417,11 +417,21 @@ export default function ArchivePage() {
               The report archive is available exclusively to premium subscribers. Upgrade your plan to browse our full library of financial research, market analysis, and investment insights.
             </DialogDescription>
           </DialogHeader>
-          <Link href="/">
-            <Button className="w-full bg-[#1a1f36] hover:bg-[#2a2f46] text-white" data-testid="button-upgrade-premium">
+          {user ? (
+            <Button
+              className="w-full bg-[#1a1f36] hover:bg-[#2a2f46] text-white"
+              data-testid="button-upgrade-premium"
+              onClick={() => { setShowLockedModal(false); setShowPaypalModal(true); }}
+            >
               Upgrade to Premium
             </Button>
-          </Link>
+          ) : (
+            <Link href="/login?mode=signup">
+              <Button className="w-full bg-[#1a1f36] hover:bg-[#2a2f46] text-white" data-testid="button-upgrade-premium">
+                Upgrade to Premium
+              </Button>
+            </Link>
+          )}
         </DialogContent>
       </Dialog>
 
