@@ -99,7 +99,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="flex items-center justify-between gap-4 flex-wrap px-6 py-4 border-b">
-        <GmrLogo linkTo="" showTagline />
+        <GmrLogo linkTo="/" showTagline />
         <ThemeToggle />
       </header>
 
