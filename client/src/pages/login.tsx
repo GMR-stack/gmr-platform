@@ -18,6 +18,7 @@ export default function LoginPage() {
   const params = new URLSearchParams(searchString);
   const modeParam = params.get("mode");
   const confirmedParam = params.get("confirmed");
+  const passwordResetParam = params.get("passwordReset");
   const [view, setView] = useState<AuthView>(modeParam === "signup" ? "signup" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,8 +31,11 @@ export default function LoginPage() {
     if (confirmedParam === "true") {
       setSuccessMessage("Email confirmed! Please log in.");
       window.history.replaceState(null, "", "/login");
+    } else if (passwordResetParam === "true") {
+      setSuccessMessage("Password updated successfully. Please log in.");
+      window.history.replaceState(null, "", "/login");
     }
-  }, [confirmedParam]);
+  }, [confirmedParam, passwordResetParam]);
 
   if (!loading && user) {
     return <Redirect to="/dashboard" />;

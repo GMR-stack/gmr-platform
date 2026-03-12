@@ -13,12 +13,15 @@ import ArchivePage from "@/pages/archive";
 import AdminPage from "@/pages/admin";
 import OAuthConsentPage from "@/pages/oauth-consent";
 import LandingPage from "@/pages/landing";
+import ResetPasswordPage from "@/pages/reset-password";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/login" component={LoginPage} />
+      <Route path="/auth" component={LoginPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <DashboardPage />

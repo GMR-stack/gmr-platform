@@ -74,6 +74,7 @@ export default function DashboardPage() {
 
   const [showPaypalModal, setShowPaypalModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
@@ -95,6 +96,28 @@ export default function DashboardPage() {
     },
     onError: (err: Error) => {
       toast({ title: "Failed to cancel subscription", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: async () => {
+      const token = session?.access_token;
+      const res = await fetch("/api/auth/delete-account", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to delete account");
+      }
+      return res.json();
+    },
+    onSuccess: async () => {
+      await signOut();
+      window.location.href = "/";
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to delete account", description: err.message, variant: "destructive" });
     },
   });
 
@@ -293,10 +316,17 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      <footer className="border-t px-6 py-4 text-center">
+      <footer className="border-t px-6 py-4 text-center space-y-2">
         <p className="text-xs text-muted-foreground">
           GMR &middot; Global Market Radar
         </p>
+        <button
+          onClick={() => setShowDeleteModal(true)}
+          className="text-xs text-muted-foreground/50 hover:text-muted-foreground underline underline-offset-2 cursor-pointer bg-transparent border-none p-0"
+          data-testid="link-delete-account"
+        >
+          Delete account
+        </button>
       </footer>
 
       <Dialog open={showPaypalModal} onOpenChange={setShowPaypalModal}>
@@ -369,6 +399,35 @@ export default function DashboardPage() {
               data-testid="button-confirm-cancel"
             >
               {cancelMutation.isPending ? "Cancelling..." : "Yes, Cancel"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="max-w-md" data-testid="dialog-delete-account">
+          <DialogHeader>
+            <DialogTitle data-testid="text-delete-modal-title">Delete Account</DialogTitle>
+            <DialogDescription data-testid="text-delete-modal-description">
+              Are you sure you want to delete your account? This action cannot be undone. All your data will be permanently deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteModal(false)}
+              disabled={deleteAccountMutation.isPending}
+              data-testid="button-delete-modal-dismiss"
+            >
+              Keep Account
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteAccountMutation.mutate()}
+              disabled={deleteAccountMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteAccountMutation.isPending ? "Deleting..." : "Yes, Delete Account"}
             </Button>
           </DialogFooter>
         </DialogContent>

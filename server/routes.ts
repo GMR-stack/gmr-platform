@@ -69,6 +69,66 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/auth/delete-account", requireAuth, async (req, res) => {
+    try {
+      const user = (req as any).user;
+
+      const subscription = await storage.getSubscription(user.id);
+      if (subscription?.status === "active" && subscription.paypalSubscriptionId) {
+        const clientId = process.env.PAYPAL_CLIENT_ID;
+        const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+        if (clientId && clientSecret) {
+          try {
+            const tokenRes = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
+              },
+              body: "grant_type=client_credentials",
+            });
+            const tokenData = await tokenRes.json();
+            if (tokenData.access_token) {
+              await fetch(`https://api-m.paypal.com/v1/billing/subscriptions/${subscription.paypalSubscriptionId}/cancel`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${tokenData.access_token}`,
+                },
+                body: JSON.stringify({ reason: "User account deletion" }),
+              });
+            }
+          } catch (e) {
+            console.error("PayPal cancel during account deletion:", e);
+          }
+        }
+      }
+
+      await storage.deleteAccount(user.id);
+
+      const supabaseUrl = process.env.VITE_SUPABASE_URL;
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (supabaseUrl && serviceRoleKey) {
+        try {
+          await fetch(`${supabaseUrl}/auth/v1/admin/users/${user.supabaseId}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${serviceRoleKey}`,
+              apikey: serviceRoleKey,
+            },
+          });
+        } catch (e) {
+          console.error("Supabase user deletion error:", e);
+        }
+      }
+
+      return res.json({ message: "Account deleted" });
+    } catch (err: any) {
+      console.error("Delete account error:", err);
+      return res.status(500).json({ message: "Failed to delete account" });
+    }
+  });
+
   app.get("/api/reports", async (_req, res) => {
     try {
       const reports = await storage.getReports();

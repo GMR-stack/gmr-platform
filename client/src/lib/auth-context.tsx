@@ -4,6 +4,31 @@ import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
 import type { User } from "@shared/schema";
 import { apiRequest } from "./queryClient";
 
+const RECOVERY_KEY = "gmr_password_recovery";
+
+// Detect recovery link — covers ALL Supabase flows:
+// 1. Implicit flow: #access_token=...&type=recovery (hash)
+// 2. PKCE / OTP flow: ?token_hash=...&type=recovery  (query params)
+// 3. Persisted from previous page load via sessionStorage
+function detectRecovery(): boolean {
+  if (typeof window === "undefined") return false;
+  if (sessionStorage.getItem(RECOVERY_KEY) === "1") return true;
+  if (window.location.hash.includes("type=recovery")) return true;
+  if (new URLSearchParams(window.location.search).get("type") === "recovery") return true;
+  return false;
+}
+
+// Capture synchronously before any async processing can clear the URL params
+const isRecoveryLink = detectRecovery();
+if (isRecoveryLink && typeof window !== "undefined") {
+  // Persist across the redirect to /reset-password
+  sessionStorage.setItem(RECOVERY_KEY, "1");
+}
+
+export function clearRecoveryFlag() {
+  sessionStorage.removeItem(RECOVERY_KEY);
+}
+
 interface AuthContextType {
   session: Session | null;
   supabaseUser: SupabaseUser | null;
@@ -39,12 +64,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    const isEmailConfirmation = () => {
-      const params = new URLSearchParams(window.location.search);
-      return params.get("confirmed") === "true";
-    };
+    // If this is a password-reset link, bail out entirely.
+    // Let the /reset-password page manage its own session.
+    if (isRecoveryLink) {
+      if (!window.location.pathname.startsWith("/reset-password")) {
+        window.location.href = "/reset-password";
+      }
+      setLoading(false);
+      return;
+    }
+
+    const isEmailConfirmation = () =>
+      new URLSearchParams(window.location.search).get("confirmed") === "true";
+
+    // Runtime fallback: if PASSWORD_RECOVERY fires (e.g. hash was cleared
+    // before our module-level check ran), block all subsequent events.
+    let recoveryActive = false;
+
+    const isRecoverySession = () =>
+      recoveryActive || sessionStorage.getItem(RECOVERY_KEY) === "1";
 
     supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+      if (isRecoverySession()) {
+        setLoading(false);
+        return;
+      }
       if (s?.user && isEmailConfirmation()) {
         await supabase.auth.signOut();
         window.history.replaceState(null, "", "/login?confirmed=true");
@@ -61,10 +105,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
+      // PASSWORD_RECOVERY always wins — flag it and redirect
+      if (event === "PASSWORD_RECOVERY") {
+        recoveryActive = true;
+        sessionStorage.setItem(RECOVERY_KEY, "1");
+        if (!window.location.pathname.startsWith("/reset-password")) {
+          window.location.href = "/reset-password";
+        }
+        return;
+      }
+
+      // Block INITIAL_SESSION and SIGNED_IN that follow a recovery event
+      if (isRecoverySession()) return;
+
       if (event === "SIGNED_IN" && isEmailConfirmation()) {
         await supabase.auth.signOut();
         return;
       }
+
       setSession(s);
       setSupabaseUser(s?.user ?? null);
       if (s?.user) {
@@ -81,9 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo: window.location.origin + "/login?confirmed=true",
-      },
+      options: { emailRedirectTo: window.location.origin + "/login?confirmed=true" },
     });
     if (error) return { error: error.message };
     return {};
@@ -97,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function resetPassword(email: string): Promise<{ error?: string }> {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + "/login",
+      redirectTo: window.location.origin + "/reset-password",
     });
     if (error) return { error: error.message };
     return {};

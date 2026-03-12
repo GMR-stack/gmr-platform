@@ -28,6 +28,8 @@ export interface IStorage {
   deleteReport(id: string): Promise<void>;
   updateReport(id: string, data: Partial<InsertReport>): Promise<Report | undefined>;
 
+  deleteAccount(userId: string): Promise<void>;
+
   getReadReportIds(userId: string): Promise<string[]>;
   markReportRead(userId: string, reportId: string): Promise<ReportRead>;
 }
@@ -121,6 +123,12 @@ export class DatabaseStorage implements IStorage {
     if (read) return read;
     const [existing] = await db.select().from(reportReads).where(and(eq(reportReads.userId, userId), eq(reportReads.reportId, reportId)));
     return existing;
+  }
+
+  async deleteAccount(userId: string): Promise<void> {
+    await db.delete(reportReads).where(eq(reportReads.userId, userId));
+    await db.delete(subscriptions).where(eq(subscriptions.userId, userId));
+    await db.delete(users).where(eq(users.id, userId));
   }
 }
 
