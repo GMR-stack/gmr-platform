@@ -3,6 +3,32 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertReportSchema } from "@shared/schema";
 import { createClient } from "@supabase/supabase-js";
+import nodemailer from "nodemailer";
+
+async function sendNewSubscriberEmail(userId: string, subscriptionId: string) {
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
+  if (!gmailUser || !gmailAppPassword) {
+    console.warn("[email] GMAIL_USER or GMAIL_APP_PASSWORD not set — skipping notification");
+    return;
+  }
+  try {
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: { user: gmailUser, pass: gmailAppPassword },
+    });
+    const date = new Date().toUTCString();
+    await transporter.sendMail({
+      from: gmailUser,
+      to: "globalmarketradar@gmail.com",
+      subject: "New GMR Subscriber!",
+      text: `A new subscriber has joined GMR.\n\nUser ID: ${userId}\nPayPal Subscription ID: ${subscriptionId}\nDate: ${date}`,
+    });
+    console.log("[email] New subscriber notification sent for userId:", userId);
+  } catch (err: any) {
+    console.error("[email] Failed to send subscriber notification:", err.message);
+  }
+}
 
 async function getSupabaseUser(req: Request): Promise<{ sub: string; email: string } | null> {
   const authHeader = req.headers.authorization;
@@ -318,6 +344,7 @@ export async function registerRoutes(
           const existing = await storage.getSubscriptionByPaypalId(subscriptionId);
           if (existing) {
             await storage.updateSubscriptionStatus(subscriptionId, "active");
+            await sendNewSubscriberEmail(existing.userId, subscriptionId);
           }
         }
       } else if (
