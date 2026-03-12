@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertReportSchema } from "@shared/schema";
+import { createClient } from "@supabase/supabase-js";
 
 async function getSupabaseUser(req: Request): Promise<{ sub: string; email: string } | null> {
   const authHeader = req.headers.authorization;
@@ -72,8 +73,12 @@ export async function registerRoutes(
   app.delete("/api/auth/delete-account", requireAuth, async (req, res) => {
     try {
       const user = (req as any).user;
+      console.log("[delete-account] Starting deletion for user:", { id: user.id, email: user.email, supabaseId: user.supabaseId });
 
+      // Step 1: Cancel PayPal subscription if active
       const subscription = await storage.getSubscription(user.id);
+      console.log("[delete-account] Subscription found:", subscription ? { id: subscription.id, status: subscription.status } : "none");
+
       if (subscription?.status === "active" && subscription.paypalSubscriptionId) {
         const clientId = process.env.PAYPAL_CLIENT_ID;
         const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
@@ -89,42 +94,57 @@ export async function registerRoutes(
             });
             const tokenData = await tokenRes.json();
             if (tokenData.access_token) {
-              await fetch(`https://api-m.paypal.com/v1/billing/subscriptions/${subscription.paypalSubscriptionId}/cancel`, {
+              const cancelRes = await fetch(`https://api-m.paypal.com/v1/billing/subscriptions/${subscription.paypalSubscriptionId}/cancel`, {
                 method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${tokenData.access_token}`,
-                },
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokenData.access_token}` },
                 body: JSON.stringify({ reason: "User account deletion" }),
               });
+              console.log("[delete-account] PayPal cancel status:", cancelRes.status);
             }
           } catch (e) {
-            console.error("PayPal cancel during account deletion:", e);
+            console.error("[delete-account] PayPal cancel error:", e);
           }
         }
       }
 
-      await storage.deleteAccount(user.id);
-
-      const supabaseUrl = process.env.VITE_SUPABASE_URL;
-      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (supabaseUrl && serviceRoleKey) {
-        try {
-          await fetch(`${supabaseUrl}/auth/v1/admin/users/${user.supabaseId}`, {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${serviceRoleKey}`,
-              apikey: serviceRoleKey,
-            },
-          });
-        } catch (e) {
-          console.error("Supabase user deletion error:", e);
-        }
+      // Step 2: Delete all DB rows (report_reads → subscriptions → users)
+      console.log("[delete-account] Deleting DB records for userId:", user.id);
+      try {
+        await storage.deleteAccount(user.id);
+        console.log("[delete-account] DB records deleted successfully");
+      } catch (dbErr: any) {
+        console.error("[delete-account] DB deletion error:", dbErr.message);
+        throw dbErr;
       }
 
+      // Step 3: Delete from Supabase Auth using Admin client
+      const supabaseUrl = process.env.VITE_SUPABASE_URL;
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      console.log("[delete-account] Supabase config — url present:", !!supabaseUrl, "serviceRoleKey present:", !!serviceRoleKey);
+      console.log("[delete-account] Deleting Supabase Auth user:", user.supabaseId);
+
+      if (supabaseUrl && serviceRoleKey && user.supabaseId) {
+        try {
+          const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+            auth: { autoRefreshToken: false, persistSession: false },
+          });
+          const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(user.supabaseId);
+          if (authDeleteError) {
+            console.error("[delete-account] Supabase Auth delete error:", authDeleteError.message);
+          } else {
+            console.log("[delete-account] Supabase Auth user deleted successfully");
+          }
+        } catch (e: any) {
+          console.error("[delete-account] Supabase Admin client error:", e.message);
+        }
+      } else {
+        console.warn("[delete-account] Skipping Supabase Auth deletion — missing config or supabaseId");
+      }
+
+      console.log("[delete-account] Deletion complete for:", user.email);
       return res.json({ message: "Account deleted" });
     } catch (err: any) {
-      console.error("Delete account error:", err);
+      console.error("[delete-account] Fatal error:", err.message);
       return res.status(500).json({ message: "Failed to delete account" });
     }
   });
