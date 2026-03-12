@@ -1,5 +1,5 @@
 import { useAuth } from "@/lib/auth-context";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   FileText,
@@ -72,6 +73,30 @@ export default function DashboardPage() {
   const userIsSubscribed = checkIsSubscribed(subscription);
 
   const [showPaypalModal, setShowPaypalModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      const token = session?.access_token;
+      const res = await fetch("/api/paypal/cancel-subscription", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to cancel");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", "me"] });
+      setShowCancelModal(false);
+      toast({ title: "Subscription cancelled", description: "You no longer have premium access." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to cancel subscription", description: err.message, variant: "destructive" });
+    },
+  });
 
   useEffect(() => {
     fetch("/api/paypal/client-id")
@@ -179,6 +204,15 @@ export default function DashboardPage() {
                   : "Active member"
                 : "Subscribe for full access"}
             </p>
+            {userIsSubscribed && (
+              <button
+                onClick={() => setShowCancelModal(true)}
+                className="text-xs text-white/40 hover:text-white/70 underline underline-offset-2 cursor-pointer bg-transparent border-none p-0 mt-1"
+                data-testid="link-cancel-subscription"
+              >
+                Cancel subscription
+              </button>
+            )}
           </Card>
 
           <Card className="p-5 space-y-2">
@@ -308,6 +342,35 @@ export default function DashboardPage() {
               <Button className="w-full" data-testid="button-modal-subscribe">View Plans</Button>
             </Link>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
+        <DialogContent className="max-w-md" data-testid="dialog-cancel-subscription">
+          <DialogHeader>
+            <DialogTitle data-testid="text-cancel-modal-title">Cancel Subscription</DialogTitle>
+            <DialogDescription data-testid="text-cancel-modal-description">
+              Are you sure you want to cancel your subscription? You will immediately lose access to premium reports.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setShowCancelModal(false)}
+              disabled={cancelMutation.isPending}
+              data-testid="button-cancel-modal-dismiss"
+            >
+              Keep Subscription
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => cancelMutation.mutate()}
+              disabled={cancelMutation.isPending}
+              data-testid="button-confirm-cancel"
+            >
+              {cancelMutation.isPending ? "Cancelling..." : "Yes, Cancel"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

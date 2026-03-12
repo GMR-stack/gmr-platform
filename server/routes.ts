@@ -176,6 +176,57 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/paypal/cancel-subscription", requireAuth, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const subscription = await storage.getSubscription(user.id);
+
+      if (!subscription || subscription.status !== "active") {
+        return res.status(400).json({ message: "No active subscription found" });
+      }
+
+      const paypalSubscriptionId = subscription.paypalSubscriptionId;
+
+      if (paypalSubscriptionId) {
+        const clientId = process.env.PAYPAL_CLIENT_ID;
+        const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+
+        if (clientId && clientSecret) {
+          const tokenRes = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
+            },
+            body: "grant_type=client_credentials",
+          });
+          const tokenData = await tokenRes.json();
+          const accessToken = tokenData.access_token;
+
+          if (accessToken) {
+            await fetch(`https://api-m.paypal.com/v1/billing/subscriptions/${paypalSubscriptionId}/cancel`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({ reason: "User requested cancellation" }),
+            });
+          }
+        }
+
+        await storage.updateSubscriptionStatus(paypalSubscriptionId, "cancelled");
+      } else {
+        await storage.updateSubscriptionStatusByUserId(user.id, "cancelled");
+      }
+
+      return res.json({ message: "Subscription cancelled" });
+    } catch (err: any) {
+      console.error("Cancel subscription error:", err);
+      return res.status(500).json({ message: "Failed to cancel subscription" });
+    }
+  });
+
   app.post("/api/paypal/webhook", async (req, res) => {
     try {
       const event = req.body;
