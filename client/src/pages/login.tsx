@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Redirect, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,9 @@ type AuthView = "login" | "signup" | "forgot";
 export default function LoginPage() {
   const { user, loading, signIn, signUp, resetPassword } = useAuth();
   const searchString = useSearch();
-  const modeParam = new URLSearchParams(searchString).get("mode");
+  const params = new URLSearchParams(searchString);
+  const modeParam = params.get("mode");
+  const confirmedParam = params.get("confirmed");
   const [view, setView] = useState<AuthView>(modeParam === "signup" ? "signup" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,6 +25,13 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+
+  useEffect(() => {
+    if (confirmedParam === "true") {
+      setSuccessMessage("Email confirmed! Please log in.");
+      window.history.replaceState(null, "", "/login");
+    }
+  }, [confirmedParam]);
 
   if (!loading && user) {
     return <Redirect to="/dashboard" />;

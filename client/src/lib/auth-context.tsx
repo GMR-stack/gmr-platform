@@ -39,7 +39,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
+    const isEmailConfirmation = () => {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("confirmed") === "true";
+    };
+
+    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+      if (s?.user && isEmailConfirmation()) {
+        await supabase.auth.signOut();
+        window.history.replaceState(null, "", "/login?confirmed=true");
+        setLoading(false);
+        return;
+      }
       setSession(s);
       setSupabaseUser(s?.user ?? null);
       if (s?.user) {
@@ -49,7 +60,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
+      if (event === "SIGNED_IN" && isEmailConfirmation()) {
+        await supabase.auth.signOut();
+        return;
+      }
       setSession(s);
       setSupabaseUser(s?.user ?? null);
       if (s?.user) {
@@ -67,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin + "/dashboard",
+        emailRedirectTo: window.location.origin + "/login?confirmed=true",
       },
     });
     if (error) return { error: error.message };
