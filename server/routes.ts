@@ -5,7 +5,7 @@ import { insertReportSchema } from "@shared/schema";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 
-async function sendNewSubscriberEmail(userId: string, subscriptionId: string) {
+async function sendAdminEmail(subject: string, body: string) {
   const gmailUser = process.env.GMAIL_USER;
   const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
   if (!gmailUser || !gmailAppPassword) {
@@ -17,17 +17,32 @@ async function sendNewSubscriberEmail(userId: string, subscriptionId: string) {
       service: "gmail",
       auth: { user: gmailUser, pass: gmailAppPassword },
     });
-    const date = new Date().toUTCString();
     await transporter.sendMail({
       from: gmailUser,
       to: "globalmarketradar@gmail.com",
-      subject: "New GMR Subscriber!",
-      text: `A new subscriber has joined GMR.\n\nUser ID: ${userId}\nPayPal Subscription ID: ${subscriptionId}\nDate: ${date}`,
+      subject,
+      text: body,
     });
-    console.log("[email] New subscriber notification sent for userId:", userId);
+    console.log("[email] Admin notification sent:", subject);
   } catch (err: any) {
-    console.error("[email] Failed to send subscriber notification:", err.message);
+    console.error("[email] Failed to send admin notification:", err.message);
   }
+}
+
+async function sendNewSubscriberEmail(userId: string, subscriptionId: string) {
+  const date = new Date().toUTCString();
+  await sendAdminEmail(
+    "New GMR Subscriber!",
+    `A new subscriber has joined GMR.\n\nUser ID: ${userId}\nPayPal Subscription ID: ${subscriptionId}\nDate: ${date}`
+  );
+}
+
+async function sendCancellationEmail(userId: string, subscriptionId: string) {
+  const date = new Date().toUTCString();
+  await sendAdminEmail(
+    "GMR Subscriber Cancelled",
+    `A subscriber has cancelled.\n\nUser ID: ${userId}\nPayPal Subscription ID: ${subscriptionId}\nDate: ${date}`
+  );
 }
 
 async function getSupabaseUser(req: Request): Promise<{ sub: string; email: string } | null> {
@@ -322,8 +337,10 @@ export async function registerRoutes(
         }
 
         await storage.updateSubscriptionStatus(paypalSubscriptionId, "cancelled");
+        await sendCancellationEmail(user.id, paypalSubscriptionId);
       } else {
         await storage.updateSubscriptionStatusByUserId(user.id, "cancelled");
+        await sendCancellationEmail(user.id, "N/A");
       }
 
       return res.json({ message: "Subscription cancelled" });
