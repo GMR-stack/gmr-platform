@@ -41,15 +41,15 @@ export default function ResetPasswordPage() {
     setError("");
 
     if (!password) {
-      setError("새 비밀번호를 입력해 주세요.");
+      setError("Please enter a new password.");
       return;
     }
     if (password.length < 6) {
-      setError("비밀번호는 최소 6자 이상이어야 합니다.");
+      setError("Password must be at least 6 characters.");
       return;
     }
     if (password !== confirmPassword) {
-      setError("비밀번호가 일치하지 않습니다.");
+      setError("Passwords do not match.");
       return;
     }
 
@@ -79,7 +79,7 @@ export default function ResetPasswordPage() {
           {pageState === "loading" && (
             <div className="flex flex-col items-center gap-4 py-12">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">인증 확인 중...</p>
+              <p className="text-sm text-muted-foreground">Verifying...</p>
             </div>
           )}
 
@@ -89,9 +89,9 @@ export default function ResetPasswordPage() {
                 <AlertTriangle className="w-7 h-7 text-destructive" />
               </div>
               <div className="space-y-2">
-                <h2 className="font-semibold text-lg">링크가 만료되었습니다</h2>
+                <h2 className="font-semibold text-lg">Link Expired</h2>
                 <p className="text-sm text-muted-foreground">
-                  비밀번호 재설정 링크가 유효하지 않거나 만료되었습니다.<br />새로운 링크를 요청해 주세요.
+                  This password reset link is invalid or has expired.<br />Please request a new one.
                 </p>
               </div>
               <Button
@@ -100,7 +100,7 @@ export default function ResetPasswordPage() {
                 onClick={() => (window.location.href = "/login")}
                 data-testid="button-back-login"
               >
-                로그인 페이지로 돌아가기
+                Back to Login
               </Button>
             </div>
           )}
@@ -112,14 +112,14 @@ export default function ResetPasswordPage() {
               </div>
               <div className="space-y-2">
                 <h2 className="font-semibold text-lg" data-testid="text-reset-success">Password updated successfully.</h2>
-                <p className="text-sm text-muted-foreground">Please log in.</p>
+                <p className="text-sm text-muted-foreground">Please log in again.</p>
               </div>
               <Button
                 className="w-full"
                 onClick={() => (window.location.href = "/login")}
                 data-testid="button-go-login"
               >
-                로그인하기
+                Log In
               </Button>
             </div>
           )}
@@ -132,10 +132,10 @@ export default function ResetPasswordPage() {
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight" data-testid="text-reset-title">
-                    새 비밀번호 설정
+                    Reset Your Password
                   </h1>
                   <p className="text-sm text-muted-foreground mt-1">
-                    GMR 계정의 새 비밀번호를 입력해 주세요.
+                    Enter a new password for your GMR account.
                   </p>
                 </div>
               </div>
@@ -143,11 +143,11 @@ export default function ResetPasswordPage() {
               <div className="rounded-xl border bg-card p-6 shadow-sm space-y-5">
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="password">새 비밀번호</Label>
+                    <Label htmlFor="password">New Password</Label>
                     <Input
                       id="password"
                       type="password"
-                      placeholder="최소 6자 이상"
+                      placeholder="Minimum 6 characters"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       disabled={submitting}
@@ -156,11 +156,11 @@ export default function ResetPasswordPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">비밀번호 확인</Label>
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
                     <Input
                       id="confirmPassword"
                       type="password"
-                      placeholder="비밀번호를 다시 입력하세요"
+                      placeholder="Re-enter your password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       disabled={submitting}
@@ -183,10 +183,10 @@ export default function ResetPasswordPage() {
                     {submitting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        변경 중...
+                        Updating...
                       </>
                     ) : (
-                      "비밀번호 변경"
+                      "Update Password"
                     )}
                   </Button>
                 </form>
