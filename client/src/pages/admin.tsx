@@ -37,6 +37,7 @@ import {
   Loader2,
   ShieldAlert,
   Search,
+  ImagePlus,
 } from "lucide-react";
 import type { Report } from "@shared/schema";
 import { isAdmin as checkIsAdmin } from "@/lib/access";
@@ -45,7 +46,12 @@ import { format } from "date-fns";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
+import { supabase } from "@/lib/supabase";
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+const BUCKET = "report-images";
 
 const createReportSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -76,6 +82,106 @@ function reportTypeVariant(type: string): "default" | "secondary" | "outline" {
   if (type === "monday" || type === "wednesday" || type === "market_analysis" || type === "macro_outlook") return "default";
   if (type === "tuesday" || type === "thursday" || type === "equity_research") return "secondary";
   return "outline";
+}
+
+function insertAtCursor(textarea: HTMLTextAreaElement, text: string, setValue: (val: string) => void) {
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? textarea.value.length;
+  const before = textarea.value.substring(0, start);
+  const after = textarea.value.substring(end);
+  const newValue = before + text + after;
+  setValue(newValue);
+  // Restore cursor position after React re-render
+  requestAnimationFrame(() => {
+    textarea.focus();
+    textarea.selectionStart = start + text.length;
+    textarea.selectionEnd = start + text.length;
+  });
+}
+
+interface ImageUploadButtonProps {
+  textareaRef: React.MutableRefObject<HTMLTextAreaElement | null>;
+  onInsert: (value: string) => void;
+  "data-testid"?: string;
+}
+
+function ImageUploadButton({ textareaRef, onInsert, "data-testid": testId }: ImageUploadButtonProps) {
+  const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      toast({ title: "Invalid file type", description: "Only JPG, PNG, GIF, and WebP images are allowed.", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast({ title: "File too large", description: "Image must be under 5MB.", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(fileName, file, { cacheControl: "3600", upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(fileName);
+      const publicUrl = urlData.publicUrl;
+      const markdown = `![image](${publicUrl})`;
+
+      if (textareaRef.current) {
+        insertAtCursor(textareaRef.current, markdown, onInsert);
+      } else {
+        onInsert((prev: any) => prev + markdown);
+      }
+
+      toast({ title: "Image uploaded", description: "Image inserted into content." });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message || "Could not upload image.", variant: "destructive" });
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }, [textareaRef, onInsert, toast]);
+
+  return (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp"
+        className="hidden"
+        onChange={handleFileChange}
+        data-testid={testId ? `${testId}-file-input` : "upload-image-file-input"}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={uploading}
+        onClick={() => fileInputRef.current?.click()}
+        data-testid={testId ?? "button-upload-image"}
+      >
+        {uploading ? (
+          <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+        ) : (
+          <ImagePlus className="w-4 h-4 mr-1.5" />
+        )}
+        {uploading ? "Uploading..." : "Upload Image"}
+      </Button>
+    </>
+  );
 }
 
 export default function AdminPage() {
@@ -116,6 +222,14 @@ export default function AdminPage() {
     },
   });
 
+  // Merged ref for create form textarea
+  const createContentRef = useRef<HTMLTextAreaElement | null>(null);
+  const { ref: rhfCreateRef, ...createContentRegister } = form.register("content");
+  const mergedCreateRef = useCallback((el: HTMLTextAreaElement | null) => {
+    rhfCreateRef(el);
+    createContentRef.current = el;
+  }, [rhfCreateRef]);
+
   const createMutation = useMutation({
     mutationFn: async (data: CreateReportForm) => {
       const res = await apiRequest("POST", "/api/reports", data);
@@ -149,6 +263,14 @@ export default function AdminPage() {
     resolver: zodResolver(createReportSchema),
     defaultValues: { title: "", content: "", reportType: "monday" },
   });
+
+  // Merged ref for edit form textarea
+  const editContentRef = useRef<HTMLTextAreaElement | null>(null);
+  const { ref: rhfEditRef, ...editContentRegister } = editForm.register("content");
+  const mergedEditRef = useCallback((el: HTMLTextAreaElement | null) => {
+    rhfEditRef(el);
+    editContentRef.current = el;
+  }, [rhfEditRef]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: CreateReportForm & { id: string }) => {
@@ -285,12 +407,20 @@ export default function AdminPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="content">Content (Markdown)</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="content">Content (Markdown)</Label>
+                <ImageUploadButton
+                  textareaRef={createContentRef}
+                  onInsert={(val: string) => form.setValue("content", val)}
+                  data-testid="button-upload-image-create"
+                />
+              </div>
               <Textarea
                 id="content"
                 placeholder={"## Summary\n\nWrite your report content in Markdown format...\n\n### Key Points\n- Point 1\n- Point 2"}
                 className="min-h-[300px] font-mono text-sm"
-                {...form.register("content")}
+                ref={mergedCreateRef}
+                {...createContentRegister}
                 data-testid="textarea-report-content"
               />
               {form.formState.errors.content && (
@@ -446,10 +576,18 @@ export default function AdminPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-content">Content (Markdown)</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="edit-content">Content (Markdown)</Label>
+                <ImageUploadButton
+                  textareaRef={editContentRef}
+                  onInsert={(val: string) => editForm.setValue("content", val)}
+                  data-testid="button-upload-image-edit"
+                />
+              </div>
               <Textarea
                 id="edit-content"
-                {...editForm.register("content")}
+                ref={mergedEditRef}
+                {...editContentRegister}
                 rows={12}
                 className="font-mono text-sm"
                 data-testid="input-edit-content"
