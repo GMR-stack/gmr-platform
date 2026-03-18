@@ -90,6 +90,28 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+  app.get("/sitemap.xml", (_req, res) => {
+    res.setHeader("Content-Type", "application/xml");
+    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://www.globalmarketradar.com/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://www.globalmarketradar.com/dashboard</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://www.globalmarketradar.com/archive</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>`);
+  });
+
   app.post("/api/auth/sync", async (req, res) => {
     try {
       const { supabaseId, email, name, avatarUrl } = req.body;
