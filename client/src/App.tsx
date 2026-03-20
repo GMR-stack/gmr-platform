@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ProtectedRoute } from "@/components/protected-route";
+import { HelmetProvider } from "react-helmet-async";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/dashboard";
@@ -14,6 +15,7 @@ import AdminPage from "@/pages/admin";
 import OAuthConsentPage from "@/pages/oauth-consent";
 import LandingPage from "@/pages/landing";
 import ResetPasswordPage from "@/pages/reset-password";
+import ReportPage from "@/pages/report";
 
 function Router() {
   return (
@@ -22,6 +24,7 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/auth" component={LoginPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
+      <Route path="/report/:id" component={ReportPage} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <DashboardPage />
@@ -45,16 +48,18 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </HelmetProvider>
   );
 }
 

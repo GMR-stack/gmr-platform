@@ -34,7 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { format } from "date-fns";
 import { useState, useMemo, useEffect } from "react";
-import { useSearch } from "wouter";
+import { useSearch, useLocation } from "wouter";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 
@@ -81,6 +81,7 @@ function reportTypeVariant(type: string): "default" | "secondary" | "outline" {
 export default function ArchivePage() {
   const { user, session, signOut } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [filterType, setFilterType] = useState<string>("all");
   const [showLockedModal, setShowLockedModal] = useState(false);
@@ -327,7 +328,9 @@ export default function ArchivePage() {
                 className="p-5 hover-elevate cursor-pointer"
                 onClick={(e: React.MouseEvent) => {
                   e.preventDefault();
-                  if (canAccessReport(user, report, subscription)) {
+                  if (report.reportType === "free") {
+                    navigate(`/report/${report.id}`);
+                  } else if (canAccessReport(user, report, subscription)) {
                     setSelectedReport(report);
                   } else {
                     setShowLockedModal(true);

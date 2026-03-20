@@ -33,6 +33,7 @@ import { isAdmin as checkIsAdmin, isSubscribed as checkIsSubscribed } from "@/li
 import { getQueryFn } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 
 function reportTypeLabel(type: string) {
   const labels: Record<string, string> = {
@@ -282,7 +283,7 @@ export default function DashboardPage() {
               {recentReports.slice(0, 5).map((report) => (
                 <Link
                   key={report.id}
-                  href={`/archive?report=${report.id}`}
+                  href={report.reportType === "free" ? `/report/${report.id}` : `/archive?report=${report.id}`}
                 >
                   <Card className="p-5 hover-elevate cursor-pointer" data-testid={`card-report-${report.id}`}>
                     <div className="flex items-start justify-between gap-4 flex-wrap">
