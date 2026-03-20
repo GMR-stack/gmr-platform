@@ -90,9 +90,19 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
-  app.get("/sitemap.xml", (_req, res) => {
-    res.setHeader("Content-Type", "application/xml");
-    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const allReports = await storage.getReports();
+      const freeReports = allReports.filter((r) => r.reportType === "free");
+
+      const freeReportUrls = freeReports
+        .map((r) => {
+          const lastmod = new Date(r.publishedAt).toISOString().split("T")[0];
+          return `  <url>\n    <loc>https://www.globalmarketradar.com/report/${r.id}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>never</changefreq>\n    <priority>0.7</priority>\n  </url>`;
+        })
+        .join("\n");
+
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://www.globalmarketradar.com/</loc>
@@ -100,16 +110,19 @@ export async function registerRoutes(
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://www.globalmarketradar.com/dashboard</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
     <loc>https://www.globalmarketradar.com/archive</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
-</urlset>`);
+${freeReportUrls}
+</urlset>`;
+
+      res.setHeader("Content-Type", "application/xml");
+      res.send(xml);
+    } catch (err) {
+      console.error("Sitemap generation error:", err);
+      res.status(500).send("Failed to generate sitemap");
+    }
   });
 
   app.post("/api/auth/sync", async (req, res) => {
