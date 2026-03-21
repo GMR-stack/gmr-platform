@@ -482,13 +482,21 @@ ${freeReportUrls}
 
   app.get("/api/market/sentiment", async (req, res) => {
     try {
-      const r = await fetch("https://production.dataviz.cnn.io/index/fearandgreed/graphdata", {
-        headers: { "User-Agent": "Mozilla/5.0", "Referer": "https://edition.cnn.com/" },
+      const rapidApiKey = process.env.RAPIDAPI_KEY;
+      if (!rapidApiKey) {
+        return res.status(500).json({ message: "RAPIDAPI_KEY not configured" });
+      }
+      const r = await fetch("https://fear-and-greed-index-api.p.rapidapi.com/index", {
+        headers: {
+          "Content-Type": "application/json",
+          "x-rapidapi-host": "fear-and-greed-index-api.p.rapidapi.com",
+          "x-rapidapi-key": rapidApiKey,
+        },
       });
-      if (!r.ok) return res.status(502).json({ message: "CNN API error" });
+      if (!r.ok) return res.status(502).json({ message: "RapidAPI error" });
       const data = await r.json() as any;
-      const score: number = data?.fear_and_greed?.score ?? data?.score ?? null;
-      const rating: string = data?.fear_and_greed?.rating ?? data?.rating ?? "";
+      const score: number = data?.fgi?.value ?? data?.score ?? null;
+      const rating: string = data?.fgi?.valueText ?? data?.rating ?? "";
       return res.json({ score, rating });
     } catch (err: any) {
       return res.status(500).json({ message: "Failed to fetch sentiment data" });
