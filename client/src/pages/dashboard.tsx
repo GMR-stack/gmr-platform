@@ -34,7 +34,177 @@ import { getQueryFn } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
+// ─── Market Snapshot ────────────────────────────────────────────────────────
+interface TickerData { key: string; name: string; price: number | null; change: number | null; }
+interface SnapshotMap { sp500: TickerData; brent: TickerData; dxy: TickerData; us10y: TickerData; }
+
+function formatPrice(key: string, price: number | null) {
+  if (price == null) return "—";
+  if (key === "us10y") return price.toFixed(3) + "%";
+  if (key === "dxy") return price.toFixed(2);
+  if (key === "brent") return "$" + price.toFixed(2);
+  return price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function MarketSnapshot() {
+  const { data, isLoading } = useQuery<SnapshotMap>({
+    queryKey: ["/api/market/snapshot"],
+    refetchInterval: 60_000,
+    staleTime: 55_000,
+  });
+
+  const order: (keyof SnapshotMap)[] = ["sp500", "brent", "dxy", "us10y"];
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-lg font-serif font-semibold">Market Snapshot</h2>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {order.map((key) => {
+          const ticker = data?.[key];
+          const isPos = (ticker?.change ?? 0) >= 0;
+          return (
+            <div
+              key={key}
+              className="rounded-xl p-4 bg-[#0f1117] border border-white/8 space-y-2 dark:bg-[#0f1117] dark:border-white/8"
+              data-testid={`card-market-${key}`}
+            >
+              {isLoading || !ticker ? (
+                <>
+                  <Skeleton className="h-3 w-20 bg-white/10" />
+                  <Skeleton className="h-6 w-24 bg-white/10" />
+                  <Skeleton className="h-3 w-14 bg-white/10" />
+                </>
+              ) : (
+                <>
+                  <p className="text-[11px] font-medium text-white/50 uppercase tracking-wider">{ticker.name}</p>
+                  <p className="text-xl font-bold text-white font-mono">{formatPrice(key, ticker.price)}</p>
+                  <div className={`flex items-center gap-1 text-xs font-medium ${isPos ? "text-emerald-400" : "text-red-400"}`}>
+                    {isPos ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    {ticker.change != null ? (isPos ? "+" : "") + ticker.change.toFixed(2) + "%" : "—"}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Sentiment Gauge ─────────────────────────────────────────────────────────
+interface SentimentData { score: number; rating: string; }
+
+function sentimentColor(score: number) {
+  if (score <= 25) return "#ef4444";
+  if (score <= 45) return "#f97316";
+  if (score <= 55) return "#eab308";
+  if (score <= 75) return "#84cc16";
+  return "#22c55e";
+}
+
+function sentimentLabel(score: number) {
+  if (score <= 25) return "Extreme Fear";
+  if (score <= 45) return "Fear";
+  if (score <= 55) return "Neutral";
+  if (score <= 75) return "Greed";
+  return "Extreme Greed";
+}
+
+function SentimentGauge() {
+  const { data, isLoading } = useQuery<SentimentData>({
+    queryKey: ["/api/market/sentiment"],
+    refetchInterval: 300_000,
+    staleTime: 290_000,
+  });
+
+  // SVG semi-circle gauge
+  const W = 260, H = 145, cx = W / 2, cy = 130, R = 110;
+  // Arc from 180° → 0° (left to right)
+  const arcPath = (r: number, startDeg: number, endDeg: number) => {
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const x1 = cx + r * Math.cos(toRad(startDeg));
+    const y1 = cy + r * Math.sin(toRad(startDeg));
+    const x2 = cx + r * Math.cos(toRad(endDeg));
+    const y2 = cy + r * Math.sin(toRad(endDeg));
+    const large = Math.abs(endDeg - startDeg) > 180 ? 1 : 0;
+    return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+  };
+
+  // Zones: 0→25 red, 25→45 orange, 45→55 yellow, 55→75 light-green, 75→100 green
+  const zones = [
+    { from: 0,  to: 25,  color: "#ef4444" },
+    { from: 25, to: 45,  color: "#f97316" },
+    { from: 45, to: 55,  color: "#eab308" },
+    { from: 55, to: 75,  color: "#84cc16" },
+    { from: 75, to: 100, color: "#22c55e" },
+  ];
+
+  // score 0→100 maps to 180°→0° (going CCW... actually CW in SVG)
+  // 180° is leftmost, 0° is rightmost on upper half
+  // score=0 → 180°, score=100 → 0°
+  const scoreToDeg = (s: number) => 180 - (s / 100) * 180;
+
+  const score = data?.score ?? 50;
+  const needleDeg = scoreToDeg(score);
+  const needleRad = (needleDeg * Math.PI) / 180;
+  const needleX = cx + (R - 15) * Math.cos(needleRad);
+  const needleY = cy + (R - 15) * Math.sin(needleRad);
+
+  const color = sentimentColor(score);
+  const label = sentimentLabel(score);
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-lg font-serif font-semibold">Market Sentiment</h2>
+      <div className="rounded-xl bg-[#0f1117] border border-white/8 p-6 flex flex-col items-center dark:bg-[#0f1117] dark:border-white/8" data-testid="card-sentiment-gauge">
+        {isLoading ? (
+          <div className="flex flex-col items-center gap-3 py-4">
+            <Skeleton className="h-32 w-64 rounded-full bg-white/10" />
+            <Skeleton className="h-6 w-20 bg-white/10" />
+            <Skeleton className="h-4 w-28 bg-white/10" />
+          </div>
+        ) : (
+          <>
+            <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ overflow: "visible" }}>
+              {/* Background track */}
+              <path d={arcPath(R, 180, 0)} fill="none" stroke="#ffffff10" strokeWidth={18} strokeLinecap="butt" />
+              {/* Colored zones */}
+              {zones.map((z) => (
+                <path
+                  key={z.from}
+                  d={arcPath(R, 180 - (z.from / 100) * 180, 180 - (z.to / 100) * 180)}
+                  fill="none"
+                  stroke={z.color}
+                  strokeWidth={18}
+                  strokeLinecap="butt"
+                  opacity={0.85}
+                />
+              ))}
+              {/* Needle */}
+              <line
+                x1={cx} y1={cy}
+                x2={needleX} y2={needleY}
+                stroke="white" strokeWidth={2.5} strokeLinecap="round"
+              />
+              <circle cx={cx} cy={cy} r={5} fill="white" />
+              {/* Score */}
+              <text x={cx} y={cy - 18} textAnchor="middle" fill="white" fontSize={28} fontWeight="bold" fontFamily="ui-monospace,monospace">
+                {Math.round(score)}
+              </text>
+            </svg>
+            <p className="text-sm font-semibold mt-1" style={{ color }}>{label}</p>
+            <p className="text-xs text-white/40 mt-0.5">CNN Fear &amp; Greed Index</p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 function reportTypeLabel(type: string) {
   const labels: Record<string, string> = {
     free: "Free",
@@ -259,6 +429,10 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">Most recent publication</p>
           </Card>
         </div>
+
+        <MarketSnapshot />
+
+        <SentimentGauge />
 
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">

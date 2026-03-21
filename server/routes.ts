@@ -448,5 +448,52 @@ ${freeReportUrls}
     }
   });
 
+  // Market data proxies (avoid browser CORS restrictions)
+  app.get("/api/market/snapshot", async (req, res) => {
+    const tickers = [
+      { key: "sp500",  symbol: "%5EGSPC", name: "S&P 500" },
+      { key: "brent",  symbol: "BZ%3DF",  name: "Brent Crude" },
+      { key: "dxy",    symbol: "DX-Y.NYB", name: "DXY" },
+      { key: "us10y",  symbol: "%5ETNX",  name: "US 10Y" },
+    ];
+    try {
+      const results = await Promise.all(
+        tickers.map(async (t) => {
+          const url = `https://query1.finance.yahoo.com/v8/finance/chart/${t.symbol}?interval=1d&range=2d`;
+          const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+          if (!r.ok) return { key: t.key, name: t.name, price: null, change: null };
+          const data = await r.json() as any;
+          const meta = data?.chart?.result?.[0]?.meta;
+          const price: number | null = meta?.regularMarketPrice ?? null;
+          const prev: number | null = meta?.chartPreviousClose ?? meta?.previousClose ?? null;
+          const change: number | null = (price != null && prev != null && prev !== 0)
+            ? ((price - prev) / prev) * 100
+            : null;
+          return { key: t.key, name: t.name, price, change };
+        })
+      );
+      const map: Record<string, any> = {};
+      results.forEach((r) => { map[r.key] = r; });
+      return res.json(map);
+    } catch (err: any) {
+      return res.status(500).json({ message: "Failed to fetch market data" });
+    }
+  });
+
+  app.get("/api/market/sentiment", async (req, res) => {
+    try {
+      const r = await fetch("https://production.dataviz.cnn.io/index/fearandgreed/graphdata", {
+        headers: { "User-Agent": "Mozilla/5.0", "Referer": "https://edition.cnn.com/" },
+      });
+      if (!r.ok) return res.status(502).json({ message: "CNN API error" });
+      const data = await r.json() as any;
+      const score: number = data?.fear_and_greed?.score ?? data?.score ?? null;
+      const rating: string = data?.fear_and_greed?.rating ?? data?.rating ?? "";
+      return res.json({ score, rating });
+    } catch (err: any) {
+      return res.status(500).json({ message: "Failed to fetch sentiment data" });
+    }
+  });
+
   return httpServer;
 }
