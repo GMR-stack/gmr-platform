@@ -121,19 +121,25 @@ function SentimentGauge() {
   });
 
   // SVG semi-circle gauge
-  const W = 260, H = 145, cx = W / 2, cy = 130, R = 110;
-  // Arc from 180° → 0° (left to right)
+  // cx/cy is the pivot point at the flat edge of the semicircle.
+  // The arc sweeps from left (180°) to right (0°), passing through the TOP (270° → 90° in trig).
+  // We give generous top padding so the stroke is never clipped.
+  const W = 300, H = 180;
+  const cx = W / 2;   // 150
+  const cy = 155;     // pivot sits near the bottom of the viewBox
+  const R = 120;      // radius — top of arc at cy-R = 35 (plenty of room)
+
+  // Generic arc helper (uses standard trig angles, SVG coords)
   const arcPath = (r: number, startDeg: number, endDeg: number) => {
     const toRad = (d: number) => (d * Math.PI) / 180;
     const x1 = cx + r * Math.cos(toRad(startDeg));
     const y1 = cy + r * Math.sin(toRad(startDeg));
     const x2 = cx + r * Math.cos(toRad(endDeg));
     const y2 = cy + r * Math.sin(toRad(endDeg));
-    const large = Math.abs(endDeg - startDeg) > 180 ? 1 : 0;
-    return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+    // Going from 180° to 0° counterclockwise (sweep=0) draws the UPPER half
+    return `M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`;
   };
 
-  // Zones: 0→25 red, 25→45 orange, 45→55 yellow, 55→75 light-green, 75→100 green
   const zones = [
     { from: 0,  to: 25,  color: "#ef4444" },
     { from: 25, to: 45,  color: "#f97316" },
@@ -142,16 +148,15 @@ function SentimentGauge() {
     { from: 75, to: 100, color: "#22c55e" },
   ];
 
-  // score 0→100 maps to 180°→0° (going CCW... actually CW in SVG)
-  // 180° is leftmost, 0° is rightmost on upper half
-  // score=0 → 180°, score=100 → 0°
+  // score 0→100 maps angle 180°→0° (left to right across the top arc)
   const scoreToDeg = (s: number) => 180 - (s / 100) * 180;
 
   const score = data?.score ?? 50;
   const needleDeg = scoreToDeg(score);
   const needleRad = (needleDeg * Math.PI) / 180;
-  const needleX = cx + (R - 15) * Math.cos(needleRad);
-  const needleY = cy + (R - 15) * Math.sin(needleRad);
+  const needleLen = R - 16;
+  const needleX = cx + needleLen * Math.cos(needleRad);
+  const needleY = cy + needleLen * Math.sin(needleRad);
 
   const color = sentimentColor(score);
   const label = sentimentLabel(score);
@@ -159,43 +164,59 @@ function SentimentGauge() {
   return (
     <div className="space-y-3">
       <h2 className="text-lg font-serif font-semibold">Market Sentiment</h2>
-      <div className="rounded-xl bg-[#0f1117] border border-white/8 p-6 flex flex-col items-center dark:bg-[#0f1117] dark:border-white/8" data-testid="card-sentiment-gauge">
+      <div
+        className="rounded-xl bg-[#0f1117] border border-white/8 px-6 pt-6 pb-4 flex flex-col items-center dark:bg-[#0f1117] dark:border-white/8"
+        data-testid="card-sentiment-gauge"
+        style={{ overflow: "visible" }}
+      >
         {isLoading ? (
-          <div className="flex flex-col items-center gap-3 py-4">
-            <Skeleton className="h-32 w-64 rounded-full bg-white/10" />
-            <Skeleton className="h-6 w-20 bg-white/10" />
+          <div className="flex flex-col items-center gap-3 py-6">
+            <Skeleton className="h-36 w-72 rounded-full bg-white/10" />
+            <Skeleton className="h-6 w-20 bg-white/10 mt-2" />
             <Skeleton className="h-4 w-28 bg-white/10" />
           </div>
         ) : (
           <>
-            <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ overflow: "visible" }}>
+            <svg
+              viewBox={`0 0 ${W} ${H}`}
+              width={W}
+              height={H}
+              style={{ display: "block", overflow: "visible", maxWidth: "100%" }}
+            >
               {/* Background track */}
-              <path d={arcPath(R, 180, 0)} fill="none" stroke="#ffffff10" strokeWidth={18} strokeLinecap="butt" />
-              {/* Colored zones */}
+              <path d={arcPath(R, 180, 0)} fill="none" stroke="#ffffff12" strokeWidth={20} strokeLinecap="butt" />
+              {/* Colored zone segments */}
               {zones.map((z) => (
                 <path
                   key={z.from}
                   d={arcPath(R, 180 - (z.from / 100) * 180, 180 - (z.to / 100) * 180)}
                   fill="none"
                   stroke={z.color}
-                  strokeWidth={18}
+                  strokeWidth={20}
                   strokeLinecap="butt"
-                  opacity={0.85}
+                  opacity={0.9}
                 />
               ))}
               {/* Needle */}
               <line
                 x1={cx} y1={cy}
                 x2={needleX} y2={needleY}
-                stroke="white" strokeWidth={2.5} strokeLinecap="round"
+                stroke="white" strokeWidth={3} strokeLinecap="round"
               />
-              <circle cx={cx} cy={cy} r={5} fill="white" />
-              {/* Score */}
-              <text x={cx} y={cy - 18} textAnchor="middle" fill="white" fontSize={28} fontWeight="bold" fontFamily="ui-monospace,monospace">
+              <circle cx={cx} cy={cy} r={6} fill="white" />
+              {/* Score number above pivot */}
+              <text
+                x={cx} y={cy - 22}
+                textAnchor="middle"
+                fill="white"
+                fontSize={32}
+                fontWeight="bold"
+                fontFamily="ui-monospace,monospace"
+              >
                 {Math.round(score)}
               </text>
             </svg>
-            <p className="text-sm font-semibold mt-1" style={{ color }}>{label}</p>
+            <p className="text-sm font-semibold mt-2" style={{ color }}>{label}</p>
             <p className="text-xs text-white/40 mt-0.5">CNN Fear &amp; Greed Index</p>
           </>
         )}
