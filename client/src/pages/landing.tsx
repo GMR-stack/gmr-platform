@@ -119,28 +119,24 @@ export default function LandingPage() {
       <section className="py-24 px-4" data-testid="section-hero">
         <div className="max-w-3xl mx-auto text-center space-y-6">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-tight" data-testid="text-hero-headline">
-            Financial Intelligence,{" "}
-            <span className="text-primary">Delivered Daily</span>
+            Markets price the headline.{" "}
+            <span className="text-primary">We price what comes after.</span>
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto" data-testid="text-hero-subtitle">
-            Concise macro analysis and market insights from seasoned professionals.
-            Stay ahead of global markets with GMR's daily reports.
+            Daily intelligence on geopolitics, central banks, and supply chains — the second and third-order effects markets aren't pricing yet.
           </p>
           <div className="pt-4 flex items-center justify-center gap-4 flex-wrap">
-            <Link href="/dashboard">
-              <Button size="lg" className="text-base px-8" data-testid="button-hero-dashboard">
-                View Reports Free
-              </Button>
-            </Link>
             <Link href="/login?mode=signup">
-              <Button size="lg" variant="outline" className="text-base px-8" data-testid="button-hero-signup">
+              <Button size="lg" className="text-base px-8" data-testid="button-hero-signup">
                 Sign Up
               </Button>
             </Link>
+            <Link href="/dashboard">
+              <Button size="lg" variant="outline" className="text-base px-8" data-testid="button-hero-dashboard">
+                View Reports Free
+              </Button>
+            </Link>
           </div>
-          <p className="text-sm text-muted-foreground">
-            No account needed to read free reports
-          </p>
         </div>
       </section>
 
@@ -211,11 +207,11 @@ export default function LandingPage() {
                 Free reports available without an account
               </p>
               <div className="flex items-center gap-3 flex-wrap justify-center">
-                <Link href="/dashboard">
-                  <Button data-testid="button-sample-dashboard">Read Free Reports</Button>
-                </Link>
                 <Link href="/login?mode=signup">
-                  <Button variant="outline" data-testid="button-sample-signup">Sign Up for Premium</Button>
+                  <Button data-testid="button-sample-signup">Sign Up for Premium</Button>
+                </Link>
+                <Link href="/dashboard">
+                  <Button variant="outline" data-testid="button-sample-dashboard">Read Free Reports</Button>
                 </Link>
               </div>
             </div>
@@ -301,14 +297,14 @@ export default function LandingPage() {
             Join investors and analysts who rely on GMR for their daily market edge.
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap pt-4">
-            <Link href="/dashboard">
-              <Button size="lg" className="text-base px-8" data-testid="button-cta-dashboard">
-                View Reports Free
+            <Link href="/login?mode=signup">
+              <Button size="lg" className="text-base px-8" data-testid="button-cta-signup">
+                Sign Up Free
               </Button>
             </Link>
-            <Link href="/login?mode=signup">
-              <Button size="lg" variant="outline" className="text-base px-8" data-testid="button-cta-signup">
-                Sign Up Free
+            <Link href="/dashboard">
+              <Button size="lg" variant="outline" className="text-base px-8" data-testid="button-cta-dashboard">
+                View Reports Free
               </Button>
             </Link>
           </div>
