@@ -482,21 +482,24 @@ ${freeReportUrls}
 
   app.get("/api/market/sentiment", async (req, res) => {
     try {
-      const rapidApiKey = process.env.RAPIDAPI_KEY;
-      if (!rapidApiKey) {
-        return res.status(500).json({ message: "RAPIDAPI_KEY not configured" });
-      }
-      const r = await fetch("https://fear-and-greed-index-api.p.rapidapi.com/index", {
+      const r = await fetch("https://production.dataviz.cnn.io/index/fearandgreed/graphdata", {
         headers: {
-          "Content-Type": "application/json",
-          "x-rapidapi-host": "fear-and-greed-index-api.p.rapidapi.com",
-          "x-rapidapi-key": rapidApiKey,
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          "Accept": "application/json, text/plain, */*",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Accept-Encoding": "gzip, deflate, br",
+          "Referer": "https://edition.cnn.com/markets/fear-and-greed",
+          "Origin": "https://edition.cnn.com",
+          "Connection": "keep-alive",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-site",
         },
       });
-      if (!r.ok) return res.status(502).json({ message: "RapidAPI error" });
+      if (!r.ok) return res.status(502).json({ message: "CNN API error" });
       const data = await r.json() as any;
-      const score: number = data?.fgi?.value ?? data?.score ?? null;
-      const rating: string = data?.fgi?.valueText ?? data?.rating ?? "";
+      const score: number = data?.fear_and_greed?.score ?? data?.score ?? null;
+      const rating: string = data?.fear_and_greed?.rating ?? data?.rating ?? "";
       return res.json({ score, rating });
     } catch (err: any) {
       return res.status(500).json({ message: "Failed to fetch sentiment data" });
