@@ -202,7 +202,13 @@ export default function DashboardPage() {
             </p>
           </div>
           <p className="text-sm text-muted-foreground pt-1" data-testid="text-today-date">
-            {format(new Date(), "EEEE, MMMM d, yyyy")}
+            {new Date().toLocaleDateString('en-US', {
+              timeZone: 'America/New_York',
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}
           </p>
         </div>
 
