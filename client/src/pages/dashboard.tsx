@@ -26,13 +26,15 @@ import {
   ChevronRight,
   BarChart3,
   Clock,
+  Lock,
+  Zap,
+  CheckCircle2,
 } from "lucide-react";
 import type { Report, Subscription } from "@shared/schema";
 import { isAdmin as checkIsAdmin, isSubscribed as checkIsSubscribed } from "@/lib/access";
 import { getQueryFn } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
 import { TrendingUp, TrendingDown } from "lucide-react";
 
 // ─── Market Snapshot ────────────────────────────────────────────────────────
@@ -119,10 +121,9 @@ function SentimentGaugeInline() {
     staleTime: 290_000,
   });
 
-  // Compact SVG — fits inside a card alongside the subscription card
   const W = 220, H = 130;
-  const cx = W / 2;  // 110
-  const cy = 112;    // pivot near bottom — top of arc at cy-R = 22
+  const cx = W / 2;
+  const cy = 112;
   const R = 90;
 
   const arcPath = (r: number, startDeg: number, endDeg: number) => {
@@ -189,7 +190,7 @@ function SentimentGaugeInline() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Report Type Helpers ─────────────────────────────────────────────────────
 function reportTypeLabel(type: string) {
   const labels: Record<string, string> = {
     free: "Free",
@@ -202,13 +203,113 @@ function reportTypeLabel(type: string) {
   return labels[type] || type.charAt(0).toUpperCase() + type.slice(1);
 }
 
-function reportTypeVariant(type: string): "default" | "secondary" | "outline" {
-  if (type === "weekly-outlook" || type === "deep-dive") return "default";
-  if (type === "market-pulse" || type === "data-drop") return "secondary";
-  return "outline";
+// ─── Report Type Badge ───────────────────────────────────────────────────────
+function ReportTypeBadge({ type }: { type: string }) {
+  // Free reports: green outline
+  if (type === "free") {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border border-emerald-500/60 text-emerald-500 bg-emerald-500/10">
+        Free
+      </span>
+    );
+  }
+  // Premium report types: dark badge with lock icon
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-[#1a1f36] text-blue-300 border border-blue-500/20">
+      <Lock className="w-2.5 h-2.5" />
+      {reportTypeLabel(type)}
+    </span>
+  );
 }
 
+// ─── Subscription Card (non-subscribed) ─────────────────────────────────────
+function SubscribePromptCard({ onSubscribe }: { onSubscribe: () => void }) {
+  const perks = [
+    "Daily macro reports — 5x per week",
+    "2nd & 3rd order market analysis",
+    "Full archive access",
+  ];
+  return (
+    <div className="h-full flex flex-col justify-between space-y-4">
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Subscription</p>
+          <Badge variant="secondary" className="text-xs">Inactive</Badge>
+        </div>
+        <div className="flex items-baseline gap-2 pt-1">
+          <span className="text-3xl font-bold tracking-tight">$12</span>
+          <span className="text-sm text-muted-foreground">/month</span>
+          <span className="text-xs text-amber-500 font-medium ml-1">Founding rate</span>
+        </div>
+      </div>
 
+      <ul className="space-y-1.5">
+        {perks.map((perk) => (
+          <li key={perk} className="flex items-center gap-2 text-xs text-muted-foreground">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            {perk}
+          </li>
+        ))}
+      </ul>
+
+      <Button
+        className="w-full bg-[#1a1f36] hover:bg-[#2a2f46] text-white gap-2"
+        onClick={onSubscribe}
+        data-testid="button-subscribe-card"
+      >
+        <Zap className="w-4 h-4" />
+        Subscribe — $12/mo
+      </Button>
+    </div>
+  );
+}
+
+// ─── Subscription Card (subscribed) ─────────────────────────────────────────
+function ActiveSubscriptionCard({
+  subscription,
+  onCancel,
+}: {
+  subscription: Subscription | null | undefined;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="h-full flex flex-col justify-between space-y-3">
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-medium uppercase tracking-wider text-white/60">Subscription</p>
+          <Badge className="bg-emerald-500 hover:bg-emerald-500 text-white text-xs">Active</Badge>
+        </div>
+        <p className="text-2xl font-bold tracking-tight" data-testid="text-subscription-tier">Premium</p>
+        <p className="text-xs text-white/60" data-testid="text-subscription-detail">
+          {subscription?.createdAt
+            ? `Member since ${format(new Date(subscription.createdAt), "MMMM d, yyyy")}`
+            : "Active member"}
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-xs text-white/50">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+          Full archive access
+        </div>
+        <div className="flex items-center gap-2 text-xs text-white/50">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+          5 daily reports per week
+        </div>
+      </div>
+
+      <button
+        onClick={onCancel}
+        className="text-xs text-white/30 hover:text-white/60 underline underline-offset-2 cursor-pointer bg-transparent border-none p-0 text-left"
+        data-testid="link-cancel-subscription"
+      >
+        Cancel subscription
+      </button>
+    </div>
+  );
+}
+
+// ─── Main Dashboard ──────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user, session, signOut } = useAuth();
   const { toast } = useToast();
@@ -285,12 +386,24 @@ export default function DashboardPage() {
       .catch(() => {});
   }, []);
 
+  // Greeting based on ET time of day
+  const getGreeting = () => {
+    const hour = new Date().toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", hour12: false });
+    const h = parseInt(hour);
+    if (h < 12) return "Good morning";
+    if (h < 17) return "Good afternoon";
+    return "Good evening";
+  };
+
+  const firstName = user?.name?.split(" ")[0] || null;
+
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : user?.email?.charAt(0).toUpperCase() || "?";
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* ── Header ── */}
       <header className="sticky top-0 z-50 border-b bg-background">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 flex-wrap px-6 py-3">
           <GmrLogo showTagline />
@@ -347,68 +460,75 @@ export default function DashboardPage() {
       </header>
 
       <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8 space-y-8">
+
+        {/* ── Welcome Header ── */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="space-y-1">
             <h1 className="text-2xl font-serif font-bold tracking-tight" data-testid="text-welcome">
-              Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+              {getGreeting()}{firstName ? `, ${firstName}` : ""}
             </h1>
             <p className="text-sm text-muted-foreground">
               Your latest financial research and market insights.
             </p>
           </div>
-          <p className="text-sm text-muted-foreground pt-1" data-testid="text-today-date">
-            {new Date().toLocaleDateString('en-US', {
-              timeZone: 'America/New_York',
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
-          </p>
+          <div className="text-right">
+            <p className="text-sm font-medium" data-testid="text-today-date">
+              {new Date().toLocaleDateString("en-US", {
+                timeZone: "America/New_York",
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {new Date().toLocaleTimeString("en-US", {
+                timeZone: "America/New_York",
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+              })} ET
+            </p>
+          </div>
         </div>
 
+        {/* ── Subscription + Sentiment Row ── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Subscription Card — 2/3 width */}
           <Card
-            className={`p-5 space-y-2 md:col-span-2 ${userIsSubscribed ? "bg-[#1a1f36] text-white border-[#1a1f36]" : ""}`}
+            className={`p-5 md:col-span-2 ${
+              userIsSubscribed
+                ? "bg-[#1a1f36] text-white border-[#1a1f36]"
+                : "border-border"
+            }`}
             data-testid="card-subscription-status"
           >
-            <div className="flex items-center gap-2">
-              <p className={`text-xs font-medium uppercase tracking-wider ${userIsSubscribed ? "text-white/60" : "text-muted-foreground"}`}>Subscription</p>
-              {userIsSubscribed ? (
-                <Badge className="bg-emerald-500 hover:bg-emerald-500 text-white text-xs">Active</Badge>
-              ) : (
-                <Badge variant="secondary" className="text-xs">Inactive</Badge>
-              )}
-            </div>
-            <p className="text-2xl font-bold tracking-tight" data-testid="text-subscription-tier">
-              {userIsSubscribed ? "Premium" : "Free"}
-            </p>
-            <p className={`text-xs ${userIsSubscribed ? "text-white/60" : "text-muted-foreground"}`} data-testid="text-subscription-detail">
-              {userIsSubscribed
-                ? subscription?.createdAt
-                  ? `Member since ${format(new Date(subscription.createdAt), "MMMM d, yyyy")}`
-                  : "Active member"
-                : "Subscribe for full access"}
-            </p>
-            {userIsSubscribed && (
-              <button
-                onClick={() => setShowCancelModal(true)}
-                className="text-xs text-white/40 hover:text-white/70 underline underline-offset-2 cursor-pointer bg-transparent border-none p-0 mt-1"
-                data-testid="link-cancel-subscription"
-              >
-                Cancel subscription
-              </button>
+            {userIsSubscribed ? (
+              <ActiveSubscriptionCard
+                subscription={subscription}
+                onCancel={() => setShowCancelModal(true)}
+              />
+            ) : (
+              <SubscribePromptCard onSubscribe={() => setShowPaypalModal(true)} />
             )}
           </Card>
 
-          <Card className="p-5 flex flex-col items-center justify-center bg-[#0f1117] border-[#0f1117]" data-testid="card-sentiment-gauge">
-            <p className="text-xs font-medium uppercase tracking-wider text-white/50 self-start mb-1">Market Sentiment</p>
+          {/* Sentiment Card — 1/3 width */}
+          <Card
+            className="p-5 flex flex-col items-center justify-center bg-[#0f1117] border-[#0f1117]"
+            data-testid="card-sentiment-gauge"
+          >
+            <p className="text-xs font-medium uppercase tracking-wider text-white/50 self-start mb-1">
+              Market Sentiment
+            </p>
             <SentimentGaugeInline />
           </Card>
         </div>
 
+        {/* ── Market Snapshot ── */}
         <MarketSnapshot />
 
+        {/* ── Recent Reports ── */}
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <h2 className="text-lg font-serif font-semibold">Recent Reports</h2>
@@ -436,32 +556,50 @@ export default function DashboardPage() {
             </div>
           ) : recentReports && recentReports.length > 0 ? (
             <div className="space-y-3">
-              {recentReports.slice(0, 5).map((report) => (
-                <Link
-                  key={report.id}
-                  href={report.reportType === "free" ? `/report/${report.id}` : `/archive?report=${report.id}`}
-                >
-                  <Card className="p-5 hover-elevate cursor-pointer" data-testid={`card-report-${report.id}`}>
-                    <div className="flex items-start justify-between gap-4 flex-wrap">
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-sm">{report.title}</h3>
-                          <Badge variant={reportTypeVariant(report.reportType)} className="text-xs">
-                            {reportTypeLabel(report.reportType)}
-                          </Badge>
+              {recentReports.slice(0, 5).map((report) => {
+                const isPremium = report.reportType !== "free";
+                return (
+                  <Link
+                    key={report.id}
+                    href={
+                      report.reportType === "free"
+                        ? `/report/${report.id}`
+                        : `/archive?report=${report.id}`
+                    }
+                  >
+                    <Card
+                      className={`p-5 hover-elevate cursor-pointer transition-colors ${
+                        isPremium && !userIsSubscribed
+                          ? "opacity-80 hover:opacity-100"
+                          : ""
+                      }`}
+                      data-testid={`card-report-${report.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-4 flex-wrap">
+                        <div className="space-y-2 flex-1 min-w-0">
+                          {/* Badges row */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <ReportTypeBadge type={report.reportType} />
+                          </div>
+                          {/* Title */}
+                          <h3 className="font-semibold text-sm leading-snug line-clamp-1">
+                            {report.title}
+                          </h3>
+                          {/* Preview text */}
+                          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                            {report.content.replace(/[#*_`]/g, "").slice(0, 180)}...
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {report.content.replace(/[#*_`]/g, "").slice(0, 200)}...
-                        </p>
+                        {/* Date */}
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0 mt-0.5">
+                          <Clock className="w-3 h-3" />
+                          {format(new Date(report.publishedAt), "MMM d, yyyy")}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                        <Clock className="w-3 h-3" />
-                        {format(new Date(report.publishedAt), "MMM d, yyyy")}
-                      </div>
-                    </div>
-                  </Card>
-                </Link>
-              ))}
+                    </Card>
+                  </Link>
+                );
+              })}
             </div>
           ) : (
             <Card className="p-8 text-center">
@@ -473,6 +611,7 @@ export default function DashboardPage() {
         </div>
       </main>
 
+      {/* ── Footer ── */}
       <footer className="border-t px-6 py-4 text-center space-y-2">
         <p className="text-xs text-muted-foreground">
           GMR &middot; Global Market Radar
@@ -486,12 +625,13 @@ export default function DashboardPage() {
         </button>
       </footer>
 
+      {/* ── Subscribe Modal ── */}
       <Dialog open={showPaypalModal} onOpenChange={setShowPaypalModal}>
         <DialogContent className="max-w-md" data-testid="dialog-subscribe">
           <DialogHeader>
             <DialogTitle data-testid="text-subscribe-modal-title">Subscribe to GMR Premium</DialogTitle>
             <DialogDescription>
-              Get full access to all daily reports, archive, and expert market analysis for $12/month.
+              Institutional-quality macro analysis for individual investors. $12/month — founding member rate.
             </DialogDescription>
           </DialogHeader>
           {paypalClientId && paypalPlanId ? (
@@ -532,12 +672,13 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ── Cancel Modal ── */}
       <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
         <DialogContent className="max-w-md" data-testid="dialog-cancel-subscription">
           <DialogHeader>
             <DialogTitle data-testid="text-cancel-modal-title">Cancel Subscription</DialogTitle>
             <DialogDescription data-testid="text-cancel-modal-description">
-              Are you sure you want to cancel your subscription? You will immediately lose access to premium reports.
+              Are you sure you want to cancel? You will immediately lose access to all premium reports.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2 sm:justify-end">
@@ -561,12 +702,13 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ── Delete Account Modal ── */}
       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
         <DialogContent className="max-w-md" data-testid="dialog-delete-account">
           <DialogHeader>
             <DialogTitle data-testid="text-delete-modal-title">Delete Account</DialogTitle>
             <DialogDescription data-testid="text-delete-modal-description">
-              Are you sure you want to delete your account? This action cannot be undone. All your data will be permanently deleted.
+              This cannot be undone. All your data will be permanently deleted.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2 sm:justify-end">
