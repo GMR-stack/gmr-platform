@@ -181,7 +181,7 @@ function SentimentGaugeInline() {
         <line x1={cx} y1={cy} x2={needleX} y2={needleY} stroke="white" strokeWidth={2.5} strokeLinecap="round" />
         <circle cx={cx} cy={cy} r={5} fill="white" />
         <text x={cx} y={cy - 16} textAnchor="middle" fill="white" fontSize={26} fontWeight="bold" fontFamily="ui-monospace,monospace">
-          {Math.round(score)}
+          {score.toFixed(1)}
         </text>
       </svg>
       <p className="text-sm font-semibold -mt-1" style={{ color }}>{label}</p>
@@ -410,23 +410,29 @@ export default function DashboardPage() {
 
           <nav className="flex items-center gap-1">
             <Link href="/dashboard">
-              <Button variant="ghost" size="sm" data-testid="link-dashboard">
-                <BarChart3 className="w-4 h-4 mr-1.5" />
+              <button
+                className="text-base font-medium px-4 py-3 border-b-2 border-[#1a1f36] text-foreground bg-transparent hover:bg-transparent transition-colors"
+                data-testid="link-dashboard"
+              >
                 Dashboard
-              </Button>
+              </button>
             </Link>
             <Link href="/archive">
-              <Button variant="ghost" size="sm" data-testid="link-archive">
-                <Archive className="w-4 h-4 mr-1.5" />
+              <button
+                className="text-base font-normal px-4 py-3 border-b-2 border-transparent text-muted-foreground bg-transparent hover:text-foreground hover:border-[#1a1f36]/40 transition-colors"
+                data-testid="link-archive"
+              >
                 Archive
-              </Button>
+              </button>
             </Link>
             {userIsAdmin && (
               <Link href="/admin">
-                <Button variant="ghost" size="sm" data-testid="link-admin">
-                  <Settings className="w-4 h-4 mr-1.5" />
+                <button
+                  className="text-base font-normal px-4 py-3 border-b-2 border-transparent text-muted-foreground bg-transparent hover:text-foreground hover:border-[#1a1f36]/40 transition-colors"
+                  data-testid="link-admin"
+                >
                   Admin
-                </Button>
+                </button>
               </Link>
             )}
           </nav>
