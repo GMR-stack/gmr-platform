@@ -25,16 +25,8 @@ function Router() {
       <Route path="/auth" component={LoginPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/report/:id" component={ReportPage} />
-      <Route path="/dashboard">
-        <ProtectedRoute>
-          <DashboardPage />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/archive">
-        <ProtectedRoute>
-          <ArchivePage />
-        </ProtectedRoute>
-      </Route>
+      <Route path="/dashboard" component={DashboardPage} />
+      <Route path="/archive" component={ArchivePage} />
       <Route path="/admin">
         <ProtectedRoute>
           <AdminPage />
