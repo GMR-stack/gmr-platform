@@ -37,18 +37,19 @@ import { useLocation } from "wouter";
 
 function reportTypeLabel(type: string) {
   const labels: Record<string, string> = {
-    market_analysis: "Market Analysis",
-    equity_research: "Equity Research",
-    macro_outlook: "Macro Outlook",
-    sector_review: "Sector Review",
-    weekly_digest: "Weekly Digest",
+    free: "Free",
+    "weekly-outlook": "Weekly Outlook",
+    "market-pulse": "Market Pulse",
+    "deep-dive": "Deep Dive",
+    "data-drop": "Data Drop",
+    "week-wrap": "Week Wrap",
   };
-  return labels[type] || type;
+  return labels[type] || type.charAt(0).toUpperCase() + type.slice(1);
 }
 
 function reportTypeVariant(type: string): "default" | "secondary" | "outline" {
-  if (type === "market_analysis" || type === "macro_outlook") return "default";
-  if (type === "equity_research") return "secondary";
+  if (type === "weekly-outlook" || type === "deep-dive") return "default";
+  if (type === "market-pulse" || type === "data-drop") return "secondary";
   return "outline";
 }
 

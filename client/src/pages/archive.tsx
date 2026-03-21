@@ -40,41 +40,29 @@ import DOMPurify from "dompurify";
 
 const DAY_FILTERS = [
   "all",
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
+  "weekly-outlook",
+  "market-pulse",
+  "deep-dive",
+  "data-drop",
+  "week-wrap",
   "free",
 ] as const;
 
 function reportTypeLabel(type: string) {
   const labels: Record<string, string> = {
     free: "Free",
-    monday: "Monday",
-    tuesday: "Tuesday",
-    wednesday: "Wednesday",
-    thursday: "Thursday",
-    friday: "Friday",
-    market_analysis: "Market Analysis",
-    equity_research: "Equity Research",
-    macro_outlook: "Macro Outlook",
-    sector_review: "Sector Review",
-    weekly_digest: "Weekly Digest",
+    "weekly-outlook": "Weekly Outlook",
+    "market-pulse": "Market Pulse",
+    "deep-dive": "Deep Dive",
+    "data-drop": "Data Drop",
+    "week-wrap": "Week Wrap",
   };
   return labels[type] || type.charAt(0).toUpperCase() + type.slice(1);
 }
 
 function reportTypeVariant(type: string): "default" | "secondary" | "outline" {
-  if (
-    type === "monday" ||
-    type === "wednesday" ||
-    type === "market_analysis" ||
-    type === "macro_outlook"
-  )
-    return "default";
-  if (type === "tuesday" || type === "thursday" || type === "equity_research")
-    return "secondary";
+  if (type === "weekly-outlook" || type === "deep-dive") return "default";
+  if (type === "market-pulse" || type === "data-drop") return "secondary";
   return "outline";
 }
 
