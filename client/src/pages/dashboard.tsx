@@ -95,7 +95,7 @@ function MarketSnapshot() {
   );
 }
 
-// ─── Sentiment Gauge ─────────────────────────────────────────────────────────
+// ─── Sentiment Gauge (Bloomberg style) ───────────────────────────────────────
 interface SentimentData { score: number; rating: string; }
 
 function sentimentColor(score: number) {
@@ -121,76 +121,63 @@ function SentimentGaugeInline() {
     staleTime: 290_000,
   });
 
-  const W = 220, H = 130;
-  const cx = W / 2;
-  const cy = 112;
-  const R = 90;
-
-  const arcPath = (r: number, startDeg: number, endDeg: number) => {
-    const toRad = (d: number) => (d * Math.PI) / 180;
-    const x1 = cx + r * Math.cos(toRad(startDeg));
-    const y1 = cy + r * Math.sin(toRad(startDeg));
-    const x2 = cx + r * Math.cos(toRad(endDeg));
-    const y2 = cy + r * Math.sin(toRad(endDeg));
-    return `M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`;
-  };
-
-  const zones = [
-    { from: 0,  to: 25,  color: "#ef4444" },
-    { from: 25, to: 45,  color: "#f97316" },
-    { from: 45, to: 55,  color: "#eab308" },
-    { from: 55, to: 75,  color: "#84cc16" },
-    { from: 75, to: 100, color: "#22c55e" },
-  ];
-
-  const scoreToDeg = (s: number) => 180 - (s / 100) * 180;
-  const score = data?.score ?? 50;
-  const needleDeg = scoreToDeg(score);
-  const needleRad = (needleDeg * Math.PI) / 180;
-  const needleLen = R - 12;
-  const needleX = cx + needleLen * Math.cos(needleRad);
-  const needleY = cy + needleLen * Math.sin(needleRad);
-  const color = sentimentColor(score);
-  const label = sentimentLabel(score);
-
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center gap-2 py-2">
-        <Skeleton className="h-24 w-48 bg-white/10" />
+      <div className="w-full space-y-3">
+        <Skeleton className="h-10 w-24 bg-white/10" />
+        <Skeleton className="h-1.5 w-full bg-white/10" />
         <Skeleton className="h-4 w-20 bg-white/10" />
       </div>
     );
   }
 
+  const score = data?.score ?? 50;
+  const color = sentimentColor(score);
+  const label = sentimentLabel(score);
+  const pct = Math.min(100, Math.max(0, score));
+
   return (
-    <div className="flex flex-col items-center">
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        width={W}
-        height={H}
-        style={{ display: "block", overflow: "visible", maxWidth: "100%" }}
-      >
-        <path d={arcPath(R, 180, 0)} fill="none" stroke="#ffffff12" strokeWidth={16} strokeLinecap="butt" />
-        {zones.map((z) => (
-          <path
-            key={z.from}
-            d={arcPath(R, 180 - (z.from / 100) * 180, 180 - (z.to / 100) * 180)}
-            fill="none" stroke={z.color} strokeWidth={16} strokeLinecap="butt" opacity={0.9}
-          />
-        ))}
-        <line x1={cx} y1={cy} x2={needleX} y2={needleY} stroke="white" strokeWidth={2.5} strokeLinecap="round" />
-        <circle cx={cx} cy={cy} r={5} fill="white" />
-        <text x={cx} y={cy - 16} textAnchor="middle" fill="white" fontSize={26} fontWeight="bold" fontFamily="ui-monospace,monospace">
+    <div className="w-full space-y-3">
+      {/* Score */}
+      <div className="flex items-end gap-2">
+        <span
+          className="text-4xl font-bold font-mono leading-none"
+          style={{ color }}
+        >
           {score.toFixed(1)}
-        </text>
-      </svg>
-      <p className="text-sm font-semibold -mt-1" style={{ color }}>{label}</p>
-      <p className="text-[11px] text-white/40 mt-0.5">CNN Fear &amp; Greed Index</p>
+        </span>
+        <span className="text-xs text-white/30 pb-1">/ 100</span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-full bg-white/[0.06] rounded h-1.5 overflow-hidden">
+        <div
+          className="h-full rounded transition-all duration-700"
+          style={{ width: `${pct}%`, background: color }}
+        />
+      </div>
+
+      {/* Scale labels */}
+      <div className="flex justify-between">
+        <span className="text-[10px] text-white/25">Fear</span>
+        <span className="text-[10px] text-white/25">Greed</span>
+      </div>
+
+      {/* Label badge + source */}
+      <div className="flex items-center justify-between">
+        <span
+          className="text-[11px] font-semibold px-2 py-0.5 rounded"
+          style={{ color, background: color + "20" }}
+        >
+          {label}
+        </span>
+        <span className="text-[10px] text-white/25">CNN F&amp;G</span>
+      </div>
     </div>
   );
 }
 
-// ─── Report Type Helpers ─────────────────────────────────────────────────────
+// ─── Report Type Badge ───────────────────────────────────────────────────────
 function reportTypeLabel(type: string) {
   const labels: Record<string, string> = {
     free: "Free",
@@ -203,9 +190,7 @@ function reportTypeLabel(type: string) {
   return labels[type] || type.charAt(0).toUpperCase() + type.slice(1);
 }
 
-// ─── Report Type Badge ───────────────────────────────────────────────────────
 function ReportTypeBadge({ type }: { type: string }) {
-  // Free reports: green outline
   if (type === "free") {
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border border-emerald-500/60 text-emerald-500 bg-emerald-500/10">
@@ -213,7 +198,6 @@ function ReportTypeBadge({ type }: { type: string }) {
       </span>
     );
   }
-  // Premium report types: dark badge with lock icon
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-[#1a1f36] text-blue-300 border border-blue-500/20">
       <Lock className="w-2.5 h-2.5" />
@@ -386,7 +370,6 @@ export default function DashboardPage() {
       .catch(() => {});
   }, []);
 
-  // Greeting based on ET time of day
   const getGreeting = () => {
     const hour = new Date().toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", hour12: false });
     const h = parseInt(hour);
@@ -500,34 +483,29 @@ export default function DashboardPage() {
 
         {/* ── Subscription + Sentiment Row ── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Subscription Card — 2/3 width */}
           <Card
             className={`p-5 md:col-span-2 ${
-              userIsSubscribed
-                ? "bg-[#1a1f36] text-white border-[#1a1f36]"
-                : "border-border"
+              userIsSubscribed ? "bg-[#1a1f36] text-white border-[#1a1f36]" : "border-border"
             }`}
             data-testid="card-subscription-status"
           >
             {userIsSubscribed ? (
-              <ActiveSubscriptionCard
-                subscription={subscription}
-                onCancel={() => setShowCancelModal(true)}
-              />
+              <ActiveSubscriptionCard subscription={subscription} onCancel={() => setShowCancelModal(true)} />
             ) : (
               <SubscribePromptCard onSubscribe={() => setShowPaypalModal(true)} />
             )}
           </Card>
 
-          {/* Sentiment Card — 1/3 width */}
           <Card
-            className="p-5 flex flex-col items-center justify-center bg-[#0f1117] border-[#0f1117]"
+            className="p-5 flex flex-col bg-[#0f1117] border-[#0f1117]"
             data-testid="card-sentiment-gauge"
           >
-            <p className="text-xs font-medium uppercase tracking-wider text-white/50 self-start mb-1">
+            <p className="text-xs font-medium uppercase tracking-wider text-white/50 mb-4">
               Market Sentiment
             </p>
-            <SentimentGaugeInline />
+            <div className="flex-1 flex flex-col justify-center">
+              <SentimentGaugeInline />
+            </div>
           </Card>
         </div>
 
@@ -575,28 +553,22 @@ export default function DashboardPage() {
                   >
                     <Card
                       className={`p-5 hover-elevate cursor-pointer transition-colors ${
-                        isPremium && !userIsSubscribed
-                          ? "opacity-80 hover:opacity-100"
-                          : ""
+                        isPremium && !userIsSubscribed ? "opacity-80 hover:opacity-100" : ""
                       }`}
                       data-testid={`card-report-${report.id}`}
                     >
                       <div className="flex items-start justify-between gap-4 flex-wrap">
                         <div className="space-y-2 flex-1 min-w-0">
-                          {/* Badges row */}
                           <div className="flex items-center gap-2 flex-wrap">
                             <ReportTypeBadge type={report.reportType} />
                           </div>
-                          {/* Title */}
                           <h3 className="font-semibold text-sm leading-snug line-clamp-1">
                             {report.title}
                           </h3>
-                          {/* Preview text */}
                           <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                             {report.content.replace(/[#*_`]/g, "").slice(0, 180)}...
                           </p>
                         </div>
-                        {/* Date */}
                         <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0 mt-0.5">
                           <Clock className="w-3 h-3" />
                           {format(new Date(report.publishedAt), "MMM d, yyyy")}
@@ -619,9 +591,7 @@ export default function DashboardPage() {
 
       {/* ── Footer ── */}
       <footer className="border-t px-6 py-4 text-center space-y-2">
-        <p className="text-xs text-muted-foreground">
-          GMR &middot; Global Market Radar
-        </p>
+        <p className="text-xs text-muted-foreground">GMR &middot; Global Market Radar</p>
         <button
           onClick={() => setShowDeleteModal(true)}
           className="text-xs text-muted-foreground/50 hover:text-muted-foreground underline underline-offset-2 cursor-pointer bg-transparent border-none p-0"
@@ -644,9 +614,7 @@ export default function DashboardPage() {
             <PayPalScriptProvider options={{ clientId: paypalClientId, vault: true, intent: "subscription", locale: "en_US" }}>
               <PayPalButtons
                 style={{ shape: "rect", color: "gold", layout: "vertical", label: "subscribe" }}
-                createSubscription={(_data, actions) => {
-                  return actions.subscription.create({ plan_id: paypalPlanId });
-                }}
+                createSubscription={(_data, actions) => actions.subscription.create({ plan_id: paypalPlanId })}
                 onApprove={async (data) => {
                   try {
                     const token = session?.access_token;
@@ -671,9 +639,7 @@ export default function DashboardPage() {
               />
             </PayPalScriptProvider>
           ) : (
-            <Link href="/">
-              <Button className="w-full" data-testid="button-modal-subscribe">View Plans</Button>
-            </Link>
+            <Link href="/"><Button className="w-full" data-testid="button-modal-subscribe">View Plans</Button></Link>
           )}
         </DialogContent>
       </Dialog>
@@ -688,20 +654,10 @@ export default function DashboardPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2 sm:justify-end">
-            <Button
-              variant="outline"
-              onClick={() => setShowCancelModal(false)}
-              disabled={cancelMutation.isPending}
-              data-testid="button-cancel-modal-dismiss"
-            >
+            <Button variant="outline" onClick={() => setShowCancelModal(false)} disabled={cancelMutation.isPending} data-testid="button-cancel-modal-dismiss">
               Keep Subscription
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => cancelMutation.mutate()}
-              disabled={cancelMutation.isPending}
-              data-testid="button-confirm-cancel"
-            >
+            <Button variant="destructive" onClick={() => cancelMutation.mutate()} disabled={cancelMutation.isPending} data-testid="button-confirm-cancel">
               {cancelMutation.isPending ? "Cancelling..." : "Yes, Cancel"}
             </Button>
           </DialogFooter>
@@ -718,20 +674,10 @@ export default function DashboardPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2 sm:justify-end">
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteModal(false)}
-              disabled={deleteAccountMutation.isPending}
-              data-testid="button-delete-modal-dismiss"
-            >
+            <Button variant="outline" onClick={() => setShowDeleteModal(false)} disabled={deleteAccountMutation.isPending} data-testid="button-delete-modal-dismiss">
               Keep Account
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => deleteAccountMutation.mutate()}
-              disabled={deleteAccountMutation.isPending}
-              data-testid="button-confirm-delete"
-            >
+            <Button variant="destructive" onClick={() => deleteAccountMutation.mutate()} disabled={deleteAccountMutation.isPending} data-testid="button-confirm-delete">
               {deleteAccountMutation.isPending ? "Deleting..." : "Yes, Delete Account"}
             </Button>
           </DialogFooter>
