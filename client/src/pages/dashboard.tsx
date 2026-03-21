@@ -23,7 +23,6 @@ import {
   Archive,
   Settings,
   LogOut,
-  Calendar,
   ChevronRight,
   BarChart3,
   Clock,
@@ -113,30 +112,25 @@ function sentimentLabel(score: number) {
   return "Extreme Greed";
 }
 
-function SentimentGauge() {
+function SentimentGaugeInline() {
   const { data, isLoading } = useQuery<SentimentData>({
     queryKey: ["/api/market/sentiment"],
     refetchInterval: 300_000,
     staleTime: 290_000,
   });
 
-  // SVG semi-circle gauge
-  // cx/cy is the pivot point at the flat edge of the semicircle.
-  // The arc sweeps from left (180°) to right (0°), passing through the TOP (270° → 90° in trig).
-  // We give generous top padding so the stroke is never clipped.
-  const W = 300, H = 180;
-  const cx = W / 2;   // 150
-  const cy = 155;     // pivot sits near the bottom of the viewBox
-  const R = 120;      // radius — top of arc at cy-R = 35 (plenty of room)
+  // Compact SVG — fits inside a card alongside the subscription card
+  const W = 220, H = 130;
+  const cx = W / 2;  // 110
+  const cy = 112;    // pivot near bottom — top of arc at cy-R = 22
+  const R = 90;
 
-  // Generic arc helper (uses standard trig angles, SVG coords)
   const arcPath = (r: number, startDeg: number, endDeg: number) => {
     const toRad = (d: number) => (d * Math.PI) / 180;
     const x1 = cx + r * Math.cos(toRad(startDeg));
     const y1 = cy + r * Math.sin(toRad(startDeg));
     const x2 = cx + r * Math.cos(toRad(endDeg));
     const y2 = cy + r * Math.sin(toRad(endDeg));
-    // Going from 180° to 0° counterclockwise (sweep=0) draws the UPPER half
     return `M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`;
   };
 
@@ -148,79 +142,49 @@ function SentimentGauge() {
     { from: 75, to: 100, color: "#22c55e" },
   ];
 
-  // score 0→100 maps angle 180°→0° (left to right across the top arc)
   const scoreToDeg = (s: number) => 180 - (s / 100) * 180;
-
   const score = data?.score ?? 50;
   const needleDeg = scoreToDeg(score);
   const needleRad = (needleDeg * Math.PI) / 180;
-  const needleLen = R - 16;
+  const needleLen = R - 12;
   const needleX = cx + needleLen * Math.cos(needleRad);
   const needleY = cy + needleLen * Math.sin(needleRad);
-
   const color = sentimentColor(score);
   const label = sentimentLabel(score);
 
-  return (
-    <div className="space-y-3">
-      <h2 className="text-lg font-serif font-semibold">Market Sentiment</h2>
-      <div
-        className="rounded-xl bg-[#0f1117] border border-white/8 px-6 pt-6 pb-4 flex flex-col items-center dark:bg-[#0f1117] dark:border-white/8"
-        data-testid="card-sentiment-gauge"
-        style={{ overflow: "visible" }}
-      >
-        {isLoading ? (
-          <div className="flex flex-col items-center gap-3 py-6">
-            <Skeleton className="h-36 w-72 rounded-full bg-white/10" />
-            <Skeleton className="h-6 w-20 bg-white/10 mt-2" />
-            <Skeleton className="h-4 w-28 bg-white/10" />
-          </div>
-        ) : (
-          <>
-            <svg
-              viewBox={`0 0 ${W} ${H}`}
-              width={W}
-              height={H}
-              style={{ display: "block", overflow: "visible", maxWidth: "100%" }}
-            >
-              {/* Background track */}
-              <path d={arcPath(R, 180, 0)} fill="none" stroke="#ffffff12" strokeWidth={20} strokeLinecap="butt" />
-              {/* Colored zone segments */}
-              {zones.map((z) => (
-                <path
-                  key={z.from}
-                  d={arcPath(R, 180 - (z.from / 100) * 180, 180 - (z.to / 100) * 180)}
-                  fill="none"
-                  stroke={z.color}
-                  strokeWidth={20}
-                  strokeLinecap="butt"
-                  opacity={0.9}
-                />
-              ))}
-              {/* Needle */}
-              <line
-                x1={cx} y1={cy}
-                x2={needleX} y2={needleY}
-                stroke="white" strokeWidth={3} strokeLinecap="round"
-              />
-              <circle cx={cx} cy={cy} r={6} fill="white" />
-              {/* Score number above pivot */}
-              <text
-                x={cx} y={cy - 22}
-                textAnchor="middle"
-                fill="white"
-                fontSize={32}
-                fontWeight="bold"
-                fontFamily="ui-monospace,monospace"
-              >
-                {Math.round(score)}
-              </text>
-            </svg>
-            <p className="text-sm font-semibold mt-2" style={{ color }}>{label}</p>
-            <p className="text-xs text-white/40 mt-0.5">CNN Fear &amp; Greed Index</p>
-          </>
-        )}
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-2">
+        <Skeleton className="h-24 w-48 bg-white/10" />
+        <Skeleton className="h-4 w-20 bg-white/10" />
       </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        width={W}
+        height={H}
+        style={{ display: "block", overflow: "visible", maxWidth: "100%" }}
+      >
+        <path d={arcPath(R, 180, 0)} fill="none" stroke="#ffffff12" strokeWidth={16} strokeLinecap="butt" />
+        {zones.map((z) => (
+          <path
+            key={z.from}
+            d={arcPath(R, 180 - (z.from / 100) * 180, 180 - (z.to / 100) * 180)}
+            fill="none" stroke={z.color} strokeWidth={16} strokeLinecap="butt" opacity={0.9}
+          />
+        ))}
+        <line x1={cx} y1={cy} x2={needleX} y2={needleY} stroke="white" strokeWidth={2.5} strokeLinecap="round" />
+        <circle cx={cx} cy={cy} r={5} fill="white" />
+        <text x={cx} y={cy - 16} textAnchor="middle" fill="white" fontSize={26} fontWeight="bold" fontFamily="ui-monospace,monospace">
+          {Math.round(score)}
+        </text>
+      </svg>
+      <p className="text-sm font-semibold -mt-1" style={{ color }}>{label}</p>
+      <p className="text-[11px] text-white/40 mt-0.5">CNN Fear &amp; Greed Index</p>
     </div>
   );
 }
@@ -437,23 +401,13 @@ export default function DashboardPage() {
             )}
           </Card>
 
-          <Card className="p-5 space-y-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Latest</p>
-              <Calendar className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <p className="text-lg font-semibold">
-              {recentReports?.[0]
-                ? format(new Date(recentReports[0].publishedAt), "MMM d, yyyy")
-                : "---"}
-            </p>
-            <p className="text-xs text-muted-foreground">Most recent publication</p>
+          <Card className="p-5 flex flex-col items-center justify-center bg-[#0f1117] border-[#0f1117]" data-testid="card-sentiment-gauge">
+            <p className="text-xs font-medium uppercase tracking-wider text-white/50 self-start mb-1">Market Sentiment</p>
+            <SentimentGaugeInline />
           </Card>
         </div>
 
         <MarketSnapshot />
-
-        <SentimentGauge />
 
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
