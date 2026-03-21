@@ -8,22 +8,9 @@ import { FileText, Globe, TrendingUp, Check, ShieldCheck } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-
-const sampleReport = `## Weekly Macro Overview — Feb 27, 2026
-
-### US Economy
-The Federal Reserve held rates steady at 4.25–4.50% as expected, signaling patience amid mixed inflation data. January CPI came in at 3.1% YoY, slightly above consensus, while core PCE moderated to 2.7%. Labor markets remain resilient with NFP at +187K, though wage growth decelerated to 3.8% annualized.
-
-### Key Takeaways
-- **USD**: Dollar Index (DXY) testing 104.5 resistance. Bias remains bullish near-term on rate differential support.
-- **US Equities**: S&P 500 consolidated around 5,850–5,920 range. Tech leadership narrowing — watch for rotation signals.
-- **Treasuries**: 10Y yield hovering at 4.35%. Curve steepening trend intact as front-end reprices fewer cuts.
-
-### Europe & UK
-ECB delivered a 25bp cut to 3.50%, citing weaker growth outlook. Eurozone PMI composite slipped to 48.2, dragged by German manufacturing. Sterling weakened after BoE's dovish hold, with markets pricing 75bp of cuts through year-end.
-
-### Asia-Pacific
-China's January credit data surprised to the upside (CNY 6.2T new loans), but property sector headwinds persist. PBoC maintained accommodative stance with targeted RRR cuts. Japan's Q4 GDP contracted -0.1% QoQ, complicating BoJ's normalization path.`;
+import { useQuery } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Report } from "@shared/schema";
 
 function PayPalSubscribeButton({ planId }: { planId: string }) {
   const { session } = useAuth();
@@ -63,6 +50,78 @@ function PayPalSubscribeButton({ planId }: { planId: string }) {
       onError={() => {}}
       data-testid="paypal-subscribe-button"
     />
+  );
+}
+
+// 최신 무료 보고서 샘플 컴포넌트
+function SampleReport() {
+  const { data: reports, isLoading } = useQuery<Report[]>({
+    queryKey: ["/api/reports"],
+    queryFn: async () => {
+      const res = await fetch("/api/reports");
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  // 무료 보고서 중 가장 최신 1개
+  const latestFree = reports
+    ?.filter((r) => r.reportType === "free")
+    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())[0];
+
+  const previewText = latestFree
+    ? latestFree.content.replace(/[#*_`\[\]]/g, "").slice(0, 800)
+    : "";
+
+  return (
+    <section className="py-20 px-4" data-testid="section-sample">
+      <div className="max-w-4xl mx-auto">
+        <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4" data-testid="text-sample-title">
+          See What You'll Get
+        </h2>
+        <p className="text-center text-muted-foreground mb-10">
+          Our latest free report
+        </p>
+        <div className="relative">
+          <Card className="overflow-hidden">
+            <CardContent className="p-6 sm:p-8">
+              {isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-2/3" />
+                </div>
+              ) : latestFree ? (
+                <div className="space-y-2">
+                  <h3 className="font-bold text-base mb-3">{latestFree.title}</h3>
+                  <div className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed whitespace-pre-wrap" data-testid="text-sample-report">
+                    {previewText}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Loading latest report...</p>
+              )}
+            </CardContent>
+          </Card>
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" style={{ top: "40%" }} />
+          <div className="absolute bottom-0 left-0 right-0 backdrop-blur-sm bg-background/60 py-8 flex flex-col items-center gap-3 rounded-b-lg">
+            <p className="font-medium text-base" data-testid="text-sample-cta">
+              Subscribe to read full reports
+            </p>
+            <div className="flex items-center gap-3 flex-wrap justify-center">
+              <Link href="/login?mode=signup">
+                <Button data-testid="button-sample-signup">Sign Up for Premium</Button>
+              </Link>
+              <Link href="/dashboard">
+                <Button variant="outline" data-testid="button-sample-dashboard">Read Free Reports</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -184,40 +243,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Sample Report ── */}
-      <section className="py-20 px-4" data-testid="section-sample">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4" data-testid="text-sample-title">
-            See What You'll Get
-          </h2>
-          <p className="text-center text-muted-foreground mb-10">
-            A glimpse of our daily macro briefing
-          </p>
-          <div className="relative">
-            <Card className="overflow-hidden">
-              <CardContent className="p-6 sm:p-8">
-                <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm leading-relaxed" data-testid="text-sample-report">
-                  {sampleReport}
-                </div>
-              </CardContent>
-            </Card>
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" style={{ top: "40%" }} />
-            <div className="absolute bottom-0 left-0 right-0 backdrop-blur-sm bg-background/60 py-8 flex flex-col items-center gap-3 rounded-b-lg">
-              <p className="font-medium text-base" data-testid="text-sample-cta">
-                Free reports available without an account
-              </p>
-              <div className="flex items-center gap-3 flex-wrap justify-center">
-                <Link href="/login?mode=signup">
-                  <Button data-testid="button-sample-signup">Sign Up for Premium</Button>
-                </Link>
-                <Link href="/dashboard">
-                  <Button variant="outline" data-testid="button-sample-dashboard">Read Free Reports</Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* ── Sample Report (dynamic) ── */}
+      <SampleReport />
 
       {/* ── Pricing ── */}
       <section className="py-20 px-4 bg-muted/40" data-testid="section-pricing">
@@ -241,7 +268,11 @@ export default function LandingPage() {
               <ul className="text-left space-y-3 text-sm">
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span>Daily market briefings (Mon-Fri)</span>
+                  <span>Daily reports on geopolitics, central banks & supply chains</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span>Second and third-order analysis markets aren't pricing</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-primary flex-shrink-0" />
@@ -249,11 +280,7 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span>Global macro coverage</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span>Free weekly report included</span>
+                  <span>Lock in $12 before April 1 — price goes to $19</span>
                 </li>
               </ul>
               {paypalClientId && paypalPlanId ? (
@@ -291,7 +318,7 @@ export default function LandingPage() {
       <section className="py-24 px-4" data-testid="section-cta">
         <div className="max-w-2xl mx-auto text-center space-y-6">
           <h2 className="text-3xl sm:text-4xl font-bold" data-testid="text-cta-title">
-            Start Reading Today
+            Start Seeing What Markets Miss
           </h2>
           <p className="text-muted-foreground text-lg">
             Join investors and analysts who rely on GMR for their daily market edge.
