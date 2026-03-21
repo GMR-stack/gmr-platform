@@ -40,23 +40,15 @@ function PayPalSubscribeButton({ planId }: { planId: string }) {
           setLocation("/login?mode=signup");
           return Promise.reject(new Error("Login required"));
         }
-        return actions.subscription.create({
-          plan_id: planId,
-        });
+        return actions.subscription.create({ plan_id: planId });
       }}
       onApprove={async (data) => {
         try {
           const token = session?.access_token;
-          if (!token) {
-            setLocation("/login?mode=signup");
-            return;
-          }
+          if (!token) { setLocation("/login?mode=signup"); return; }
           const res = await fetch("/api/paypal/create-subscription", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify({ subscriptionId: data.subscriptionID }),
           });
           if (res.ok) {
@@ -97,11 +89,18 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+
+      {/* ── Header ── */}
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-14">
           <GmrLogo showTagline linkTo="" size="sm" />
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm" data-testid="link-dashboard-header">
+                View Dashboard
+              </Button>
+            </Link>
             <Link href="/login">
               <Button variant="outline" size="sm" data-testid="link-login">
                 Log In
@@ -116,6 +115,7 @@ export default function LandingPage() {
         </div>
       </header>
 
+      {/* ── Hero ── */}
       <section className="py-24 px-4" data-testid="section-hero">
         <div className="max-w-3xl mx-auto text-center space-y-6">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-tight" data-testid="text-hero-headline">
@@ -126,16 +126,25 @@ export default function LandingPage() {
             Concise macro analysis and market insights from seasoned professionals.
             Stay ahead of global markets with GMR's daily reports.
           </p>
-          <div className="pt-4">
+          <div className="pt-4 flex items-center justify-center gap-4 flex-wrap">
+            <Link href="/dashboard">
+              <Button size="lg" className="text-base px-8" data-testid="button-hero-dashboard">
+                View Reports Free
+              </Button>
+            </Link>
             <Link href="/login?mode=signup">
-              <Button size="lg" className="text-base px-8" data-testid="button-hero-signup">
-                Sign Up Free
+              <Button size="lg" variant="outline" className="text-base px-8" data-testid="button-hero-signup">
+                Sign Up
               </Button>
             </Link>
           </div>
+          <p className="text-sm text-muted-foreground">
+            No account needed to read free reports
+          </p>
         </div>
       </section>
 
+      {/* ── Features ── */}
       <section className="py-20 px-4 bg-muted/40" data-testid="section-features">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12" data-testid="text-features-title">
@@ -179,6 +188,7 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Sample Report ── */}
       <section className="py-20 px-4" data-testid="section-sample">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4" data-testid="text-sample-title">
@@ -196,16 +206,24 @@ export default function LandingPage() {
               </CardContent>
             </Card>
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" style={{ top: "40%" }} />
-            <div className="absolute bottom-0 left-0 right-0 backdrop-blur-sm bg-background/60 py-8 flex flex-col items-center gap-4 rounded-b-lg">
-              <p className="font-medium text-base" data-testid="text-sample-cta">Subscribe to read full reports</p>
-              <Link href="/login?mode=signup">
-                <Button data-testid="button-sample-signup">Sign Up Free</Button>
-              </Link>
+            <div className="absolute bottom-0 left-0 right-0 backdrop-blur-sm bg-background/60 py-8 flex flex-col items-center gap-3 rounded-b-lg">
+              <p className="font-medium text-base" data-testid="text-sample-cta">
+                Free reports available without an account
+              </p>
+              <div className="flex items-center gap-3 flex-wrap justify-center">
+                <Link href="/dashboard">
+                  <Button data-testid="button-sample-dashboard">Read Free Reports</Button>
+                </Link>
+                <Link href="/login?mode=signup">
+                  <Button variant="outline" data-testid="button-sample-signup">Sign Up for Premium</Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
+      {/* ── Pricing ── */}
       <section className="py-20 px-4 bg-muted/40" data-testid="section-pricing">
         <div className="max-w-md mx-auto text-center">
           <h2 className="text-2xl sm:text-3xl font-bold mb-4" data-testid="text-pricing-title">
@@ -217,7 +235,7 @@ export default function LandingPage() {
           <Card className="border-2 border-primary shadow-lg">
             <CardContent className="p-8 space-y-6">
               <div className="space-y-1">
-                <div className="text-xs font-semibold uppercase tracking-widest text-yellow-500">⚡ Founding Member Price</div>
+                <div className="text-xs font-semibold uppercase tracking-widest text-yellow-500">Founding Member Price</div>
                 <div>
                   <span className="text-4xl font-bold" data-testid="text-price">$12</span>
                   <span className="text-muted-foreground">/month</span>
@@ -258,6 +276,7 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Refund ── */}
       <section className="py-16 px-4" data-testid="section-refund">
         <div className="max-w-2xl mx-auto text-center space-y-4">
           <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
@@ -272,6 +291,7 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── CTA ── */}
       <section className="py-24 px-4" data-testid="section-cta">
         <div className="max-w-2xl mx-auto text-center space-y-6">
           <h2 className="text-3xl sm:text-4xl font-bold" data-testid="text-cta-title">
@@ -280,20 +300,29 @@ export default function LandingPage() {
           <p className="text-muted-foreground text-lg">
             Join investors and analysts who rely on GMR for their daily market edge.
           </p>
-          <Link href="/login?mode=signup">
-            <Button size="lg" className="text-base px-8 mt-4" data-testid="button-cta-signup">
-              Sign Up Free
-            </Button>
-          </Link>
+          <div className="flex items-center justify-center gap-4 flex-wrap pt-4">
+            <Link href="/dashboard">
+              <Button size="lg" className="text-base px-8" data-testid="button-cta-dashboard">
+                View Reports Free
+              </Button>
+            </Link>
+            <Link href="/login?mode=signup">
+              <Button size="lg" variant="outline" className="text-base px-8" data-testid="button-cta-signup">
+                Sign Up Free
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
+      {/* ── Footer ── */}
       <footer className="border-t py-8 px-4">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <span data-testid="text-footer">GMR · Global Market Radar</span>
           <span>© {new Date().getFullYear()} All rights reserved.</span>
         </div>
       </footer>
+
     </div>
   );
 }
