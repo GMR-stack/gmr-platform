@@ -201,33 +201,36 @@ export default function ArchivePage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* ── Header ── */}
       <header className="sticky top-0 z-50 border-b bg-background">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 flex-wrap px-6 py-3">
           <GmrLogo showTagline />
 
           <nav className="flex items-center gap-1">
             <Link href="/dashboard">
-              <Button variant="ghost" size="sm" data-testid="link-dashboard">
-                <BarChart3 className="w-4 h-4 mr-1.5" />
+              <button
+                className="text-base font-normal px-4 py-3 border-b-2 border-transparent text-muted-foreground bg-transparent hover:text-foreground hover:border-[#1a1f36]/40 transition-colors"
+                data-testid="link-dashboard"
+              >
                 Dashboard
-              </Button>
+              </button>
             </Link>
             <Link href="/archive">
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
+                className="text-base font-medium px-4 py-3 border-b-2 border-[#1a1f36] text-foreground bg-transparent hover:bg-transparent transition-colors"
                 data-testid="link-archive-active"
               >
-                <Archive className="w-4 h-4 mr-1.5" />
                 Archive
-              </Button>
+              </button>
             </Link>
             {userIsAdmin && (
               <Link href="/admin">
-                <Button variant="ghost" size="sm" data-testid="link-admin">
-                  <Settings className="w-4 h-4 mr-1.5" />
+                <button
+                  className="text-base font-normal px-4 py-3 border-b-2 border-transparent text-muted-foreground bg-transparent hover:text-foreground hover:border-[#1a1f36]/40 transition-colors"
+                  data-testid="link-admin"
+                >
                   Admin
-                </Button>
+                </button>
               </Link>
             )}
           </nav>
@@ -278,6 +281,7 @@ export default function ArchivePage() {
           </p>
         </div>
 
+        {/* ── Filter Buttons ── */}
         <div className="flex items-center gap-2 flex-wrap">
           {DAY_FILTERS.map((day) => (
             <Button
@@ -293,6 +297,7 @@ export default function ArchivePage() {
           ))}
         </div>
 
+        {/* ── Report List ── */}
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
@@ -313,7 +318,7 @@ export default function ArchivePage() {
             {paginatedReports.map((report) => (
               <Card
                 key={report.id}
-                className="p-5 hover-elevate cursor-pointer"
+                className="p-5 hover-elevate cursor-pointer transition-colors"
                 onClick={(e: React.MouseEvent) => {
                   e.preventDefault();
                   if (report.reportType === "free") {
@@ -327,31 +332,38 @@ export default function ArchivePage() {
                 data-testid={`card-archive-report-${report.id}`}
               >
                 <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <div className="space-y-1.5 flex-1 min-w-0">
+                  <div className="space-y-2 flex-1 min-w-0">
+                    {/* Badge row */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3
-                        className="font-semibold text-sm"
-                        data-testid={`text-report-title-${report.id}`}
-                      >
-                        {report.title}
-                      </h3>
-                      <Badge
-                        variant={reportTypeVariant(report.reportType)}
-                        className="text-xs"
-                        data-testid={`badge-type-${report.id}`}
-                      >
-                        {reportTypeLabel(report.reportType)}
-                      </Badge>
+                      {report.reportType === "free" ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border border-emerald-500/60 text-emerald-500 bg-emerald-500/10">
+                          Free
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-[#1a1f36] text-blue-300 border border-blue-500/20">
+                          <Lock className="w-2.5 h-2.5" />
+                          {reportTypeLabel(report.reportType)}
+                        </span>
+                      )}
                     </div>
+                    {/* Title */}
+                    <h3
+                      className="font-semibold text-sm line-clamp-1"
+                      data-testid={`text-report-title-${report.id}`}
+                    >
+                      {report.title}
+                    </h3>
+                    {/* Preview */}
                     <p
-                      className="text-xs text-muted-foreground line-clamp-2"
+                      className="text-xs text-muted-foreground line-clamp-2 leading-relaxed"
                       data-testid={`text-report-preview-${report.id}`}
                     >
                       {report.content.replace(/[#*_`\[\]]/g, "").slice(0, 200)}
                     </p>
                   </div>
+                  {/* Date */}
                   <div
-                    className="flex items-center gap-1 text-xs text-muted-foreground shrink-0"
+                    className="flex items-center gap-1 text-xs text-muted-foreground shrink-0 mt-0.5"
                     data-testid={`text-report-date-${report.id}`}
                   >
                     <Clock className="w-3 h-3" />
@@ -361,6 +373,7 @@ export default function ArchivePage() {
               </Card>
             ))}
 
+            {/* ── Pagination ── */}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-4 pt-4" data-testid="pagination-controls">
                 <Button
@@ -404,12 +417,14 @@ export default function ArchivePage() {
         )}
       </main>
 
+      {/* ── Footer ── */}
       <footer className="border-t px-6 py-4 text-center">
         <p className="text-xs text-muted-foreground">
           GMR &middot; Global Market Radar
         </p>
       </footer>
 
+      {/* ── Locked Modal ── */}
       <Dialog open={showLockedModal} onOpenChange={setShowLockedModal}>
         <DialogContent className="max-w-md text-center" data-testid="dialog-locked-report">
           <DialogHeader className="flex flex-col items-center space-y-3">
@@ -439,12 +454,13 @@ export default function ArchivePage() {
         </DialogContent>
       </Dialog>
 
+      {/* ── Subscribe Modal ── */}
       <Dialog open={showPaypalModal} onOpenChange={setShowPaypalModal}>
         <DialogContent className="max-w-md" data-testid="dialog-subscribe">
           <DialogHeader>
             <DialogTitle data-testid="text-subscribe-modal-title">Subscribe to GMR Premium</DialogTitle>
             <DialogDescription>
-              Get full access to all daily reports, archive, and expert market analysis for $12/month.
+              Institutional-quality macro analysis for individual investors. $12/month — founding member rate.
             </DialogDescription>
           </DialogHeader>
           {paypalClientId && paypalPlanId ? (
