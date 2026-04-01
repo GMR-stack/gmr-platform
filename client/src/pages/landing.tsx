@@ -4,7 +4,7 @@ import { GmrLogo } from "@/components/gmr-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText, Globe, TrendingUp, Check, ShieldCheck } from "lucide-react";
+import { Check, ShieldCheck } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -64,7 +64,6 @@ function SampleReport() {
     },
   });
 
-  // 무료 보고서 중 가장 최신 1개
   const latestFree = reports
     ?.filter((r) => r.reportType === "free")
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())[0];
@@ -199,50 +198,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section className="py-20 px-4 bg-muted/40" data-testid="section-features">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12" data-testid="text-features-title">
-            Why Subscribe to GMR?
-          </h2>
-          <div className="grid sm:grid-cols-3 gap-8">
-            <Card className="text-center border-0 shadow-sm bg-background">
-              <CardContent className="pt-8 pb-6 px-6 space-y-4">
-                <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg" data-testid="text-feature-daily">Daily Reports</h3>
-                <p className="text-sm text-muted-foreground">
-                  Monday through Friday market briefings covering equities, FX, rates, commodities, and geopolitical analysis with market impact assessment.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="text-center border-0 shadow-sm bg-background">
-              <CardContent className="pt-8 pb-6 px-6 space-y-4">
-                <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Globe className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg" data-testid="text-feature-macro">Global Macro</h3>
-                <p className="text-sm text-muted-foreground">
-                  Cross-asset, cross-region perspective spanning US, Europe, and Asia-Pacific markets.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="text-center border-0 shadow-sm bg-background">
-              <CardContent className="pt-8 pb-6 px-6 space-y-4">
-                <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg" data-testid="text-feature-analysis">Expert Analysis</h3>
-                <p className="text-sm text-muted-foreground">
-                  Actionable insights backed by institutional-grade research and years of market experience.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
       {/* ── Sample Report (dynamic) ── */}
       <SampleReport />
 
@@ -263,7 +218,7 @@ export default function LandingPage() {
                   <span className="text-4xl font-bold" data-testid="text-price">$12</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
-                <div className="text-xs text-muted-foreground">Regular price $19 · Lock in now before April 1</div>
+                <div className="text-xs text-muted-foreground">Regular price $19 · Lock in now before May 1</div>
               </div>
               <ul className="text-left space-y-3 text-sm">
                 <li className="flex items-center gap-2">
@@ -280,7 +235,7 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span>Lock in $12 before April 1 — price goes to $19</span>
+                  <span>Lock in $12 before May 1 — price goes to $19</span>
                 </li>
               </ul>
               {paypalClientId && paypalPlanId ? (
