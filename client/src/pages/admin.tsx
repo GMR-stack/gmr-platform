@@ -64,18 +64,13 @@ type CreateReportForm = z.infer<typeof createReportSchema>;
 function reportTypeLabel(type: string) {
   const labels: Record<string, string> = {
     free: "Free",
-    "weekly-outlook": "Weekly Outlook",
-    "market-pulse": "Market Pulse",
-    "deep-dive": "Deep Dive",
-    "data-drop": "Data Drop",
-    "week-wrap": "Week Wrap",
+    premium: "Premium",
   };
   return labels[type] || type.charAt(0).toUpperCase() + type.slice(1);
 }
 
 function reportTypeVariant(type: string): "default" | "secondary" | "outline" {
-  if (type === "weekly-outlook" || type === "deep-dive") return "default";
-  if (type === "market-pulse" || type === "data-drop") return "secondary";
+  if (type === "premium") return "default";
   return "outline";
 }
 
@@ -86,7 +81,6 @@ function insertAtCursor(textarea: HTMLTextAreaElement, text: string, setValue: (
   const after = textarea.value.substring(end);
   const newValue = before + text + after;
   setValue(newValue);
-  // Restore cursor position after React re-render
   requestAnimationFrame(() => {
     textarea.focus();
     textarea.selectionStart = start + text.length;
@@ -213,11 +207,10 @@ export default function AdminPage() {
     defaultValues: {
       title: "",
       content: "",
-      reportType: "weekly-outlook",
+      reportType: "free",
     },
   });
 
-  // Merged ref for create form textarea
   const createContentRef = useRef<HTMLTextAreaElement | null>(null);
   const { ref: rhfCreateRef, ...createContentRegister } = form.register("content");
   const mergedCreateRef = useCallback((el: HTMLTextAreaElement | null) => {
@@ -232,7 +225,7 @@ export default function AdminPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/reports"] });
-      form.reset({ title: "", content: "", reportType: "monday" });
+      form.reset({ title: "", content: "", reportType: "free" });
       toast({ title: "Report published successfully" });
     },
     onError: (err: Error) => {
@@ -256,10 +249,9 @@ export default function AdminPage() {
   const [editingReport, setEditingReport] = useState<Report | null>(null);
   const editForm = useForm<CreateReportForm>({
     resolver: zodResolver(createReportSchema),
-    defaultValues: { title: "", content: "", reportType: "monday" },
+    defaultValues: { title: "", content: "", reportType: "free" },
   });
 
-  // Merged ref for edit form textarea
   const editContentRef = useRef<HTMLTextAreaElement | null>(null);
   const { ref: rhfEditRef, ...editContentRegister } = editForm.register("content");
   const mergedEditRef = useCallback((el: HTMLTextAreaElement | null) => {
@@ -391,11 +383,7 @@ export default function AdminPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="weekly-outlook">Weekly Outlook</SelectItem>
-                    <SelectItem value="market-pulse">Market Pulse</SelectItem>
-                    <SelectItem value="deep-dive">Deep Dive</SelectItem>
-                    <SelectItem value="data-drop">Data Drop</SelectItem>
-                    <SelectItem value="week-wrap">Week Wrap</SelectItem>
+                    <SelectItem value="premium">Premium</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -562,11 +550,7 @@ export default function AdminPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="free">Free</SelectItem>
-                  <SelectItem value="weekly-outlook">Weekly Outlook</SelectItem>
-                  <SelectItem value="market-pulse">Market Pulse</SelectItem>
-                  <SelectItem value="deep-dive">Deep Dive</SelectItem>
-                  <SelectItem value="data-drop">Data Drop</SelectItem>
-                  <SelectItem value="week-wrap">Week Wrap</SelectItem>
+                  <SelectItem value="premium">Premium</SelectItem>
                 </SelectContent>
               </Select>
             </div>
