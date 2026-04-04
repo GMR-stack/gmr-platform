@@ -24,7 +24,7 @@ export const reports = pgTable("reports", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
   content: text("content").notNull(),
-  reportType: text("report_type").notNull().default("market_analysis"),
+  reportType: text("report_type").notNull().default("premium"),
   publishedAt: timestamp("published_at").defaultNow().notNull(),
 });
 
@@ -38,7 +38,7 @@ export const reportReads = pgTable("report_reads", {
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({ id: true, createdAt: true });
 export const insertReportSchema = createInsertSchema(reports).omit({ id: true, publishedAt: true }).extend({
-  reportType: z.enum(["monday", "tuesday", "wednesday", "thursday", "friday", "free"]),
+  reportType: z.enum(["free", "premium"]),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
