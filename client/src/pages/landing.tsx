@@ -73,12 +73,12 @@ function SampleReport() {
     : "";
 
   return (
-    <section className="py-20 px-4" data-testid="section-sample">
+    <section className="py-10 px-4" data-testid="section-sample">
       <div className="max-w-4xl mx-auto">
         <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4" data-testid="text-sample-title">
           See What You'll Get
         </h2>
-        <p className="text-center text-muted-foreground mb-10">
+        <p className="text-center text-muted-foreground mb-6">
           Our latest free report
         </p>
         <div className="relative">
@@ -174,8 +174,8 @@ export default function LandingPage() {
       </header>
 
       {/* ── Hero ── */}
-      <section className="py-24 px-4" data-testid="section-hero">
-        <div className="max-w-3xl mx-auto text-center space-y-6">
+      <section className="py-14 px-4" data-testid="section-hero">
+        <div className="max-w-3xl mx-auto text-center space-y-4">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-tight" data-testid="text-hero-headline">
             Markets price the headline.{" "}
             <span className="text-primary">We price what comes after.</span>
@@ -202,12 +202,12 @@ export default function LandingPage() {
       <SampleReport />
 
       {/* ── Pricing ── */}
-      <section className="py-20 px-4 bg-muted/40" data-testid="section-pricing">
+      <section className="py-10 px-4 bg-muted/40" data-testid="section-pricing">
         <div className="max-w-md mx-auto text-center">
           <h2 className="text-2xl sm:text-3xl font-bold mb-4" data-testid="text-pricing-title">
             Simple Pricing
           </h2>
-          <p className="text-muted-foreground mb-10">
+          <p className="text-muted-foreground mb-6">
             One plan. Full access. Cancel anytime.
           </p>
           <Card className="border-2 border-primary shadow-lg">
@@ -255,7 +255,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Refund ── */}
-      <section className="py-16 px-4" data-testid="section-refund">
+      <section className="py-10 px-4" data-testid="section-refund">
         <div className="max-w-2xl mx-auto text-center space-y-4">
           <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
             <ShieldCheck className="w-7 h-7 text-primary" />
@@ -270,7 +270,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── CTA ── */}
-      <section className="py-24 px-4" data-testid="section-cta">
+      <section className="py-14 px-4" data-testid="section-cta">
         <div className="max-w-2xl mx-auto text-center space-y-6">
           <h2 className="text-3xl sm:text-4xl font-bold" data-testid="text-cta-title">
             Start Seeing What Markets Miss
