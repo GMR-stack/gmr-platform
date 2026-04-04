@@ -221,7 +221,7 @@ export default function LandingPage() {
             className="text-base sm:text-lg text-white/55 max-w-xl mx-auto mb-10 leading-relaxed"
             data-testid="text-hero-subtitle"
           >
-            Daily intelligence on geopolitics, central banks, and supply chains — the second and third-order effects markets aren't pricing yet.
+            Intelligence on geopolitics, central banks, and supply chains — the second and third-order effects markets aren't pricing yet.
           </p>
 
           {/* CTAs */}
