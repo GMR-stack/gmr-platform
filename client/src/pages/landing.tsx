@@ -225,21 +225,11 @@ export default function LandingPage() {
           </p>
 
           {/* CTAs */}
-          <div className="flex items-center justify-center gap-3 flex-wrap">
-            <Link href="/login?mode=signup">
-              <Button
-                size="lg"
-                className="text-sm px-7 bg-white text-slate-900 hover:bg-white/90 font-semibold"
-                data-testid="button-hero-signup"
-              >
-                Start Reading — $12/mo
-              </Button>
-            </Link>
+          <div className="flex items-center justify-center">
             <Link href="/dashboard">
               <Button
                 size="lg"
-                variant="ghost"
-                className="text-sm px-7 text-white/70 hover:text-white hover:bg-white/10 border border-white/10"
+                className="text-sm px-10 py-6 bg-blue-500 hover:bg-blue-400 text-white font-semibold shadow-lg shadow-blue-500/25"
                 data-testid="button-hero-dashboard"
               >
                 Read Free Reports
