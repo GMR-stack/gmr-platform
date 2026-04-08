@@ -72,7 +72,7 @@ function SampleReport() {
     : "";
 
   return (
-    <section className="py-16 px-4 bg-muted/30" data-testid="section-sample">
+    <section className="py-14 px-4 bg-muted/20" data-testid="section-sample">
       <div className="max-w-4xl mx-auto">
         {/* Section label */}
         <div className="flex items-center gap-3 mb-8">
@@ -179,7 +179,7 @@ export default function LandingPage() {
 
       {/* ── Hero ── */}
       <section
-        className="relative overflow-hidden px-4 py-20 sm:py-28"
+        className="relative overflow-hidden px-4 py-16 sm:py-20"
         data-testid="section-hero"
         style={{
           background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)",
@@ -255,12 +255,16 @@ export default function LandingPage() {
       </section>
 
       {/* ── Signal strip ── */}
-      <div className="border-y border-border bg-muted/20 py-4 px-4">
-        <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-x-10 gap-y-2 text-xs text-muted-foreground">
+      <div className="border-y border-border bg-muted/20 py-3 px-4 overflow-x-auto">
+        <div className="max-w-5xl mx-auto flex items-center justify-center gap-6 text-xs text-muted-foreground whitespace-nowrap">
           <span className="flex items-center gap-1.5"><span className="text-primary">✦</span> Geopolitics & Central Banks</span>
+          <span className="text-border">|</span>
           <span className="flex items-center gap-1.5"><span className="text-primary">✦</span> FX · Rates · Commodities</span>
+          <span className="text-border">|</span>
           <span className="flex items-center gap-1.5"><span className="text-primary">✦</span> Supply Chain Disruptions</span>
+          <span className="text-border">|</span>
           <span className="flex items-center gap-1.5"><span className="text-primary">✦</span> 2nd & 3rd Order Effects</span>
+          <span className="text-border">|</span>
           <span className="flex items-center gap-1.5"><span className="text-primary">✦</span> Published 2–3× Weekly</span>
         </div>
       </div>
@@ -269,7 +273,7 @@ export default function LandingPage() {
       <SampleReport />
 
       {/* ── Pricing ── */}
-      <section className="py-16 px-4" data-testid="section-pricing">
+      <section className="py-14 px-4" data-testid="section-pricing">
         <div className="max-w-md mx-auto">
           {/* Section label */}
           <div className="flex items-center gap-3 mb-10">
@@ -293,7 +297,7 @@ export default function LandingPage() {
 
               <ul className="text-left space-y-3 text-sm">
                 {[
-                  "Daily reports on geopolitics, central banks & supply chains",
+                  "Reports on geopolitics, central banks & supply chains",
                   "Second and third-order analysis markets aren't pricing",
                   "Full archive access",
                   "Lock in $12 before May 1 — price goes to $19",
