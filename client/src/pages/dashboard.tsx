@@ -20,14 +20,10 @@ import {
 } from "@/components/ui/dialog";
 import {
   FileText,
-  Archive,
-  Settings,
   LogOut,
   ChevronRight,
-  BarChart3,
   Clock,
   Lock,
-  Zap,
   CheckCircle2,
 } from "lucide-react";
 import type { Report, Subscription } from "@shared/schema";
@@ -148,8 +144,8 @@ function SentimentGaugeInline() {
 // ─── Report Type Badge ───────────────────────────────────────────────────────
 function reportTypeLabel(type: string) {
   const labels: Record<string, string> = {
-    free: "Free", "weekly-outlook": "Weekly Outlook", "market-pulse": "Market Pulse",
-    "deep-dive": "Deep Dive", "data-drop": "Data Drop", "week-wrap": "Week Wrap",
+    free: "Free",
+    premium: "Premium",
   };
   return labels[type] || type.charAt(0).toUpperCase() + type.slice(1);
 }
@@ -169,7 +165,11 @@ function ReportTypeBadge({ type }: { type: string }) {
 
 // ─── Subscription Cards ──────────────────────────────────────────────────────
 function SubscribePromptCard({ onSubscribe }: { onSubscribe: () => void }) {
-  const perks = ["Daily macro reports — 5x per week", "2nd & 3rd order market analysis", "Full archive access"];
+  const perks = [
+    "2–3 reports per week on macro & geopolitics",
+    "2nd & 3rd order market analysis",
+    "Full archive access",
+  ];
   return (
     <div className="h-full flex flex-col justify-between space-y-4">
       <div className="space-y-1">
@@ -190,9 +190,14 @@ function SubscribePromptCard({ onSubscribe }: { onSubscribe: () => void }) {
           </li>
         ))}
       </ul>
-      <Button className="w-full bg-[#1a1f36] hover:bg-[#2a2f46] text-white gap-2" onClick={onSubscribe} data-testid="button-subscribe-card">
-        <Zap className="w-4 h-4" />Subscribe — $12/mo
-      </Button>
+      {/* subtle 텍스트 링크 스타일 — 압박감 없이 */}
+      <button
+        onClick={onSubscribe}
+        className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 cursor-pointer bg-transparent border-none p-0 text-left transition-colors"
+        data-testid="button-subscribe-card"
+      >
+        Unlock premium access → $12/mo
+      </button>
     </div>
   );
 }
@@ -212,7 +217,7 @@ function ActiveSubscriptionCard({ subscription, onCancel }: { subscription: Subs
       </div>
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-xs text-white/50"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />Full archive access</div>
-        <div className="flex items-center gap-2 text-xs text-white/50"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />5 daily reports per week</div>
+        <div className="flex items-center gap-2 text-xs text-white/50"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />2–3 reports per week</div>
       </div>
       <button onClick={onCancel} className="text-xs text-white/30 hover:text-white/60 underline underline-offset-2 cursor-pointer bg-transparent border-none p-0 text-left" data-testid="link-cancel-subscription">
         Cancel subscription
@@ -321,7 +326,7 @@ export default function DashboardPage() {
             {isGuest ? (
               <>
                 <Link href="/login"><Button variant="outline" size="sm" className="text-xs h-7">Log In</Button></Link>
-                <Button size="sm" className="bg-[#1a1f36] hover:bg-[#2a2f46] text-white text-xs px-3 h-7" onClick={() => setShowPaypalModal(true)} data-testid="button-navbar-subscribe">Subscribe</Button>
+                <Button size="sm" variant="outline" className="text-xs px-3 h-7" onClick={() => setShowPaypalModal(true)} data-testid="button-navbar-subscribe">Subscribe</Button>
               </>
             ) : (
               <>
@@ -329,7 +334,7 @@ export default function DashboardPage() {
                   <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[10px] px-2 py-0.5" data-testid="badge-premium">Premium</Badge>
                 )}
                 {!userIsAdmin && !userIsSubscribed && (
-                  <Button size="sm" className="bg-[#1a1f36] hover:bg-[#2a2f46] text-white text-xs px-3 h-7" onClick={() => setShowPaypalModal(true)} data-testid="button-navbar-subscribe">Subscribe</Button>
+                  <Button size="sm" variant="outline" className="text-xs px-3 h-7" onClick={() => setShowPaypalModal(true)} data-testid="button-navbar-subscribe">Subscribe</Button>
                 )}
                 <Avatar className="w-8 h-8">
                   <AvatarImage src={user?.avatarUrl || undefined} alt={user?.name || "User"} />
