@@ -17,16 +17,12 @@ import {
 } from "@/components/ui/dialog";
 import {
   Archive,
-  Settings,
   LogOut,
-  BarChart3,
   Clock,
-  FileText,
   ArrowLeft,
   Lock,
   ChevronLeft,
   ChevronRight,
-  Zap,
 } from "lucide-react";
 import type { Report, Subscription } from "@shared/schema";
 import { canAccessReport, isAdmin as checkIsAdmin, isSubscribed as checkIsSubscribed } from "@/lib/access";
@@ -39,31 +35,18 @@ import { useSearch, useLocation } from "wouter";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 
-const DAY_FILTERS = [
-  "all",
-  "weekly-outlook",
-  "market-pulse",
-  "deep-dive",
-  "data-drop",
-  "week-wrap",
-  "free",
-] as const;
+const FILTERS = ["all", "free", "premium"] as const;
 
 function reportTypeLabel(type: string) {
   const labels: Record<string, string> = {
     free: "Free",
-    "weekly-outlook": "Weekly Outlook",
-    "market-pulse": "Market Pulse",
-    "deep-dive": "Deep Dive",
-    "data-drop": "Data Drop",
-    "week-wrap": "Week Wrap",
+    premium: "Premium",
   };
   return labels[type] || type.charAt(0).toUpperCase() + type.slice(1);
 }
 
 function reportTypeVariant(type: string): "default" | "secondary" | "outline" {
-  if (type === "weekly-outlook" || type === "deep-dive") return "default";
-  if (type === "market-pulse" || type === "data-drop") return "secondary";
+  if (type === "premium") return "default";
   return "outline";
 }
 
@@ -112,7 +95,9 @@ export default function ArchivePage() {
 
   const filteredReports = useMemo(() => {
     if (filterType === "all") return sortedReports;
-    return sortedReports.filter((r) => r.reportType === filterType);
+    if (filterType === "free") return sortedReports.filter((r) => r.reportType === "free");
+    if (filterType === "premium") return sortedReports.filter((r) => r.reportType !== "free");
+    return sortedReports;
   }, [sortedReports, filterType]);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -188,27 +173,18 @@ export default function ArchivePage() {
 
           <nav className="flex items-center gap-1">
             <Link href="/dashboard">
-              <button
-                className="text-base font-normal px-4 py-3 border-b-2 border-transparent text-muted-foreground bg-transparent hover:text-foreground hover:border-[#1a1f36]/40 transition-colors"
-                data-testid="link-dashboard"
-              >
+              <button className="text-base font-normal px-4 py-3 border-b-2 border-transparent text-muted-foreground bg-transparent hover:text-foreground hover:border-[#1a1f36]/40 transition-colors" data-testid="link-dashboard">
                 Dashboard
               </button>
             </Link>
             <Link href="/archive">
-              <button
-                className="text-base font-medium px-4 py-3 border-b-2 border-[#1a1f36] text-foreground bg-transparent hover:bg-transparent transition-colors"
-                data-testid="link-archive-active"
-              >
+              <button className="text-base font-medium px-4 py-3 border-b-2 border-[#1a1f36] text-foreground bg-transparent hover:bg-transparent transition-colors" data-testid="link-archive-active">
                 Archive
               </button>
             </Link>
             {userIsAdmin && (
               <Link href="/admin">
-                <button
-                  className="text-base font-normal px-4 py-3 border-b-2 border-transparent text-muted-foreground bg-transparent hover:text-foreground hover:border-[#1a1f36]/40 transition-colors"
-                  data-testid="link-admin"
-                >
+                <button className="text-base font-normal px-4 py-3 border-b-2 border-transparent text-muted-foreground bg-transparent hover:text-foreground hover:border-[#1a1f36]/40 transition-colors" data-testid="link-admin">
                   Admin
                 </button>
               </Link>
@@ -273,16 +249,16 @@ export default function ArchivePage() {
 
         {/* ── Filter Buttons ── */}
         <div className="flex items-center gap-2 flex-wrap">
-          {DAY_FILTERS.map((day) => (
+          {FILTERS.map((f) => (
             <Button
-              key={day}
-              variant={filterType === day ? "default" : "outline"}
+              key={f}
+              variant={filterType === f ? "default" : "outline"}
               size="sm"
-              onClick={() => setFilterType(day)}
-              data-testid={`button-filter-${day}`}
+              onClick={() => setFilterType(f)}
+              data-testid={`button-filter-${f}`}
               className="toggle-elevate"
             >
-              {day === "all" ? "All" : reportTypeLabel(day)}
+              {f === "all" ? "All" : reportTypeLabel(f)}
             </Button>
           ))}
         </div>
@@ -325,7 +301,6 @@ export default function ArchivePage() {
                 >
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="space-y-2 flex-1 min-w-0">
-                      {/* Badge */}
                       <div className="flex items-center gap-2 flex-wrap">
                         {isFree ? (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border border-emerald-500/60 text-emerald-500 bg-emerald-500/10">
@@ -334,20 +309,17 @@ export default function ArchivePage() {
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-[#1a1f36] text-blue-300 border border-blue-500/20">
                             <Lock className="w-2.5 h-2.5" />
-                            {reportTypeLabel(report.reportType)}
+                            Premium
                           </span>
                         )}
                       </div>
-                      {/* Title */}
                       <h3 className="font-semibold text-sm line-clamp-1" data-testid={`text-report-title-${report.id}`}>
                         {report.title}
                       </h3>
-                      {/* Preview */}
                       <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed" data-testid={`text-report-preview-${report.id}`}>
                         {report.content.replace(/[#*_`\[\]]/g, "").slice(0, 200)}
                       </p>
                     </div>
-                    {/* Date */}
                     <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0 mt-0.5" data-testid={`text-report-date-${report.id}`}>
                       <Clock className="w-3 h-3" />
                       {format(new Date(report.publishedAt), "MMM d, yyyy")}
@@ -357,7 +329,6 @@ export default function ArchivePage() {
               );
             })}
 
-            {/* ── Pagination ── */}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-4 pt-4" data-testid="pagination-controls">
                 <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} data-testid="button-prev-page">
@@ -382,12 +353,10 @@ export default function ArchivePage() {
         )}
       </main>
 
-      {/* ── Footer ── */}
       <footer className="border-t px-6 py-4 text-center">
         <p className="text-xs text-muted-foreground">GMR &middot; Global Market Radar</p>
       </footer>
 
-      {/* ── Subscribe Modal ── */}
       <Dialog open={showSubscribeModal} onOpenChange={setShowSubscribeModal}>
         <DialogContent className="max-w-md" data-testid="dialog-subscribe">
           <DialogHeader>
@@ -396,9 +365,7 @@ export default function ArchivePage() {
               Institutional-quality macro analysis for individual investors. $12/month — founding member rate.
             </DialogDescription>
           </DialogHeader>
-
           {isGuest ? (
-            // 비로그인: 회원가입 유도
             <div className="space-y-3 pt-2">
               <p className="text-sm text-muted-foreground">
                 Create a free account to subscribe and access all premium reports.
@@ -417,7 +384,6 @@ export default function ArchivePage() {
               </div>
             </div>
           ) : paypalClientId && paypalPlanId ? (
-            // 로그인 유저: PayPal 결제
             <PayPalScriptProvider options={{ clientId: paypalClientId, vault: true, intent: "subscription", locale: "en_US" }}>
               <PayPalButtons
                 style={{ shape: "rect", color: "gold", layout: "vertical", label: "subscribe" }}
