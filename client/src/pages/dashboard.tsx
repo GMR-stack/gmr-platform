@@ -63,14 +63,14 @@ function MarketSnapshot() {
           const ticker = data?.[key];
           const isPos = (ticker?.change ?? 0) >= 0;
           return (
-            <div key={key} className="rounded-xl p-4 bg-[#0f1117] border border-white/8 space-y-2" data-testid={`card-market-${key}`}>
+            <div key={key} className="rounded-xl p-4 bg-muted/50 border border-border space-y-2" data-testid={`card-market-${key}`}>
               {isLoading || !ticker ? (
-                <><Skeleton className="h-3 w-20 bg-white/10" /><Skeleton className="h-6 w-24 bg-white/10" /><Skeleton className="h-3 w-14 bg-white/10" /></>
+                <><Skeleton className="h-3 w-20" /><Skeleton className="h-6 w-24" /><Skeleton className="h-3 w-14" /></>
               ) : (
                 <>
-                  <p className="text-[11px] font-medium text-white/50 uppercase tracking-wider">{ticker.name}</p>
-                  <p className="text-xl font-bold text-white font-mono">{formatPrice(key, ticker.price)}</p>
-                  <div className={`flex items-center gap-1 text-xs font-medium ${isPos ? "text-emerald-400" : "text-red-400"}`}>
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{ticker.name}</p>
+                  <p className="text-xl font-bold text-foreground font-mono">{formatPrice(key, ticker.price)}</p>
+                  <div className={`flex items-center gap-1 text-xs font-medium ${isPos ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
                     {isPos ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                     {ticker.change != null ? (isPos ? "+" : "") + ticker.change.toFixed(2) + "%" : "—"}
                   </div>
@@ -126,18 +126,18 @@ function SentimentGaugeInline() {
     <div className="w-full space-y-3">
       <div className="flex items-end gap-2">
         <span className="text-4xl font-bold font-mono leading-none" style={{ color }}>{score.toFixed(1)}</span>
-        <span className="text-xs text-white/30 pb-1">/ 100</span>
+        <span className="text-xs text-muted-foreground pb-1">/ 100</span>
       </div>
-      <div className="w-full bg-white/[0.06] rounded h-1.5 overflow-hidden">
+      <div className="w-full bg-muted rounded h-1.5 overflow-hidden">
         <div className="h-full rounded transition-all duration-700" style={{ width: `${pct}%`, background: color }} />
       </div>
       <div className="flex justify-between">
-        <span className="text-[10px] text-white/25">Fear</span>
-        <span className="text-[10px] text-white/25">Greed</span>
+        <span className="text-[10px] text-muted-foreground">Fear</span>
+        <span className="text-[10px] text-muted-foreground">Greed</span>
       </div>
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-semibold px-2 py-0.5 rounded" style={{ color, background: color + "20" }}>{label}</span>
-        <span className="text-[10px] text-white/25">CNN F&amp;G</span>
+        <span className="text-[10px] text-muted-foreground">CNN F&amp;G</span>
       </div>
     </div>
   );
@@ -377,8 +377,8 @@ export default function DashboardPage() {
               ? <ActiveSubscriptionCard subscription={subscription} onCancel={() => setShowCancelModal(true)} />
               : <SubscribePromptCard onSubscribe={() => setShowPaypalModal(true)} />}
           </Card>
-          <Card className="p-5 flex flex-col bg-[#0f1117] border-[#0f1117]" data-testid="card-sentiment-gauge">
-            <p className="text-xs font-medium uppercase tracking-wider text-white/50 mb-4">Market Sentiment</p>
+          <Card className="p-5 flex flex-col bg-muted/50 border border-border" data-testid="card-sentiment-gauge">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4">Market Sentiment</p>
             <div className="flex-1 flex flex-col justify-center"><SentimentGaugeInline /></div>
           </Card>
         </div>
