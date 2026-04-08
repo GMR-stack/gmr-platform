@@ -157,7 +157,7 @@ function ReportTypeBadge({ type }: { type: string }) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-[#1a1f36] text-blue-300 border border-blue-500/20">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-500/20 text-blue-400 border border-blue-400/30">
       <Lock className="w-2.5 h-2.5" />{reportTypeLabel(type)}
     </span>
   );
@@ -326,7 +326,7 @@ export default function DashboardPage() {
             {isGuest ? (
               <>
                 <Link href="/login"><Button variant="outline" size="sm" className="text-xs h-7">Log In</Button></Link>
-                <Button size="sm" variant="outline" className="text-xs px-3 h-7" onClick={() => setShowPaypalModal(true)} data-testid="button-navbar-subscribe">Subscribe</Button>
+                <button onClick={() => setShowPaypalModal(true)} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 bg-transparent border-none cursor-pointer" data-testid="button-navbar-subscribe">Subscribe</button>
               </>
             ) : (
               <>
@@ -334,7 +334,7 @@ export default function DashboardPage() {
                   <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[10px] px-2 py-0.5" data-testid="badge-premium">Premium</Badge>
                 )}
                 {!userIsAdmin && !userIsSubscribed && (
-                  <Button size="sm" variant="outline" className="text-xs px-3 h-7" onClick={() => setShowPaypalModal(true)} data-testid="button-navbar-subscribe">Subscribe</Button>
+                  <button onClick={() => setShowPaypalModal(true)} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 bg-transparent border-none cursor-pointer" data-testid="button-navbar-subscribe">Subscribe</button>
                 )}
                 <Avatar className="w-8 h-8">
                   <AvatarImage src={user?.avatarUrl || undefined} alt={user?.name || "User"} />
@@ -355,7 +355,7 @@ export default function DashboardPage() {
               {isGuest ? "Global Market Radar" : `${getGreeting()}${firstName ? `, ${firstName}` : ""}`}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {isGuest ? "Institutional-quality macro analysis, delivered daily." : "Your latest financial research and market insights."}
+              {isGuest ? "Institutional-quality macro analysis, published 2–3× weekly." : "Your latest financial research and market insights."}
             </p>
           </div>
           <div className="text-right">
