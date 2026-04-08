@@ -455,6 +455,8 @@ ${freeReportUrls}
       { key: "brent",  symbol: "BZ%3DF",  name: "Brent Crude" },
       { key: "dxy",    symbol: "DX-Y.NYB", name: "DXY" },
       { key: "us10y",  symbol: "%5ETNX",  name: "US 10Y" },
+      { key: "gold",   symbol: "GC%3DF",  name: "Gold" },
+      { key: "vix",    symbol: "%5EVIX",  name: "VIX" },
     ];
     try {
       const results = await Promise.all(

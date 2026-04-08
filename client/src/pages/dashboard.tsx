@@ -36,13 +36,15 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 
 // ─── Market Snapshot ────────────────────────────────────────────────────────
 interface TickerData { key: string; name: string; price: number | null; change: number | null; }
-interface SnapshotMap { sp500: TickerData; brent: TickerData; dxy: TickerData; us10y: TickerData; }
+interface SnapshotMap { sp500: TickerData; brent: TickerData; dxy: TickerData; us10y: TickerData; gold: TickerData; vix: TickerData; }
 
 function formatPrice(key: string, price: number | null) {
   if (price == null) return "—";
   if (key === "us10y") return price.toFixed(3) + "%";
+  if (key === "vix") return price.toFixed(2);
   if (key === "dxy") return price.toFixed(2);
   if (key === "brent") return "$" + price.toFixed(2);
+  if (key === "gold") return "$" + price.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   return price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -52,11 +54,11 @@ function MarketSnapshot() {
     refetchInterval: 60_000,
     staleTime: 55_000,
   });
-  const order: (keyof SnapshotMap)[] = ["sp500", "brent", "dxy", "us10y"];
+  const order: (keyof SnapshotMap)[] = ["sp500", "brent", "gold", "dxy", "us10y", "vix"];
   return (
     <div className="space-y-3">
       <h2 className="text-lg font-serif font-semibold">Market Snapshot</h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {order.map((key) => {
           const ticker = data?.[key];
           const isPos = (ticker?.change ?? 0) >= 0;
