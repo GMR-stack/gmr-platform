@@ -79,9 +79,9 @@ function MarketSnapshot() {
           return (
             <div
               key={key}
-              className="rounded-xl p-4 bg-muted/40 border border-border space-y-1.5 relative overflow-hidden"
+              className="rounded-xl p-4 border border-border space-y-1.5 relative overflow-hidden"
               data-testid={`card-market-${key}`}
-              style={{ borderLeft: `3px solid ${accent}` }}
+              style={{ borderLeft: `3px solid ${accent}`, backgroundColor: "rgba(56, 100, 180, 0.07)" }}
             >
               {/* subtle glow */}
               <div className="absolute top-0 right-0 w-16 h-16 rounded-full opacity-5 pointer-events-none"
@@ -226,7 +226,7 @@ function SubscribePromptCard({ onSubscribe }: { onSubscribe: () => void }) {
   return (
     <div className="h-full flex flex-col justify-between space-y-5">
       <div className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Welcome to GMR</p>
+        <p className="text-sm font-bold uppercase tracking-widest text-foreground">Welcome to GMR</p>
         <p className="text-lg font-bold leading-snug">
           Start with free reports.<br />
           Upgrade when you're ready.
