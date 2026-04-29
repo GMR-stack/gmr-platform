@@ -151,7 +151,6 @@ ${freeReportUrls}
       const user = (req as any).user;
       console.log("[delete-account] Starting deletion for user:", { id: user.id, email: user.email, supabaseId: user.supabaseId });
 
-      // Step 1: Cancel PayPal subscription if active
       const subscription = await storage.getSubscription(user.id);
       console.log("[delete-account] Subscription found:", subscription ? { id: subscription.id, status: subscription.status } : "none");
 
@@ -183,7 +182,6 @@ ${freeReportUrls}
         }
       }
 
-      // Step 2: Delete all DB rows (report_reads → subscriptions → users)
       console.log("[delete-account] Deleting DB records for userId:", user.id);
       try {
         await storage.deleteAccount(user.id);
@@ -193,7 +191,6 @@ ${freeReportUrls}
         throw dbErr;
       }
 
-      // Step 3: Delete from Supabase Auth using Admin client
       const supabaseUrl = process.env.VITE_SUPABASE_URL;
       const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
       console.log("[delete-account] Supabase config — url present:", !!supabaseUrl, "serviceRoleKey present:", !!serviceRoleKey);
@@ -448,15 +445,15 @@ ${freeReportUrls}
     }
   });
 
-  // Market data proxies (avoid browser CORS restrictions)
+  // ── Market data ──────────────────────────────────────────────────────────
   app.get("/api/market/snapshot", async (req, res) => {
     const tickers = [
-      { key: "sp500",  symbol: "%5EGSPC", name: "S&P 500" },
-      { key: "brent",  symbol: "BZ%3DF",  name: "Brent Crude" },
+      { key: "sp500",  symbol: "%5EGSPC",  name: "S&P 500" },
+      { key: "brent",  symbol: "BZ%3DF",   name: "Brent Crude" },
       { key: "dxy",    symbol: "DX-Y.NYB", name: "DXY" },
-      { key: "us10y",  symbol: "%5ETNX",  name: "US 10Y" },
-      { key: "gold",   symbol: "GC%3DF",  name: "Gold" },
-      { key: "vix",    symbol: "%5EVIX",  name: "VIX" },
+      { key: "us10y",  symbol: "%5ETNX",   name: "US 10Y" },
+      { key: "gold",   symbol: "GC%3DF",   name: "Gold" },
+      { key: "vix",    symbol: "%5EVIX",   name: "VIX" },
     ];
     try {
       const results = await Promise.all(
@@ -505,6 +502,47 @@ ${freeReportUrls}
       return res.json({ score, rating });
     } catch (err: any) {
       return res.status(500).json({ message: "Failed to fetch sentiment data" });
+    }
+  });
+
+  // ── Economic Calendar ────────────────────────────────────────────────────
+  app.get("/api/economic-calendar", async (_req, res) => {
+    try {
+      const apiKey = process.env.FMP_API_KEY;
+      if (!apiKey) return res.status(500).json({ message: "FMP API key not configured" });
+
+      const from = new Date().toISOString().split("T")[0];
+      const to = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+      const r = await fetch(
+        `https://financialmodelingprep.com/api/v3/economic_calendar?from=${from}&to=${to}&apikey=${apiKey}`,
+        { headers: { "User-Agent": "Mozilla/5.0" } }
+      );
+      if (!r.ok) return res.status(502).json({ message: "FMP API error" });
+
+      const data = await r.json() as any[];
+
+      if (!Array.isArray(data)) {
+        return res.status(502).json({ message: "Unexpected FMP response" });
+      }
+
+      const important = data
+        .filter((e: any) => e.impact === "High")
+        .slice(0, 8)
+        .map((e: any) => ({
+          date: e.date,
+          event: e.event,
+          country: e.country,
+          impact: e.impact,
+          actual: e.actual ?? null,
+          estimate: e.estimate ?? null,
+          previous: e.previous ?? null,
+        }));
+
+      return res.json(important);
+    } catch (err: any) {
+      console.error("Economic calendar error:", err);
+      return res.status(500).json({ message: "Failed to fetch economic calendar" });
     }
   });
 
