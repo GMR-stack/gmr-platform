@@ -407,39 +407,41 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* ── Dark top zone ── */}
-      <div style={{ background: "linear-gradient(to bottom, #0f172a 0%, #0f172a 85%, transparent 100%)" }} className="pb-8">
-        <div className="max-w-6xl mx-auto w-full px-6 pt-6 space-y-5">
+      {/* ── Background grid pattern ── */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0 opacity-[0.025]"
+        style={{
+          backgroundImage: `linear-gradient(#6366f1 1px, transparent 1px), linear-gradient(to right, #6366f1 1px, transparent 1px)`,
+          backgroundSize: "48px 48px",
+        }}
+      />
 
-          {/* ── Welcome + Date ── */}
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="space-y-0.5">
-              <h1 className="text-xl font-serif font-bold tracking-tight text-white" data-testid="text-welcome">
-                {isGuest ? "Global Market Radar" : `${getGreeting()}${firstName ? `, ${firstName}` : ""}`}
-              </h1>
-              <p className="text-xs text-white/50">
-                {isGuest ? "Institutional-quality macro analysis, published 2–3× weekly." : "Your latest financial research and market insights."}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-medium text-white" data-testid="text-today-date">
-                {new Date().toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-              </p>
-              <p className="text-xs text-white/50 mt-0.5">
-                {new Date().toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit", hour12: true })} ET
-              </p>
-            </div>
+      <main className="relative z-10 flex-1 max-w-6xl mx-auto w-full px-6 py-6 space-y-6">
+
+        {/* ── Welcome + Date ── */}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="space-y-0.5">
+            <h1 className="text-xl font-serif font-bold tracking-tight" data-testid="text-welcome">
+              {isGuest ? "Global Market Radar" : `${getGreeting()}${firstName ? `, ${firstName}` : ""}`}
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              {isGuest ? "Institutional-quality macro analysis, published 2–3× weekly." : "Your latest financial research and market insights."}
+            </p>
           </div>
-
-          {/* ── Latest Report Banner ── */}
-          {!reportsLoading && recentReports && recentReports.length > 0 && (
-            <LatestReportBanner reports={recentReports} onOpen={handleReportOpen} />
-          )}
-
+          <div className="text-right">
+            <p className="text-sm font-medium" data-testid="text-today-date">
+              {new Date().toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {new Date().toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit", hour12: true })} ET
+            </p>
+          </div>
         </div>
-      </div>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-6 pb-8 space-y-6 -mt-2">
+        {/* ── Latest Report Banner ── */}
+        {!reportsLoading && recentReports && recentReports.length > 0 && (
+          <LatestReportBanner reports={recentReports} onOpen={handleReportOpen} />
+        )}
 
         {/* ── Subscription + Sentiment ── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
