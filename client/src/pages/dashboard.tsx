@@ -25,6 +25,7 @@ import {
   Clock,
   Lock,
   CheckCircle2,
+  Zap,
 } from "lucide-react";
 import type { Report, Subscription } from "@shared/schema";
 import { isAdmin as checkIsAdmin, isSubscribed as checkIsSubscribed } from "@/lib/access";
@@ -37,6 +38,15 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 // ─── Market Snapshot ────────────────────────────────────────────────────────
 interface TickerData { key: string; name: string; price: number | null; change: number | null; }
 interface SnapshotMap { sp500: TickerData; brent: TickerData; dxy: TickerData; us10y: TickerData; gold: TickerData; vix: TickerData; }
+
+const tickerAccent: Record<string, string> = {
+  sp500:  "#6366f1", // indigo
+  brent:  "#f97316", // orange
+  gold:   "#eab308", // yellow
+  dxy:    "#06b6d4", // cyan
+  us10y:  "#8b5cf6", // violet
+  vix:    "#ec4899", // pink
+};
 
 function formatPrice(key: string, price: number | null) {
   if (price == null) return "—";
@@ -57,20 +67,32 @@ function MarketSnapshot() {
   const order: (keyof SnapshotMap)[] = ["sp500", "brent", "gold", "dxy", "us10y", "vix"];
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-serif font-semibold">Market Snapshot</h2>
+      <div className="flex items-center gap-2">
+        <span className="w-1 h-4 rounded-full bg-indigo-500 inline-block" />
+        <h2 className="text-base font-semibold">Market Snapshot</h2>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {order.map((key) => {
           const ticker = data?.[key];
           const isPos = (ticker?.change ?? 0) >= 0;
+          const accent = tickerAccent[key] || "#6366f1";
           return (
-            <div key={key} className="rounded-xl p-4 bg-muted/50 border border-border space-y-2" data-testid={`card-market-${key}`}>
+            <div
+              key={key}
+              className="rounded-xl p-4 bg-muted/40 border border-border space-y-1.5 relative overflow-hidden"
+              data-testid={`card-market-${key}`}
+              style={{ borderLeft: `3px solid ${accent}` }}
+            >
+              {/* subtle glow */}
+              <div className="absolute top-0 right-0 w-16 h-16 rounded-full opacity-5 pointer-events-none"
+                style={{ background: accent, filter: "blur(20px)" }} />
               {isLoading || !ticker ? (
-                <><Skeleton className="h-3 w-20" /><Skeleton className="h-6 w-24" /><Skeleton className="h-3 w-14" /></>
+                <><Skeleton className="h-3 w-20" /><Skeleton className="h-7 w-24" /><Skeleton className="h-3 w-14" /></>
               ) : (
                 <>
-                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{ticker.name}</p>
-                  <p className="text-xl font-bold text-foreground font-mono">{formatPrice(key, ticker.price)}</p>
-                  <div className={`flex items-center gap-1 text-xs font-medium ${isPos ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: accent }}>{ticker.name}</p>
+                  <p className="text-2xl font-bold text-foreground font-mono leading-none">{formatPrice(key, ticker.price)}</p>
+                  <div className={`flex items-center gap-1 text-xs font-medium ${isPos ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
                     {isPos ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                     {ticker.change != null ? (isPos ? "+" : "") + ticker.change.toFixed(2) + "%" : "—"}
                   </div>
@@ -145,10 +167,7 @@ function SentimentGaugeInline() {
 
 // ─── Report Type Badge ───────────────────────────────────────────────────────
 function reportTypeLabel(type: string) {
-  const labels: Record<string, string> = {
-    free: "Free",
-    premium: "Premium",
-  };
+  const labels: Record<string, string> = { free: "Free", premium: "Premium" };
   return labels[type] || type.charAt(0).toUpperCase() + type.slice(1);
 }
 
@@ -159,9 +178,46 @@ function ReportTypeBadge({ type }: { type: string }) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-[#1a1f36] text-blue-300 border border-blue-500/20">
-      <Lock className="w-2.5 h-2.5" />{reportTypeLabel(type)}
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
+      <Lock className="w-2.5 h-2.5" />Premium
     </span>
+  );
+}
+
+// ─── Latest Report Banner ────────────────────────────────────────────────────
+function LatestReportBanner({ reports, onOpen }: { reports: Report[] | undefined; onOpen: (r: Report) => void }) {
+  const latest = reports?.[0];
+  if (!latest) return null;
+  const isFree = latest.reportType === "free";
+  return (
+    <div
+      className="relative overflow-hidden rounded-xl px-6 py-5 cursor-pointer group"
+      style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)" }}
+      onClick={() => onOpen(latest)}
+    >
+      {/* glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-20 opacity-20 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse, #6366f1, transparent)" }} />
+      <div className="relative flex items-start justify-between gap-4 flex-wrap">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-white/50">Latest Report</span>
+            {isFree
+              ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-semibold">Free</span>
+              : <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-semibold">Premium</span>
+            }
+          </div>
+          <p className="text-white font-semibold text-base leading-snug group-hover:text-blue-300 transition-colors">
+            {latest.title}
+          </p>
+          <p className="text-white/40 text-xs">
+            {format(new Date(latest.publishedAt), "MMMM d, yyyy")}
+          </p>
+        </div>
+        <ChevronRight className="w-5 h-5 text-white/30 group-hover:text-white/60 transition-colors shrink-0 mt-1" />
+      </div>
+    </div>
   );
 }
 
@@ -292,6 +348,14 @@ export default function DashboardPage() {
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : user?.email?.charAt(0).toUpperCase() || "?";
 
+  const handleReportOpen = (report: Report) => {
+    const isFree = report.reportType === "free";
+    const canRead = isFree || userIsSubscribed || userIsAdmin;
+    if (isFree) navigate(`/report/${report.id}`);
+    else if (canRead) navigate(`/archive?report=${report.id}`);
+    else setShowPaypalModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* ── Header ── */}
@@ -343,14 +407,15 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8 space-y-8">
-        {/* ── Welcome ── */}
+      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-6 space-y-6">
+
+        {/* ── Welcome + Date ── */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-serif font-bold tracking-tight" data-testid="text-welcome">
+          <div className="space-y-0.5">
+            <h1 className="text-xl font-serif font-bold tracking-tight" data-testid="text-welcome">
               {isGuest ? "Global Market Radar" : `${getGreeting()}${firstName ? `, ${firstName}` : ""}`}
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {isGuest ? "Institutional-quality macro analysis, published 2–3× weekly." : "Your latest financial research and market insights."}
             </p>
           </div>
@@ -364,6 +429,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* ── Latest Report Banner ── */}
+        {!reportsLoading && recentReports && recentReports.length > 0 && (
+          <LatestReportBanner reports={recentReports} onOpen={handleReportOpen} />
+        )}
+
         {/* ── Subscription + Sentiment ── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className={`p-5 md:col-span-2 ${userIsSubscribed ? "bg-[#1a1f36] text-white border-[#1a1f36]" : "border-border"}`} data-testid="card-subscription-status">
@@ -371,7 +441,7 @@ export default function DashboardPage() {
               ? <ActiveSubscriptionCard subscription={subscription} onCancel={() => setShowCancelModal(true)} />
               : <SubscribePromptCard onSubscribe={() => setShowPaypalModal(true)} />}
           </Card>
-          <Card className="p-5 flex flex-col bg-muted/50 border border-border" data-testid="card-sentiment-gauge">
+          <Card className="p-5 flex flex-col bg-muted/40 border border-border" data-testid="card-sentiment-gauge">
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4">Market Sentiment</p>
             <div className="flex-1 flex flex-col justify-center"><SentimentGaugeInline /></div>
           </Card>
@@ -381,30 +451,38 @@ export default function DashboardPage() {
         <MarketSnapshot />
 
         {/* ── Recent Reports ── */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <h2 className="text-lg font-serif font-semibold">Recent Reports</h2>
-            <Link href="/archive"><Button variant="ghost" size="sm" data-testid="link-view-all">View all <ChevronRight className="w-4 h-4 ml-1" /></Button></Link>
+            <div className="flex items-center gap-2">
+              <span className="w-1 h-4 rounded-full bg-emerald-500 inline-block" />
+              <h2 className="text-base font-semibold">Recent Reports</h2>
+            </div>
+            <Link href="/archive"><Button variant="ghost" size="sm" className="text-xs" data-testid="link-view-all">View all <ChevronRight className="w-3 h-3 ml-1" /></Button></Link>
           </div>
           {reportsLoading ? (
-            <div className="space-y-3">{[1,2,3].map((i) => (<Card key={i} className="p-5"><div className="space-y-3"><Skeleton className="h-5 w-24" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></div></Card>))}</div>
+            <div className="space-y-2">{[1,2,3].map((i) => (<Card key={i} className="p-4"><div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-4 w-full" /><Skeleton className="h-3 w-3/4" /></div></Card>))}</div>
           ) : recentReports && recentReports.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {recentReports.slice(0, 5).map((report) => {
                 const isFree = report.reportType === "free";
                 const canRead = isFree || userIsSubscribed || userIsAdmin;
-                const handleClick = () => {
-                  if (isFree) navigate(`/report/${report.id}`);
-                  else if (canRead) navigate(`/archive?report=${report.id}`);
-                  else setShowPaypalModal(true);
-                };
+                const borderColor = isFree ? "#10b981" : "#6366f1";
                 return (
-                  <Card key={report.id} className={`p-5 hover-elevate cursor-pointer transition-colors ${!canRead ? "opacity-80 hover:opacity-100" : ""}`} onClick={handleClick} data-testid={`card-report-${report.id}`}>
+                  <Card
+                    key={report.id}
+                    className={`p-4 cursor-pointer transition-all hover:shadow-md ${!canRead ? "opacity-75 hover:opacity-100" : ""}`}
+                    style={{ borderLeft: `3px solid ${borderColor}` }}
+                    onClick={() => handleReportOpen(report)}
+                    data-testid={`card-report-${report.id}`}
+                  >
                     <div className="flex items-start justify-between gap-4 flex-wrap">
-                      <div className="space-y-2 flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap"><ReportTypeBadge type={report.reportType} /></div>
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <ReportTypeBadge type={report.reportType} />
+                          {!canRead && <Lock className="w-3 h-3 text-muted-foreground" />}
+                        </div>
                         <h3 className="font-semibold text-sm leading-snug line-clamp-1">{report.title}</h3>
-                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{report.content.replace(/[#*_`]/g, "").slice(0, 180)}...</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{report.content.replace(/[#*_`]/g, "").slice(0, 160)}...</p>
                       </div>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0 mt-0.5">
                         <Clock className="w-3 h-3" />{format(new Date(report.publishedAt), "MMM d, yyyy")}
