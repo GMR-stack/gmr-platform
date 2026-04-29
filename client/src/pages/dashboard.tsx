@@ -112,9 +112,9 @@ function SentimentGaugeInline() {
   if (isLoading) {
     return (
       <div className="w-full space-y-3">
-        <Skeleton className="h-10 w-24 bg-white/10" />
-        <Skeleton className="h-1.5 w-full bg-white/10" />
-        <Skeleton className="h-4 w-20 bg-white/10" />
+        <Skeleton className="h-10 w-24" />
+        <Skeleton className="h-1.5 w-full" />
+        <Skeleton className="h-4 w-20" />
       </div>
     );
   }
@@ -167,39 +167,33 @@ function ReportTypeBadge({ type }: { type: string }) {
 
 // ─── Subscription Cards ──────────────────────────────────────────────────────
 function SubscribePromptCard({ onSubscribe }: { onSubscribe: () => void }) {
-  const perks = [
-    "2–3 reports per week on macro & geopolitics",
-    "2nd & 3rd order market analysis",
-    "Full archive access",
-  ];
   return (
-    <div className="h-full flex flex-col justify-between space-y-4">
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Subscription</p>
-          <Badge variant="secondary" className="text-xs">Inactive</Badge>
-        </div>
-        <div className="flex items-baseline gap-2 pt-1">
-          <span className="text-3xl font-bold tracking-tight">$12</span>
-          <span className="text-sm text-muted-foreground">/month</span>
-          <span className="text-xs text-amber-500 font-medium ml-1">Founding rate</span>
-        </div>
+    <div className="h-full flex flex-col justify-between space-y-5">
+      <div className="space-y-2">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Welcome to GMR</p>
+        <p className="text-lg font-bold leading-snug">
+          Start with free reports.<br />
+          Upgrade when you're ready.
+        </p>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          GMR covers what markets haven't priced yet — geopolitics, central banks, and supply chains.
+          Free reports are available to all readers. Premium unlocks deeper analysis, 2–3× per week.
+        </p>
       </div>
-      <ul className="space-y-1.5">
-        {perks.map((perk) => (
-          <li key={perk} className="flex items-center gap-2 text-xs text-muted-foreground">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />{perk}
-          </li>
-        ))}
-      </ul>
-      {/* subtle 텍스트 링크 스타일 — 압박감 없이 */}
-      <button
-        onClick={onSubscribe}
-        className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 cursor-pointer bg-transparent border-none p-0 text-left transition-colors"
-        data-testid="button-subscribe-card"
-      >
-        Unlock premium access → $12/mo
-      </button>
+      <div className="flex items-center gap-3 flex-wrap">
+        <Link href="/archive">
+          <Button variant="outline" size="sm" data-testid="button-browse-free">
+            Browse Free Reports
+          </Button>
+        </Link>
+        <button
+          onClick={onSubscribe}
+          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 cursor-pointer bg-transparent border-none p-0 transition-colors"
+          data-testid="button-subscribe-card"
+        >
+          Unlock Premium →
+        </button>
+      </div>
     </div>
   );
 }
