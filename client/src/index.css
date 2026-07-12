@@ -2,6 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
+/* THE NAVY BRAND TOKENS */
+:root {
+  --navy-deep: #0a1f44;
+  --navy-mid: #122a52;
+  --cyan-bright: #00d4ff;
+  --font-brand: 'Montserrat', 'Inter', sans-serif;
+}
+
+.font-brand {
+  font-family: var(--font-brand);
+}
+
+@keyframes navy-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(4%, -6%) scale(1.08); }
+  66% { transform: translate(-3%, 4%) scale(0.96); }
+}
+
+@keyframes navy-drift-slow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-5%, 5%) scale(1.1); }
+}
+
+@keyframes navy-line-flow {
+  to { stroke-dashoffset: -400; }
+}
+
+.animate-navy-drift {
+  animation: navy-drift 14s ease-in-out infinite;
+}
+
+.animate-navy-drift-slow {
+  animation: navy-drift-slow 20s ease-in-out infinite;
+}
+
+.animate-navy-line-flow {
+  stroke-dasharray: 12 10;
+  animation: navy-line-flow 6s linear infinite;
+}
+
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0,0,0, .10);

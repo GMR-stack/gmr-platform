@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /archive
+Disallow: /oauth/consent
+
+Sitemap: https://www.globalmarketradar.com/sitemap.xml

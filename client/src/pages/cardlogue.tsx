@@ -1,0 +1,293 @@
+import { Link } from "wouter";
+import { Helmet } from "react-helmet-async";
+import { motion } from "framer-motion";
+import { NavyLogo } from "@/components/navy-logo";
+import { LanguageToggle } from "@/components/language-toggle";
+import { Reveal } from "@/components/reveal";
+import { Magnetic } from "@/components/magnetic";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { useLang } from "@/lib/i18n";
+import { translations } from "@/lib/translations";
+import { ScanLine, QrCode, FolderKanban, Target, Users, Wallet, Download, ShieldCheck, Mail } from "lucide-react";
+
+const NAVY = "#0A1F44";
+// Gold/amber accent instead of the home page's cyan — reads as business
+// cards & networking rather than the Navy brand's digital-ocean theme.
+const GOLD = "#D4AF37";
+
+function Header() {
+  const { lang } = useLang();
+  const t = translations[lang];
+  return (
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0A1F44]/90 backdrop-blur">
+      <div className="max-w-5xl mx-auto flex items-center justify-between px-4 h-14">
+        <NavyLogo linkTo="/" size="sm" variant="light" />
+        <div className="flex items-center gap-4">
+          <Link href="/" className="text-sm text-white/70 hover:text-white font-brand" data-testid="link-cardlogue-home">
+            {t.cardlogue.nav.home}
+          </Link>
+          <LanguageToggle variant="light" />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function DownloadButtons({ variant = "large" }: { variant?: "large" | "compact" }) {
+  const { lang } = useLang();
+  const t = translations[lang].cardlogue;
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+      <Magnetic>
+        <a href="#">
+          <Button
+            size={variant === "large" ? "lg" : "default"}
+            className="font-brand gap-2 font-semibold"
+            style={{ background: GOLD, color: NAVY }}
+            data-testid="button-download-appstore"
+          >
+            <Download className="w-4 h-4" /> {t.hero.ctaAppStore}
+          </Button>
+        </a>
+      </Magnetic>
+      <Magnetic>
+        <a href="#">
+          <Button
+            size={variant === "large" ? "lg" : "default"}
+            variant="outline"
+            className="font-brand gap-2 font-semibold text-white border-white/20 hover:bg-white/10"
+            data-testid="button-download-googleplay"
+          >
+            <Download className="w-4 h-4" /> {t.hero.ctaGooglePlay}
+          </Button>
+        </a>
+      </Magnetic>
+    </div>
+  );
+}
+
+function Hero() {
+  const { lang } = useLang();
+  const t = translations[lang].cardlogue;
+  return (
+    <section className="px-4 py-28 sm:py-36 text-center" data-testid="section-cardlogue-hero">
+      <div className="max-w-2xl mx-auto">
+        <motion.h1
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7 }}
+          className="font-brand text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight text-white mb-6 text-balance break-keep"
+          data-testid="text-cardlogue-hero-title"
+        >
+          {t.hero.title}
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.1 }}
+          className="text-white/70 text-lg leading-relaxed mb-10 text-balance break-keep"
+          data-testid="text-cardlogue-hero-subtitle"
+        >
+          {t.hero.subtitle}
+        </motion.p>
+        <DownloadButtons />
+      </div>
+    </section>
+  );
+}
+
+const VALUE_ICONS = [Target, Users, FolderKanban];
+
+function Values() {
+  const { lang } = useLang();
+  const t = translations[lang].cardlogue;
+  return (
+    <section className="py-20 px-4" data-testid="section-cardlogue-values">
+      <div className="max-w-5xl mx-auto grid sm:grid-cols-3 gap-6">
+        {t.values.map((value, i) => {
+          const Icon = VALUE_ICONS[i];
+          return (
+            <Reveal key={value.title} delay={i * 0.1}>
+              <Card className="h-full border border-white/15 bg-white/[0.04] backdrop-blur-sm" data-testid={`card-value-${i}`}>
+                <CardContent className="p-7 space-y-4 text-center sm:text-left flex flex-col items-center sm:items-start">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "rgba(212,175,55,0.14)" }}>
+                    <Icon className="w-6 h-6" style={{ color: GOLD }} strokeWidth={2} />
+                  </div>
+                  <h3 className="font-brand font-bold text-lg text-white">{value.title}</h3>
+                  <p className="text-sm text-white/60 leading-relaxed">{value.body}</p>
+                </CardContent>
+              </Card>
+            </Reveal>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+const FEATURE_ICONS = [ScanLine, QrCode, Wallet];
+
+function Features() {
+  const { lang } = useLang();
+  const t = translations[lang].cardlogue;
+  return (
+    <section className="py-20 px-4 border-t border-white/10" data-testid="section-cardlogue-features">
+      <div className="max-w-5xl mx-auto grid sm:grid-cols-3 gap-6">
+        {t.features.map((feature, i) => {
+          const Icon = FEATURE_ICONS[i];
+          return (
+            <Reveal key={feature.title} delay={i * 0.1}>
+              <Card className="h-full border border-white/15 bg-white/[0.04] backdrop-blur-sm" data-testid={`card-feature-${i}`}>
+                <CardContent className="p-7 space-y-4 text-center sm:text-left flex flex-col items-center sm:items-start">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "rgba(212,175,55,0.14)" }}>
+                    <Icon className="w-6 h-6" style={{ color: GOLD }} strokeWidth={2} />
+                  </div>
+                  <h3 className="font-brand font-bold text-lg text-white">{feature.title}</h3>
+                  <p className="text-sm text-white/60 leading-relaxed">{feature.body}</p>
+                </CardContent>
+              </Card>
+            </Reveal>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function Pricing() {
+  const { lang } = useLang();
+  const t = translations[lang].cardlogue;
+  return (
+    <section className="py-20 px-4 border-t border-white/10" data-testid="section-cardlogue-pricing">
+      <div className="max-w-5xl mx-auto">
+        <Reveal>
+          <div className="text-center mb-14">
+            <span className="text-xs font-brand font-semibold uppercase tracking-widest text-white/40">{t.pricing.eyebrow}</span>
+            <h2 className="font-brand text-2xl sm:text-3xl font-bold mt-3 text-white">{t.pricing.title}</h2>
+          </div>
+        </Reveal>
+        <div className="grid sm:grid-cols-3 gap-6">
+          {t.pricing.plans.map((plan, i) => (
+            <Reveal key={plan.name} delay={i * 0.1}>
+              <Card className="h-full border border-white/15 bg-white/[0.04] backdrop-blur-sm" data-testid={`card-plan-${i}`}>
+                <CardContent className="p-7 space-y-3 text-center">
+                  <h3 className="font-brand font-bold text-lg text-white">{plan.name}</h3>
+                  <p className="font-brand text-2xl font-black" style={{ color: GOLD }}>
+                    {plan.price}
+                  </p>
+                  <p className="text-sm text-white/60 leading-relaxed">{plan.audience}</p>
+                </CardContent>
+              </Card>
+            </Reveal>
+          ))}
+        </div>
+        <p className="text-center text-xs text-white/40 mt-8" data-testid="text-pricing-footnote">
+          {t.pricing.footnote}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function Security() {
+  const { lang } = useLang();
+  const t = translations[lang].cardlogue;
+  return (
+    <section className="py-20 px-4 border-t border-white/10" data-testid="section-cardlogue-security">
+      <div className="max-w-2xl mx-auto">
+        <Reveal>
+          <div className="flex items-center gap-3 justify-center mb-8">
+            <ShieldCheck className="w-6 h-6" style={{ color: GOLD }} />
+            <h2 className="font-brand text-2xl sm:text-3xl font-bold text-white">{t.security.title}</h2>
+          </div>
+        </Reveal>
+        <ul className="space-y-3">
+          {t.security.items.map((item) => (
+            <li key={item} className="text-white/70 leading-relaxed pl-4 relative before:absolute before:left-0 before:content-['—']">
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function Faq() {
+  const { lang } = useLang();
+  const t = translations[lang].cardlogue;
+  return (
+    <section className="py-20 px-4 border-t border-white/10" data-testid="section-cardlogue-faq">
+      <div className="max-w-2xl mx-auto">
+        <Reveal>
+          <h2 className="font-brand text-2xl sm:text-3xl font-bold text-white text-center mb-10">{t.faq.title}</h2>
+        </Reveal>
+        <div className="space-y-6">
+          {t.faq.items.map((item, i) => (
+            <Reveal key={item.q} delay={i * 0.05}>
+              <div className="border border-white/10 rounded-lg p-5 bg-white/[0.03]">
+                <p className="font-brand font-semibold text-white mb-2">Q. {item.q}</p>
+                <p className="text-white/60 leading-relaxed text-sm">A. {item.a}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BottomCta() {
+  const { lang } = useLang();
+  const t = translations[lang].cardlogue;
+  return (
+    <section className="py-24 px-4 border-t border-white/10 text-center" data-testid="section-cardlogue-bottom-cta">
+      <div className="max-w-2xl mx-auto">
+        <Reveal>
+          <h2 className="font-brand text-2xl sm:text-3xl font-bold text-white mb-10 text-balance break-keep">
+            {t.bottomCta.title}
+          </h2>
+        </Reveal>
+        <DownloadButtons variant="compact" />
+        <div className="flex items-center justify-center gap-4 text-xs text-white/40 mt-12">
+          <Link href="/privacy" className="hover:text-white/70" data-testid="link-bottom-privacy">
+            {t.bottomCta.linkPrivacy}
+          </Link>
+          <span>·</span>
+          <Link href="/terms" className="hover:text-white/70" data-testid="link-bottom-terms">
+            {t.bottomCta.linkTerms}
+          </Link>
+          <span>·</span>
+          <a href="mailto:globalmarketradar@gmail.com" className="hover:text-white/70 inline-flex items-center gap-1" data-testid="link-bottom-contact">
+            <Mail className="w-3 h-3" /> {t.bottomCta.linkContact}
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function CardloguePage() {
+  const { lang } = useLang();
+  const t = translations[lang].cardlogue;
+
+  return (
+    <div className="min-h-screen text-white" style={{ background: `linear-gradient(180deg, ${NAVY} 0%, #071531 100%)` }}>
+      <Helmet>
+        <title>{t.meta.title}</title>
+        <meta name="description" content={t.meta.description} />
+        <link rel="canonical" href="https://www.globalmarketradar.com/cardlogue" />
+        <meta name="robots" content="index, follow" />
+      </Helmet>
+      <Header />
+      <Hero />
+      <Values />
+      <Features />
+      <Pricing />
+      <Security />
+      <Faq />
+      <BottomCta />
+    </div>
+  );
+}

@@ -1,373 +1,430 @@
-import { Link, useLocation } from "wouter";
-import { useState, useEffect } from "react";
-import { GmrLogo } from "@/components/gmr-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { useState, useEffect, Suspense, lazy, type ReactNode } from "react";
+import { Link } from "wouter";
+import { motion } from "framer-motion";
+import { Helmet } from "react-helmet-async";
+import { NavyLogo } from "@/components/navy-logo";
+import { LanguageToggle } from "@/components/language-toggle";
+import { OceanBackground } from "@/components/ocean-background";
+import { DigitalGlobe } from "@/components/digital-globe";
+import { Reveal } from "@/components/reveal";
+import { Magnetic } from "@/components/magnetic";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, ShieldCheck, ArrowRight } from "lucide-react";
-import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { useAuth } from "@/lib/auth-context";
-import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { Report } from "@shared/schema";
+import { useLang } from "@/lib/i18n";
+import { translations } from "@/lib/translations";
 
-function PayPalSubscribeButton({ planId }: { planId: string }) {
-  const { session } = useAuth();
-  const { toast } = useToast();
-  const [, setLocation] = useLocation();
+const DigitalGlobe3D = lazy(() => import("@/components/digital-globe-3d").then((m) => ({ default: m.DigitalGlobe3D })));
+import {
+  ArrowRight,
+  ChevronDown,
+  Compass,
+  Mail,
+  ScanLine,
+  Code2,
+  Smartphone,
+  Sparkles,
+} from "lucide-react";
 
-  if (!planId) return null;
+const NAVY = "#0A1F44";
+const CYAN = "#00D4FF";
+const SITE_URL = "https://www.globalmarketradar.com";
+
+function Seo() {
+  const { lang } = useLang();
+  const t = translations[lang];
 
   return (
-    <PayPalButtons
-      style={{ shape: "rect", color: "gold", layout: "vertical", label: "subscribe" }}
-      createSubscription={(_data, actions) => {
-        if (!session?.access_token) {
-          setLocation("/login?mode=signup");
-          return Promise.reject(new Error("Login required"));
-        }
-        return actions.subscription.create({ plan_id: planId });
-      }}
-      onApprove={async (data) => {
-        try {
-          const token = session?.access_token;
-          if (!token) { setLocation("/login?mode=signup"); return; }
-          const res = await fetch("/api/paypal/create-subscription", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ subscriptionId: data.subscriptionID }),
-          });
-          if (res.ok) {
-            toast({ title: "Subscription activated! Welcome to GMR." });
-          } else {
-            toast({ title: "Failed to activate subscription", variant: "destructive" });
-          }
-        } catch {
-          toast({ title: "Something went wrong", variant: "destructive" });
-        }
-      }}
-      onError={() => {}}
-      data-testid="paypal-subscribe-button"
-    />
+    <Helmet>
+      <html lang={lang} />
+      <title>{t.meta.title}</title>
+      <meta name="description" content={t.meta.description} />
+      <link rel="canonical" href={SITE_URL} />
+      <meta property="og:title" content={t.meta.title} />
+      <meta property="og:description" content={t.meta.description} />
+      <meta property="og:url" content={SITE_URL} />
+      <meta property="og:type" content="website" />
+      <meta property="og:locale" content={lang === "ko" ? "ko_KR" : "en_US"} />
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "The Navy",
+          alternateName: "더네이비",
+          url: SITE_URL,
+          logo: `${SITE_URL}/navy-icon.png`,
+          email: "globalmarketradar@gmail.com",
+          description: t.meta.description,
+        })}
+      </script>
+    </Helmet>
   );
 }
 
-function SampleReport() {
-  const { data: reports, isLoading } = useQuery<Report[]>({
-    queryKey: ["/api/reports"],
-    queryFn: async () => {
-      const res = await fetch("/api/reports");
-      if (!res.ok) return [];
-      return res.json();
-    },
-  });
+function NavLink({ href, children, testId }: { href: string; children: ReactNode; testId: string }) {
+  return (
+    <a href={href} className="group relative flex items-center px-3 py-2" data-testid={testId}>
+      <span className="font-brand text-sm text-white/75 group-hover:text-white transition-colors">{children}</span>
+      <span
+        className="absolute left-3 right-3 bottom-1 h-[1.5px] scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300"
+        style={{ background: CYAN }}
+      />
+    </a>
+  );
+}
 
-  const latestFree = reports
-    ?.filter((r) => r.reportType === "free")
-    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())[0];
+function Header() {
+  const { lang } = useLang();
+  const t = translations[lang];
+  const [scrolled, setScrolled] = useState(false);
 
-  const previewText = latestFree
-    ? latestFree.content.replace(/[#*_`\[\]]/g, "").slice(0, 800)
-    : "";
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 40);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
-    <section className="py-14 px-4 bg-muted/20" data-testid="section-sample">
-      <div className="max-w-4xl mx-auto">
-        {/* Section label */}
-        <div className="flex items-center gap-3 mb-8">
-          <div className="h-px flex-1 bg-border" />
-          <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Latest Report</span>
-          <div className="h-px flex-1 bg-border" />
+    <header
+      className="fixed top-0 inset-x-0 z-50 transition-colors duration-300"
+      style={{
+        background: scrolled ? "rgba(10, 31, 68, 0.85)" : "transparent",
+        borderBottom: scrolled ? "1px solid rgba(255,255,255,0.1)" : "1px solid transparent",
+        backdropFilter: scrolled ? "blur(12px)" : "none",
+      }}
+    >
+      <div className="max-w-6xl mx-auto flex items-center justify-between px-2 sm:px-4 h-14">
+        <div className="flex items-center">
+          <NavyLogo showTagline linkTo="/" size="sm" variant="light" />
         </div>
-
-        <div className="relative">
-          <Card className="overflow-hidden border border-border/60 shadow-sm">
-            <CardContent className="p-6 sm:p-8">
-              {isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-5/6" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-2/3" />
-                </div>
-              ) : latestFree ? (
-                <div className="space-y-2">
-                  <h3 className="font-bold text-base mb-3">{latestFree.title}</h3>
-                  <div className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed whitespace-pre-wrap" data-testid="text-sample-report">
-                    {previewText}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Loading latest report...</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Blur overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/95" style={{ top: "40%" }} />
-          <div className="absolute bottom-0 left-0 right-0 py-8 flex flex-col items-center gap-4 rounded-b-lg">
-            <p className="text-sm font-medium text-muted-foreground" data-testid="text-sample-cta">
-              Subscribe to read the full analysis
-            </p>
-            <div className="flex items-center gap-3 flex-wrap justify-center">
-              <Link href="/login?mode=signup">
-                <Button className="gap-2" data-testid="button-sample-signup">
-                  Get Full Access <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Link>
-              <Link href="/dashboard">
-                <Button variant="outline" data-testid="button-sample-dashboard">Browse Free Reports</Button>
-              </Link>
-            </div>
+        <div className="flex items-center gap-1 sm:gap-4">
+          <div className="hidden sm:flex items-center">
+            <NavLink href="#about" testId="link-nav-about">{t.nav.about}</NavLink>
+            <NavLink href="#services" testId="link-nav-services">{t.nav.services}</NavLink>
           </div>
+          <a href="#contact">
+            <Button
+              size="sm"
+              className="font-brand text-xs sm:text-sm font-semibold px-2 sm:px-3"
+              style={{ background: CYAN, color: NAVY }}
+              data-testid="link-nav-contact"
+            >
+              {t.nav.contact}
+            </Button>
+          </a>
+          <div className="flex items-center">
+            <LanguageToggle variant="light" />
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function Hero() {
+  const { lang } = useLang();
+  const t = translations[lang];
+
+  return (
+    <section
+      className="relative overflow-hidden px-4 py-28 sm:py-40 min-h-[92vh] flex items-center"
+      data-testid="section-hero"
+    >
+      <div className="relative max-w-3xl mx-auto text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="inline-flex items-center gap-2 mb-8 px-3.5 py-1.5 rounded-full border border-white/15 bg-white/[0.05]"
+        >
+          <Sparkles className="w-3.5 h-3.5" style={{ color: CYAN }} />
+          <span className="text-xs text-white/70 font-brand font-medium tracking-widest uppercase">{t.hero.badge}</span>
+        </motion.div>
+
+        <motion.h1
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.1 }}
+          className="font-brand text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-[1.08] text-white mb-6 text-balance break-keep"
+          data-testid="text-hero-headline"
+        >
+          {t.hero.headlinePrefix} <span style={{ color: CYAN }}>{t.hero.headlineHighlight}</span> {t.hero.headlineSuffix}
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.2 }}
+          className="font-brand text-lg sm:text-xl text-white/70 max-w-2xl mx-auto mb-12 leading-relaxed text-center text-balance break-keep"
+          data-testid="text-hero-subtitle"
+        >
+          {t.hero.subtitle}
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.3 }}
+          className="flex items-center justify-center"
+        >
+          <Magnetic>
+            <Link href="/cardlogue">
+              <Button
+                size="lg"
+                className="font-brand text-lg px-10 py-6 font-bold gap-2 shadow-lg"
+                style={{ background: CYAN, color: NAVY, boxShadow: `0 10px 40px -10px ${CYAN}66` }}
+                data-testid="button-hero-explore"
+              >
+                {t.hero.cta} <ArrowRight className="w-5 h-5" />
+              </Button>
+            </Link>
+          </Magnetic>
+        </motion.div>
+      </div>
+
+      <motion.div
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/40"
+        animate={{ y: [0, 8, 0] }}
+        transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <ChevronDown className="w-5 h-5" />
+      </motion.div>
+    </section>
+  );
+}
+
+function About() {
+  const { lang } = useLang();
+  const t = translations[lang];
+
+  return (
+    <section id="about" className="py-24 px-4" data-testid="section-about">
+      <div className="max-w-5xl mx-auto">
+        <Reveal>
+          <div className="text-center mb-14">
+            <span
+              className="text-2xl sm:text-3xl font-brand font-semibold uppercase tracking-widest"
+              style={{ color: "rgba(0, 212, 255, 0.6)" }}
+            >
+              {t.about.eyebrow}
+            </span>
+          </div>
+        </Reveal>
+        <div className="grid md:grid-cols-2 gap-10 items-center">
+          <Reveal>
+            <div className="max-w-[340px] mx-auto">
+              <motion.div
+                className="relative flex items-center justify-center aspect-square"
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true, amount: 0.4 }}
+                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {/* Ambient glow */}
+                <div
+                  className="absolute rounded-full blur-3xl"
+                  style={{ inset: "-20%", background: `radial-gradient(circle, ${CYAN}85 0%, transparent 70%)` }}
+                />
+                <Suspense fallback={<DigitalGlobe size={320} />}>
+                  <DigitalGlobe3D size={320} />
+                </Suspense>
+
+                {/* Vignette: brightens the rim so the globe reads as edge-lit */}
+                <div
+                  className="absolute inset-0 rounded-full pointer-events-none"
+                  style={{ background: `radial-gradient(circle, transparent 65%, ${CYAN}10 100%)` }}
+                />
+
+                {/* Compass badge, orbiting the globe */}
+                <div
+                  className="absolute rounded-full flex items-center justify-center border border-white/15 backdrop-blur-sm"
+                  style={{
+                    width: 56,
+                    height: 56,
+                    right: "6%",
+                    bottom: "10%",
+                    background: "rgba(10, 31, 68, 0.75)",
+                    boxShadow: `0 0 20px ${CYAN}40`,
+                  }}
+                >
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+                  >
+                    <Compass className="w-6 h-6" style={{ color: CYAN }} strokeWidth={1.5} />
+                  </motion.div>
+                </div>
+              </motion.div>
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.15}>
+            <div className="space-y-8 text-center md:text-left">
+              <h2
+                className="font-brand text-2xl sm:text-3xl font-black leading-tight text-balance break-keep max-w-md mx-auto md:mx-0 text-white"
+                data-testid="text-about-title"
+              >
+                {t.about.title}
+              </h2>
+              <div className="flex flex-wrap justify-center md:justify-start gap-3" data-testid="list-about-taglines">
+                {t.about.taglines.map((tagline) => (
+                  <span
+                    key={tagline}
+                    className="text-xs font-brand font-semibold uppercase tracking-wide rounded-full border px-3 py-1"
+                    style={{ color: CYAN, borderColor: `${CYAN}40`, background: `${CYAN}0d` }}
+                  >
+                    {tagline}
+                  </span>
+                ))}
+              </div>
+              <p className="text-white/60 leading-relaxed text-base max-w-md mx-auto md:mx-0 text-balance break-keep" data-testid="text-about-body">
+                {t.about.body}
+              </p>
+            </div>
+          </Reveal>
         </div>
       </div>
     </section>
   );
 }
 
-export default function LandingPage() {
-  const { user, loading } = useAuth();
-  const [, setLocation] = useLocation();
-  const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
-  const [paypalPlanId] = useState(import.meta.env.VITE_PAYPAL_PLAN_ID || "");
-
-  useEffect(() => {
-    fetch("/api/paypal/client-id")
-      .then((r) => r.json())
-      .then((data) => setPaypalClientId(data.clientId))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!loading && user) {
-      setLocation("/dashboard");
-    }
-  }, [user, loading, setLocation]);
-
-  if (!loading && user) return null;
+function Services() {
+  const { lang } = useLang();
+  const t = translations[lang];
+  const icons = [Code2, Smartphone, ScanLine];
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-
-      {/* ── Header ── */}
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-14">
-          <GmrLogo showTagline linkTo="" size="sm" />
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm" data-testid="link-dashboard-header">
-                View Dashboard
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button variant="outline" size="sm" data-testid="link-login">
-                Log In
-              </Button>
-            </Link>
-            <Link href="/login?mode=signup">
-              <Button size="sm" data-testid="link-signup-header">
-                Sign Up
-              </Button>
-            </Link>
+    <section id="services" className="py-24 px-4" data-testid="section-services">
+      <div className="max-w-5xl mx-auto">
+        <Reveal>
+          <div className="text-center mb-14">
+            <span className="text-xs font-brand font-semibold uppercase tracking-widest text-white/40">{t.services.eyebrow}</span>
+            <h2 className="font-brand text-2xl sm:text-3xl font-bold mt-3 text-white" data-testid="text-services-title">
+              {t.services.title}
+            </h2>
           </div>
-        </div>
-      </header>
+        </Reveal>
 
-      {/* ── Hero ── */}
-      <section
-        className="relative overflow-hidden px-4 py-16 sm:py-20"
-        data-testid="section-hero"
-        style={{
-          background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)",
-        }}
-      >
-        {/* Grid pattern overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage: `linear-gradient(#94a3b8 1px, transparent 1px), linear-gradient(to right, #94a3b8 1px, transparent 1px)`,
-            backgroundSize: "48px 48px",
-          }}
-        />
-
-        {/* Subtle glow */}
-        <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] opacity-20 pointer-events-none"
-          style={{
-            background: "radial-gradient(ellipse at center, #3b82f6 0%, transparent 70%)",
-          }}
-        />
-
-        <div className="relative max-w-3xl mx-auto text-center">
-          {/* Eyebrow label */}
-          <div className="inline-flex items-center gap-2 mb-6 px-3 py-1 rounded-full border border-white/10 bg-white/5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs text-white/60 font-medium tracking-wide">Global Macro Intelligence</span>
-          </div>
-
-          <h1
-            className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] text-white mb-6"
-            data-testid="text-hero-headline"
-          >
-            Markets price the headline.{" "}
-            <span className="text-blue-400">We price what comes after.</span>
-          </h1>
-
-          <p
-            className="text-base sm:text-lg text-white/55 max-w-xl mx-auto mb-10 leading-relaxed"
-            data-testid="text-hero-subtitle"
-          >
-            Intelligence on geopolitics, central banks, and supply chains — the second and third-order effects markets aren't pricing yet.
-          </p>
-
-          {/* CTAs */}
-          <div className="flex items-center justify-center">
-            <Link href="/dashboard">
-              <Button
-                size="lg"
-                className="text-sm px-10 py-6 bg-blue-500 hover:bg-blue-400 text-white font-semibold shadow-lg shadow-blue-500/25"
-                data-testid="button-hero-dashboard"
+        <div className="grid sm:grid-cols-3 gap-6">
+          {t.services.items.map((item, i) => {
+            const Icon = icons[i];
+            const isCardlogue = i === 1; // "Mobile App Development" — links to the Cardlogue product page
+            const card = (
+              <Card
+                className="h-full border border-white/15 bg-white/[0.04] backdrop-blur-sm shadow-sm hover-elevate transition-transform"
+                data-testid={`card-service-${i}`}
               >
-                Read Free Reports
-              </Button>
-            </Link>
-          </div>
-
-          {/* Trust line */}
-          <p className="mt-5 text-xs text-white/30">
-            7-day money-back guarantee · Cancel anytime
-          </p>
-        </div>
-      </section>
-
-      {/* ── Signal strip ── */}
-      <div className="border-y border-border bg-muted/20 py-3 px-4 overflow-x-auto">
-        <div className="max-w-5xl mx-auto flex items-center justify-center gap-6 text-xs text-muted-foreground whitespace-nowrap">
-          <span className="flex items-center gap-1.5"><span className="text-primary">✦</span> Geopolitics & Central Banks</span>
-          <span className="text-border">|</span>
-          <span className="flex items-center gap-1.5"><span className="text-primary">✦</span> FX · Rates · Commodities</span>
-          <span className="text-border">|</span>
-          <span className="flex items-center gap-1.5"><span className="text-primary">✦</span> Supply Chain Disruptions</span>
-          <span className="text-border">|</span>
-          <span className="flex items-center gap-1.5"><span className="text-primary">✦</span> 2nd & 3rd Order Effects</span>
-          <span className="text-border">|</span>
-          <span className="flex items-center gap-1.5"><span className="text-primary">✦</span> Published 2–3× Weekly</span>
+                <CardContent className="p-7 space-y-4 text-center sm:text-left flex flex-col items-center sm:items-start">
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ background: "rgba(0,212,255,0.12)" }}
+                  >
+                    <Icon className="w-6 h-6" style={{ color: CYAN }} strokeWidth={2} />
+                  </div>
+                  <h3 className="font-brand font-bold text-lg text-white">{item.title}</h3>
+                  <p className="text-sm text-white/60 leading-relaxed">{item.body}</p>
+                  {isCardlogue && (
+                    <span className="text-xs font-brand font-semibold" style={{ color: CYAN }}>
+                      →
+                    </span>
+                  )}
+                </CardContent>
+              </Card>
+            );
+            return (
+              <Reveal key={item.title} delay={i * 0.1}>
+                {isCardlogue ? (
+                  <Link href="/cardlogue" className="block" data-testid="link-service-cardlogue">
+                    {card}
+                  </Link>
+                ) : (
+                  card
+                )}
+              </Reveal>
+            );
+          })}
         </div>
       </div>
+    </section>
+  );
+}
 
-      {/* ── Sample Report ── */}
-      <SampleReport />
+function Contact() {
+  const { lang } = useLang();
+  const t = translations[lang];
 
-      {/* ── Pricing ── */}
-      <section className="py-14 px-4" data-testid="section-pricing">
-        <div className="max-w-md mx-auto">
-          {/* Section label */}
-          <div className="flex items-center gap-3 mb-10">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Pricing</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <Card className="border-2 border-primary shadow-xl overflow-hidden">
-            {/* Top accent bar */}
-            <div className="h-1 w-full bg-gradient-to-r from-blue-500 via-blue-400 to-blue-600" />
-            <CardContent className="p-8 space-y-6">
-              <div className="space-y-1">
-                <div className="text-xs font-semibold uppercase tracking-widest text-yellow-500">Founding Member Price</div>
-                <div className="flex items-end gap-1">
-                  <span className="text-5xl font-bold" data-testid="text-price">$12</span>
-                  <span className="text-muted-foreground mb-1">/month</span>
-                </div>
-                <div className="text-xs text-muted-foreground">Regular price $19 · Lock in now before May 1</div>
-              </div>
-
-              <ul className="text-left space-y-3 text-sm">
-                {[
-                  "Reports on geopolitics, central banks & supply chains",
-                  "Second and third-order analysis markets aren't pricing",
-                  "Full archive access",
-                  "Lock in $12 before May 1 — price goes to $19",
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {paypalClientId && paypalPlanId ? (
-                <PayPalScriptProvider options={{ clientId: paypalClientId, vault: true, intent: "subscription", locale: "en_US" }}>
-                  <PayPalSubscribeButton planId={paypalPlanId} />
-                </PayPalScriptProvider>
-              ) : (
-                <Link href="/login?mode=signup">
-                  <Button className="w-full" size="lg" data-testid="button-subscribe">
-                    Subscribe Now
-                  </Button>
-                </Link>
-              )}
-
-              {/* Guarantee inline */}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center pt-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-                <span>7-day money-back guarantee · No questions asked</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      {/* ── Final CTA ── */}
-      <section
-        className="py-16 px-4"
-        style={{
-          background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
-        }}
-        data-testid="section-cta"
-      >
-        <div className="max-w-2xl mx-auto text-center space-y-5">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white" data-testid="text-cta-title">
-            Start Seeing What Markets Miss
+  return (
+    <section
+      id="contact"
+      className="py-28 px-4 relative overflow-hidden"
+      data-testid="section-contact"
+    >
+      <div
+        className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full opacity-20 blur-3xl pointer-events-none"
+        style={{ background: `radial-gradient(circle, ${CYAN} 0%, transparent 70%)` }}
+      />
+      <Reveal>
+        <div className="relative max-w-2xl mx-auto text-center space-y-6">
+          <h2 className="font-brand text-3xl sm:text-4xl font-bold text-white" data-testid="text-contact-title">
+            {t.contact.title}
           </h2>
-          <p className="text-white/50 text-sm">
-            Join investors and analysts who rely on GMR for their daily market edge.
+          <p className="text-white/60 text-base max-w-md mx-auto">
+            {t.contact.body}
           </p>
-          <div className="flex items-center justify-center gap-3 flex-wrap pt-2">
-            <Link href="/login?mode=signup">
-              <Button
-                size="lg"
-                className="text-sm px-7 bg-white text-slate-900 hover:bg-white/90 font-semibold"
-                data-testid="button-cta-signup"
-              >
-                Sign Up Free
-              </Button>
-            </Link>
-            <Link href="/dashboard">
-              <Button
-                size="lg"
-                variant="ghost"
-                className="text-sm px-7 text-white/60 hover:text-white hover:bg-white/10 border border-white/10"
-                data-testid="button-cta-dashboard"
-              >
-                View Reports Free
-              </Button>
-            </Link>
+          <div className="pt-2">
+            <Magnetic>
+              <a href="mailto:globalmarketradar@gmail.com">
+                <Button
+                  size="lg"
+                  className="font-brand gap-2 font-semibold px-9 py-6 shadow-lg"
+                  style={{ background: CYAN, color: NAVY, boxShadow: `0 10px 40px -10px ${CYAN}66` }}
+                  data-testid="button-contact-cta"
+                >
+                  <Mail className="w-4 h-4" /> {t.contact.cta}
+                </Button>
+              </a>
+            </Magnetic>
           </div>
         </div>
-      </section>
+      </Reveal>
+    </section>
+  );
+}
 
-      {/* ── Footer ── */}
-      <footer className="border-t py-6 px-4 bg-background">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <span data-testid="text-footer">GMR · Global Market Radar</span>
-          <span>© {new Date().getFullYear()} All rights reserved.</span>
+function Footer() {
+  const { lang } = useLang();
+  const t = translations[lang];
+
+  return (
+    <footer className="py-8 px-4 relative border-t border-white/10">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-white/40">
+          <NavyLogo linkTo="/" size="sm" variant="light" />
+          <span>© {new Date().getFullYear()} The Navy. {t.footer.rights}</span>
         </div>
-      </footer>
 
+        <div
+          className="pt-5 border-t border-white/10 text-center sm:text-left text-[11px] text-white/30 leading-relaxed"
+          data-testid="text-business-info"
+        >
+          <p>{t.footer.business}</p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+export default function LandingPage() {
+  return (
+    <div className="min-h-screen text-white">
+      <OceanBackground />
+      <Seo />
+      <Header />
+      <Hero />
+      <About />
+      <Services />
+      <Contact />
+      <Footer />
     </div>
   );
 }
