@@ -13,7 +13,7 @@ export const translations = {
       description: "The Navy is an independent app studio building AI-powered software and mobile products, starting with Cardlogue.",
     },
     tagline: "Software & Mobile Solutions",
-    nav: { about: "About", services: "Services", contact: "Contact" },
+    nav: { about: "About", cardlogue: "Cardlogue", contact: "Contact" },
     hero: {
       badge: "Software & Mobile Solutions",
       headlinePrefix: "We",
@@ -660,7 +660,7 @@ export const translations = {
       description: "더네이비는 AI 기반 소프트웨어와 모바일 제품을 만드는 1인 앱 스튜디오입니다. 첫 제품은 카드로그예요.",
     },
     tagline: "소프트웨어 & 모바일 솔루션",
-    nav: { about: "소개", services: "서비스", contact: "문의" },
+    nav: { about: "소개", cardlogue: "Cardlogue", contact: "문의" },
     hero: {
       badge: "소프트웨어 & 모바일 솔루션",
       headlinePrefix: "우리는 당신의",

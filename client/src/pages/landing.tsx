@@ -61,14 +61,30 @@ function Seo() {
 }
 
 function NavLink({ href, children, testId }: { href: string; children: ReactNode; testId: string }) {
-  return (
-    <a href={href} className="group relative flex items-center px-3 py-2" data-testid={testId}>
+  const content = (
+    <>
       <span className="font-brand text-sm text-white/75 group-hover:text-white transition-colors">{children}</span>
       <span
         className="absolute left-3 right-3 bottom-1 h-[1.5px] scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300"
         style={{ background: CYAN }}
       />
-    </a>
+    </>
+  );
+  const className = "group relative flex items-center px-3 py-2";
+
+  // In-page hash anchors use a plain <a>; internal routes use wouter's Link
+  // so navigation stays client-side (no full page reload).
+  if (href.startsWith("#")) {
+    return (
+      <a href={href} className={className} data-testid={testId}>
+        {content}
+      </a>
+    );
+  }
+  return (
+    <Link href={href} className={className} data-testid={testId}>
+      {content}
+    </Link>
   );
 }
 
@@ -100,7 +116,7 @@ function Header() {
         <div className="flex items-center gap-1 sm:gap-4">
           <div className="hidden sm:flex items-center">
             <NavLink href="#about" testId="link-nav-about">{t.nav.about}</NavLink>
-            <NavLink href="#services" testId="link-nav-services">{t.nav.services}</NavLink>
+            <NavLink href="/cardlogue" testId="link-nav-cardlogue">{t.nav.cardlogue}</NavLink>
           </div>
           <a href="#contact">
             <Button
