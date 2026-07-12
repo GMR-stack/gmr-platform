@@ -64,6 +64,18 @@ export function calcNextBillingAt(paymentDate: Date): Date {
   return new Date(year, month + 1, 1);
 }
 
+// Increasing a team's seat count mid-cycle bills only the added seats,
+// prorated for the days remaining in the current billing month (CLAUDE.md
+// 11-2: "slot 증가: 즉시 적용, 증가분 일할 선결제"). Decreasing seats is free
+// and takes effect on the next billing date instead (handled by the caller).
+export function calcProratedSeatAmount(chargeDate: Date, addedSeats: number, seatPriceKrw: number): number {
+  const year = chargeDate.getFullYear();
+  const month = chargeDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const remainingDays = daysInMonth - chargeDate.getDate() + 1; // include today
+  return Math.round((addedSeats * seatPriceKrw * remainingDays) / daysInMonth);
+}
+
 export function getCardlogueSupabase() {
   const url = process.env.CARDLOGUE_SUPABASE_URL;
   const serviceRoleKey = process.env.CARDLOGUE_SUPABASE_SERVICE_ROLE_KEY;

@@ -5,7 +5,7 @@ import { insertReportSchema } from "@shared/schema";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 import { randomUUID } from "crypto";
-import { getBillingKeyInfo, chargeBillingKey, calcNextBillingAt, getCardlogueSupabase } from "./portone";
+import { getBillingKeyInfo, chargeBillingKey, calcNextBillingAt, calcProratedSeatAmount, getCardlogueSupabase } from "./portone";
 
 const TEAM_SEAT_PRICE_KRW = 2200;
 
@@ -565,44 +565,75 @@ ${freeReportUrls}
       // Confirm PortOne actually issued this billing key before charging it.
       await getBillingKeyInfo(billingKey);
 
-      const amount = slots * TEAM_SEAT_PRICE_KRW;
-      const paymentId = `team-${teamId}-${randomUUID()}`;
-      await chargeBillingKey({
-        paymentId,
-        billingKey,
-        orderName: `Cardlogue 팀 플랜 (${slots}인)`,
-        amount,
-        customerName: customerName || "Cardlogue User",
-        customerEmail,
-      });
-
-      const nextBillingAt = calcNextBillingAt(new Date());
       const supabase = getCardlogueSupabase();
-      const subscriptionFields = {
-        user_id: userId,
-        team_id: teamId,
-        type: "team",
-        status: "active",
-        slot_count: slots,
-        payment_method: "web",
-        next_billing_at: nextBillingAt.toISOString(),
-        portone_billing_key: billingKey,
-      };
-
       const { data: existing, error: findErr } = await supabase
         .from("subscriptions")
-        .select("id")
+        .select("id, status, slot_count, next_billing_at")
         .eq("team_id", teamId)
         .eq("type", "team")
         .maybeSingle();
       if (findErr) throw findErr;
+
+      const isExistingActive = existing?.status === "active";
+      const now = new Date();
+      let amount = 0;
+      let subscriptionFields: Record<string, unknown>;
+
+      if (!isExistingActive) {
+        // New team subscription (or reactivating an expired one): charge the full seat count.
+        amount = slots * TEAM_SEAT_PRICE_KRW;
+        subscriptionFields = {
+          user_id: userId,
+          team_id: teamId,
+          type: "team",
+          status: "active",
+          slot_count: slots,
+          pending_slot_count: null,
+          payment_method: "web",
+          next_billing_at: calcNextBillingAt(now).toISOString(),
+          portone_billing_key: billingKey,
+        };
+      } else if (slots === existing!.slot_count) {
+        // Same seat count — just refreshing the card/billing key, no charge.
+        subscriptionFields = { portone_billing_key: billingKey };
+      } else if (slots > existing!.slot_count) {
+        // Seat increase: bill only the added seats, prorated for the rest of this cycle.
+        amount = calcProratedSeatAmount(now, slots - existing!.slot_count, TEAM_SEAT_PRICE_KRW);
+        subscriptionFields = {
+          slot_count: slots,
+          pending_slot_count: null,
+          portone_billing_key: billingKey,
+        };
+      } else {
+        // Seat decrease: free, but only takes effect on the next billing date.
+        subscriptionFields = {
+          pending_slot_count: slots,
+          portone_billing_key: billingKey,
+        };
+      }
+
+      if (amount > 0) {
+        const paymentId = `team-${teamId}-${randomUUID()}`;
+        await chargeBillingKey({
+          paymentId,
+          billingKey,
+          orderName: `Cardlogue 팀 플랜 (${slots}인)`,
+          amount,
+          customerName: customerName || "Cardlogue User",
+          customerEmail,
+        });
+      }
 
       const { error: writeErr } = existing
         ? await supabase.from("subscriptions").update(subscriptionFields).eq("id", existing.id)
         : await supabase.from("subscriptions").insert(subscriptionFields);
       if (writeErr) throw writeErr;
 
-      return res.json({ message: "Team subscription activated", nextBillingAt, amount });
+      return res.json({
+        message: "Team subscription updated",
+        nextBillingAt: existing?.next_billing_at ?? calcNextBillingAt(now),
+        amount,
+      });
     } catch (err: any) {
       console.error("PortOne team-subscribe error:", err.message);
       return res.status(500).json({ message: "Failed to activate team subscription" });
