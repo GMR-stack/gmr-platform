@@ -139,6 +139,8 @@ export const translations = {
         linkTerms: "Terms of Service",
         linkRefund: "Refund Policy",
         linkContact: "Contact",
+        businessInfo:
+          "The Navy · Representative: Juhyung Lee · Business Registration No. 155-26-01968 · 166 Uchang-ro, Buk-gu, Pohang-si, Gyeongsangbuk-do, Republic of Korea (37627) · 070-7954-1968",
       },
     },
     privacy: {
@@ -793,6 +795,8 @@ export const translations = {
         linkTerms: "이용약관",
         linkRefund: "환불정책",
         linkContact: "문의하기",
+        businessInfo:
+          "더네이비(The Navy) · 대표: 이주형 · 사업자등록번호: 155-26-01968 · 경북 포항시 북구 우창로 166 (37627) · 070-7954-1968",
       },
     },
     privacy: {

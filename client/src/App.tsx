@@ -16,6 +16,7 @@ import AdminPage from "@/pages/admin";
 import OAuthConsentPage from "@/pages/oauth-consent";
 import LandingPage from "@/pages/landing";
 import CardloguePage from "@/pages/cardlogue";
+import TeamPaymentPage from "@/pages/team-payment";
 import PrivacyPage from "@/pages/privacy";
 import TermsPage from "@/pages/terms";
 import RefundPage from "@/pages/refund";
@@ -27,6 +28,7 @@ function Router() {
     <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/cardlogue" component={CardloguePage} />
+      <Route path="/team/payment" component={TeamPaymentPage} />
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/terms" component={TermsPage} />
       <Route path="/refund" component={RefundPage} />

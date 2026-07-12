@@ -267,6 +267,9 @@ function BottomCta() {
             <Mail className="w-3 h-3" /> {t.bottomCta.linkContact}
           </a>
         </div>
+        <p className="text-center text-[11px] text-white/30 leading-relaxed mt-6 pt-6 border-t border-white/10" data-testid="text-cardlogue-business-info">
+          {t.bottomCta.businessInfo}
+        </p>
       </div>
     </section>
   );

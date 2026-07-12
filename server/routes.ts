@@ -4,6 +4,10 @@ import { storage } from "./storage";
 import { insertReportSchema } from "@shared/schema";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
+import { randomUUID } from "crypto";
+import { getBillingKeyInfo, chargeBillingKey, calcNextBillingAt, getCardlogueSupabase } from "./portone";
+
+const TEAM_SEAT_PRICE_KRW = 2200;
 
 async function sendAdminEmail(subject: string, body: string) {
   const gmailUser = process.env.GMAIL_USER;
@@ -544,6 +548,72 @@ ${freeReportUrls}
       console.error("Economic calendar error:", err);
       return res.status(500).json({ message: "Failed to fetch economic calendar" });
     }
+  });
+
+  // ── Cardlogue team payment (PortOne, Korea) ─────────────────────────────
+  app.post("/api/portone/team-subscribe", async (req, res) => {
+    try {
+      const { billingKey, teamId, userId, slotCount, customerName, customerEmail } = req.body;
+      if (!billingKey || !teamId || !userId || !slotCount) {
+        return res.status(400).json({ message: "Missing billingKey, teamId, userId, or slotCount" });
+      }
+      const slots = Number(slotCount);
+      if (!Number.isInteger(slots) || slots < 1) {
+        return res.status(400).json({ message: "Invalid slotCount" });
+      }
+
+      // Confirm PortOne actually issued this billing key before charging it.
+      await getBillingKeyInfo(billingKey);
+
+      const amount = slots * TEAM_SEAT_PRICE_KRW;
+      const paymentId = `team-${teamId}-${randomUUID()}`;
+      await chargeBillingKey({
+        paymentId,
+        billingKey,
+        orderName: `Cardlogue 팀 플랜 (${slots}인)`,
+        amount,
+        customerName: customerName || "Cardlogue User",
+        customerEmail,
+      });
+
+      const nextBillingAt = calcNextBillingAt(new Date());
+      const supabase = getCardlogueSupabase();
+      const subscriptionFields = {
+        user_id: userId,
+        team_id: teamId,
+        type: "team",
+        status: "active",
+        slot_count: slots,
+        payment_method: "web",
+        next_billing_at: nextBillingAt.toISOString(),
+        portone_billing_key: billingKey,
+      };
+
+      const { data: existing, error: findErr } = await supabase
+        .from("subscriptions")
+        .select("id")
+        .eq("team_id", teamId)
+        .eq("type", "team")
+        .maybeSingle();
+      if (findErr) throw findErr;
+
+      const { error: writeErr } = existing
+        ? await supabase.from("subscriptions").update(subscriptionFields).eq("id", existing.id)
+        : await supabase.from("subscriptions").insert(subscriptionFields);
+      if (writeErr) throw writeErr;
+
+      return res.json({ message: "Team subscription activated", nextBillingAt, amount });
+    } catch (err: any) {
+      console.error("PortOne team-subscribe error:", err.message);
+      return res.status(500).json({ message: "Failed to activate team subscription" });
+    }
+  });
+
+  app.post("/api/portone/webhook", async (req, res) => {
+    // TODO: verify the PortOne webhook signature once the webhook secret is
+    // registered in the PortOne console (결제알림(Webhook) 관리).
+    console.log("[portone webhook]", JSON.stringify(req.body));
+    return res.status(200).json({ received: true });
   });
 
   return httpServer;
