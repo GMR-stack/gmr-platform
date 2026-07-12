@@ -4,8 +4,7 @@ import { storage } from "./storage";
 import { insertReportSchema } from "@shared/schema";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
-import { randomUUID } from "crypto";
-import { getBillingKeyInfo, chargeBillingKey, calcNextBillingAt, calcProratedSeatAmount, getCardlogueSupabase } from "./portone";
+import { getBillingKeyInfo, chargeBillingKey, getPaymentStatus, calcNextBillingAt, calcProratedSeatAmount, getCardlogueSupabase } from "./portone";
 
 const TEAM_SEAT_PRICE_KRW = 2200;
 
@@ -613,15 +612,25 @@ ${freeReportUrls}
       }
 
       if (amount > 0) {
-        const paymentId = `team-${teamId}-${randomUUID()}`;
-        await chargeBillingKey({
-          paymentId,
-          billingKey,
-          orderName: `Cardlogue 팀 플랜 (${slots}인)`,
-          amount,
-          customerName: customerName || "Cardlogue User",
-          customerEmail,
-        });
+        // Deterministic (not random) so a client retry with the same billing key
+        // hits PortOne's own duplicate-payment guard instead of charging twice.
+        const paymentId = `team-${teamId}-${billingKey}`;
+        try {
+          await chargeBillingKey({
+            paymentId,
+            billingKey,
+            orderName: `Cardlogue 팀 플랜 (${slots}인)`,
+            amount,
+            customerName: customerName || "Cardlogue User",
+            customerEmail,
+          });
+        } catch (chargeErr: any) {
+          // If this exact charge already succeeded (e.g. the first request's
+          // response never reached the client and it retried), treat it as
+          // success and continue on to write the subscription row below.
+          const existingPayment = await getPaymentStatus(paymentId).catch(() => null);
+          if (existingPayment?.status !== "PAID") throw chargeErr;
+        }
       }
 
       const { error: writeErr } = existing
@@ -633,6 +642,7 @@ ${freeReportUrls}
         message: "Team subscription updated",
         nextBillingAt: existing?.next_billing_at ?? calcNextBillingAt(now),
         amount,
+        slotCount: isExistingActive && slots < existing!.slot_count ? existing!.slot_count : slots,
       });
     } catch (err: any) {
       console.error("PortOne team-subscribe error:", err.message);

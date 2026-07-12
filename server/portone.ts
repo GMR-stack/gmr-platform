@@ -28,6 +28,10 @@ export async function getBillingKeyInfo(billingKey: string) {
   return portoneFetch(`/billing-keys/${encodeURIComponent(billingKey)}`);
 }
 
+export async function getPaymentStatus(paymentId: string) {
+  return portoneFetch(`/payments/${encodeURIComponent(paymentId)}`);
+}
+
 export async function chargeBillingKey(params: {
   paymentId: string;
   billingKey: string;

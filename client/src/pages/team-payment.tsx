@@ -92,7 +92,13 @@ export default function TeamPaymentPage() {
       if (!res.ok) throw new Error(data?.message || "subscribe failed");
 
       setStatus("success");
-      notifyApp({ type: "team-payment-success", teamId: params.teamId, ...data });
+      notifyApp({
+        type: "team-payment-success",
+        teamId: params.teamId,
+        slotCount: data.slotCount,
+        amount: data.amount,
+        nextBillingAt: data.nextBillingAt,
+      });
     } catch (err: any) {
       setStatus("error");
       setErrorMessage(err?.message || "unknown error");
@@ -135,9 +141,19 @@ export default function TeamPaymentPage() {
                   {status === "processing" ? t.processing : t.pay}
                 </Button>
                 {status === "error" && (
-                  <p className="text-sm text-red-300" data-testid="text-payment-error">
-                    {t.error}: {errorMessage}
-                  </p>
+                  <>
+                    <p className="text-sm text-red-300" data-testid="text-payment-error">
+                      {t.error}: {errorMessage}
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="w-full text-white border-white/20 hover:bg-white/10"
+                      onClick={handlePay}
+                      data-testid="button-team-pay-retry"
+                    >
+                      {t.retry}
+                    </Button>
+                  </>
                 )}
               </>
             )}
