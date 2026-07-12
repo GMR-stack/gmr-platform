@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import type { Request } from "express";
 
 const PORTONE_API_BASE = "https://api.portone.io";
 
@@ -78,6 +79,56 @@ export function calcProratedSeatAmount(chargeDate: Date, addedSeats: number, sea
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const remainingDays = daysInMonth - chargeDate.getDate() + 1; // include today
   return Math.round((addedSeats * seatPriceKrw * remainingDays) / daysInMonth);
+}
+
+// Decodes (without cryptographic verification) the access token from
+// Cardlogue's own Supabase auth session — the RN app injects this into the
+// WebView via injectedJavaScriptBeforeContentLoaded rather than the URL, so
+// it never ends up in server logs or the Referer header. Mirrors the same
+// payload-only decoding this codebase already does for its own auth tokens
+// (see getSupabaseUser above); the real trust boundary is the team_members
+// lookup that follows, not the token signature.
+export function getCardlogueUserFromToken(req: Request): { sub: string } | null {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.slice(7);
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString());
+    if (!payload.sub) return null;
+    if (payload.exp && payload.exp * 1000 < Date.now()) return null;
+    return { sub: payload.sub };
+  } catch {
+    return null;
+  }
+}
+
+// Confirms the caller is an owner/admin of the given team before letting them
+// touch its billing. Membership is looked up directly (service role, bypasses
+// RLS) rather than trusted from the request body.
+export async function isTeamBillingAdmin(teamId: string, userId: string): Promise<boolean> {
+  const supabase = getCardlogueSupabase();
+  const { data, error } = await supabase
+    .from("team_members")
+    .select("role")
+    .eq("team_id", teamId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error || !data) return false;
+  return data.role === "owner" || data.role === "admin";
+}
+
+// Slot count can never drop below the team's actual current member count
+// (CLAUDE.md team creation policy: min 2, or current headcount if higher).
+export async function getTeamMemberCount(teamId: string): Promise<number> {
+  const supabase = getCardlogueSupabase();
+  const { count, error } = await supabase
+    .from("team_members")
+    .select("id", { count: "exact", head: true })
+    .eq("team_id", teamId);
+  if (error) throw error;
+  return count ?? 1;
 }
 
 export function getCardlogueSupabase() {

@@ -4,7 +4,17 @@ import { storage } from "./storage";
 import { insertReportSchema } from "@shared/schema";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
-import { getBillingKeyInfo, chargeBillingKey, getPaymentStatus, calcNextBillingAt, calcProratedSeatAmount, getCardlogueSupabase } from "./portone";
+import {
+  getBillingKeyInfo,
+  chargeBillingKey,
+  getPaymentStatus,
+  calcNextBillingAt,
+  calcProratedSeatAmount,
+  getCardlogueSupabase,
+  getCardlogueUserFromToken,
+  isTeamBillingAdmin,
+  getTeamMemberCount,
+} from "./portone";
 
 const TEAM_SEAT_PRICE_KRW = 2200;
 
@@ -552,13 +562,31 @@ ${freeReportUrls}
   // ── Cardlogue team payment (PortOne, Korea) ─────────────────────────────
   app.post("/api/portone/team-subscribe", async (req, res) => {
     try {
-      const { billingKey, teamId, userId, slotCount, customerName, customerEmail } = req.body;
-      if (!billingKey || !teamId || !userId || !slotCount) {
-        return res.status(400).json({ message: "Missing billingKey, teamId, userId, or slotCount" });
+      const { billingKey, teamId, slotCount, customerName, customerEmail } = req.body;
+      if (!billingKey || !teamId || !slotCount) {
+        return res.status(400).json({ message: "Missing billingKey, teamId, or slotCount" });
       }
       const slots = Number(slotCount);
       if (!Number.isInteger(slots) || slots < 1) {
         return res.status(400).json({ message: "Invalid slotCount" });
+      }
+
+      // The request body's userId is not trusted — the caller's identity comes
+      // only from their Cardlogue session token, and they must actually be an
+      // owner/admin of teamId to touch its billing.
+      const cardlogueUser = getCardlogueUserFromToken(req);
+      if (!cardlogueUser) {
+        return res.status(401).json({ message: "Missing or invalid Cardlogue session" });
+      }
+      const userId = cardlogueUser.sub;
+      if (!(await isTeamBillingAdmin(teamId, userId))) {
+        return res.status(403).json({ message: "Not an owner/admin of this team" });
+      }
+
+      const memberCount = await getTeamMemberCount(teamId);
+      const minSlots = Math.max(2, memberCount);
+      if (slots < minSlots) {
+        return res.status(400).json({ message: `slotCount can't be below the current member count (${minSlots})` });
       }
 
       // Confirm PortOne actually issued this billing key before charging it.

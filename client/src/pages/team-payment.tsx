@@ -9,13 +9,12 @@ const SEAT_PRICE_KRW = 2200;
 const STORE_ID = import.meta.env.VITE_PORTONE_STORE_ID as string;
 const CHANNEL_KEY = import.meta.env.VITE_PORTONE_CHANNEL_KEY as string;
 
-type Status = "idle" | "processing" | "success" | "error";
+type Status = "confirm" | "processing" | "success" | "error";
 
 function getParams() {
   const params = new URLSearchParams(window.location.search);
   return {
     teamId: params.get("teamId") || "",
-    userId: params.get("userId") || "",
     slotCount: Number(params.get("slotCount") || "1"),
     name: params.get("name") || "",
     email: params.get("email") || "",
@@ -28,9 +27,16 @@ function notifyApp(payload: Record<string, unknown>) {
   (window as any).ReactNativeWebView?.postMessage(JSON.stringify(payload));
 }
 
+// The RN app injects its Cardlogue Supabase session token via
+// injectedJavaScriptBeforeContentLoaded (never via the URL, so it can't leak
+// through server logs or the Referer header) — see app/team/payment.tsx.
+function getCardlogueToken(): string | undefined {
+  return (window as any).__CARDLOGUE_TOKEN;
+}
+
 export default function TeamPaymentPage() {
   const { lang } = useLang();
-  const [status, setStatus] = useState<Status>("idle");
+  const [status, setStatus] = useState<Status>("confirm");
   const [errorMessage, setErrorMessage] = useState("");
   const [params, setParams] = useState(getParams);
 
@@ -39,24 +45,32 @@ export default function TeamPaymentPage() {
   }, []);
 
   const amount = params.slotCount * SEAT_PRICE_KRW;
-  const missingParams = !params.teamId || !params.userId || !params.slotCount;
+  const missingParams = !params.teamId || !params.slotCount;
 
   const t = {
     title: lang === "ko" ? "팀 플랜 결제" : "Team Plan Payment",
     seats: lang === "ko" ? `인원 ${params.slotCount}명` : `${params.slotCount} seats`,
     amount: lang === "ko" ? `월 ${amount.toLocaleString()}원` : `${amount.toLocaleString()} KRW / month`,
-    pay: lang === "ko" ? "카드 등록하고 결제하기" : "Register card & subscribe",
+    confirm: lang === "ko" ? "이 내용으로 결제할까요?" : "Proceed with this payment?",
+    pay: lang === "ko" ? "확인 (카드 등록하고 결제)" : "Confirm & pay",
+    cancel: lang === "ko" ? "취소" : "Cancel",
     processing: lang === "ko" ? "결제 처리 중..." : "Processing...",
     success: lang === "ko" ? "결제가 완료되었습니다. 앱으로 돌아가세요." : "Payment complete. You can return to the app.",
     error: lang === "ko" ? "결제에 실패했습니다" : "Payment failed",
     missing: lang === "ko" ? "잘못된 접근입니다 (필수 정보 누락)" : "Invalid request (missing required parameters)",
-    retry: lang === "ko" ? "다시 시도" : "Try again",
   };
+
+  function handleCancel() {
+    notifyApp({ type: "team-payment-cancelled", teamId: params.teamId });
+  }
 
   async function handlePay() {
     setStatus("processing");
     setErrorMessage("");
     try {
+      const token = getCardlogueToken();
+      if (!token) throw new Error("missing Cardlogue session token");
+
       const issueResponse = await PortOne.requestIssueBillingKey({
         storeId: STORE_ID,
         channelKey: CHANNEL_KEY,
@@ -64,7 +78,6 @@ export default function TeamPaymentPage() {
         issueId: `issue-${params.teamId}-${Date.now()}`,
         issueName: lang === "ko" ? "Cardlogue 팀 플랜 정기결제" : "Cardlogue Team Plan Subscription",
         customer: {
-          customerId: params.userId,
           fullName: params.name || undefined,
           email: params.email || undefined,
         },
@@ -78,11 +91,10 @@ export default function TeamPaymentPage() {
 
       const res = await fetch("/api/portone/team-subscribe", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           billingKey,
           teamId: params.teamId,
-          userId: params.userId,
           slotCount: params.slotCount,
           customerName: params.name,
           customerEmail: params.email,
@@ -125,6 +137,8 @@ export default function TeamPaymentPage() {
               </p>
             </div>
 
+            {status === "confirm" && <p className="text-white/60 text-sm">{t.confirm}</p>}
+
             {status === "success" ? (
               <p className="text-sm text-white/80" data-testid="text-payment-success">
                 {t.success}
@@ -140,20 +154,20 @@ export default function TeamPaymentPage() {
                 >
                   {status === "processing" ? t.processing : t.pay}
                 </Button>
+                {status !== "processing" && (
+                  <Button
+                    variant="outline"
+                    className="w-full text-white border-white/20 hover:bg-white/10"
+                    onClick={handleCancel}
+                    data-testid="button-team-pay-cancel"
+                  >
+                    {t.cancel}
+                  </Button>
+                )}
                 {status === "error" && (
-                  <>
-                    <p className="text-sm text-red-300" data-testid="text-payment-error">
-                      {t.error}: {errorMessage}
-                    </p>
-                    <Button
-                      variant="outline"
-                      className="w-full text-white border-white/20 hover:bg-white/10"
-                      onClick={handlePay}
-                      data-testid="button-team-pay-retry"
-                    >
-                      {t.retry}
-                    </Button>
-                  </>
+                  <p className="text-sm text-red-300" data-testid="text-payment-error">
+                    {t.error}: {errorMessage}
+                  </p>
                 )}
               </>
             )}
