@@ -241,9 +241,17 @@ export const translations = {
               "Digital business card profile information (name, company, title, phone, email, profile photo)",
             ],
             ["RevenueCat", "In-app subscription payment processing (once launched)", "Subscription status, payment identifiers"],
-            ["PortOne / Toss Payments", "Domestic web payment processing (once launched)", "Payment information"],
+            [
+              "PortOne Corp. / NHN KCP",
+              "Payment processing (credit card recurring billing authorization, settlement, cancellation)",
+              "Name, contact information (email/phone), payment (card) details",
+            ],
             ["Paddle", "International web payment processing (once launched)", "Payment information"],
           ],
+        },
+        {
+          type: "paragraph",
+          text: "The outsourcing period for PortOne runs until termination of the service agreement or the processing contract.",
         },
         {
           type: "paragraph",
@@ -885,9 +893,17 @@ export const translations = {
               "디지털 명함 프로필 정보(이름, 회사명, 직함, 전화번호, 이메일, 프로필사진)",
             ],
             ["RevenueCat", "인앱 구독 결제 처리 (결제 기능 도입 시)", "구독 상태, 결제 식별 정보"],
-            ["포트원(PortOne) / 토스페이먼츠", "국내 웹 결제 처리 (결제 기능 도입 시)", "결제 정보"],
+            [
+              "(주)포트원 (PortOne) / NHN한국사이버결제(KCP)",
+              "결제 처리 대행 (신용카드 정기결제 승인·매출·취소 처리)",
+              "성명, 연락처(이메일/전화번호), 결제(카드) 정보",
+            ],
             ["Paddle", "해외 웹 결제 처리 (결제 기능 도입 시)", "결제 정보"],
           ],
+        },
+        {
+          type: "paragraph",
+          text: "포트원에 대한 위탁 기간은 서비스 이용 계약 종료 시 또는 위탁 계약 종료 시까지입니다.",
         },
         {
           type: "paragraph",
