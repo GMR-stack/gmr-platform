@@ -46,7 +46,7 @@ export const translations = {
       privacy: "Privacy Policy",
       terms: "Terms of Service",
       rights: "All rights reserved.",
-      business: "The Navy · Representative: Juhyung Lee · Business Registration No. 155-26-01968 · globalmarketradar@gmail.com",
+      business: "The Navy · Representative: Juhyung Lee · Business Registration No. 155-26-01968 · 070-7954-1968 · globalmarketradar@gmail.com",
     },
     legal: {
       home: "Home",
@@ -137,6 +137,7 @@ export const translations = {
         ctaGooglePlay: "Get it on Google Play",
         linkPrivacy: "Privacy Policy",
         linkTerms: "Terms of Service",
+        linkRefund: "Refund Policy",
         linkContact: "Contact",
       },
     },
@@ -551,6 +552,107 @@ export const translations = {
       ] as LegalBlock[],
       closingNote: "These Terms take effect on July 2, 2026.",
     },
+    refund: {
+      title: "Refund Policy",
+      blocks: [
+        { type: "heading", text: "1. Purpose" },
+        {
+          type: "paragraph",
+          text: "This Refund Policy explains the refund criteria and procedure for paid subscriptions to Cardlogue, the business card management application operated by The Navy (\"we\", \"us\", or \"our\"). This Policy forms part of, and applies together with, our Terms of Service.",
+        },
+
+        { type: "heading", text: "2. Free Trial" },
+        {
+          type: "paragraph",
+          text: "We provide all new users (guest or registered) with a 7-day free trial with full feature access. No charge is billed automatically during the trial; a paid subscription only begins once you actively tap the subscribe button. Accordingly, the trial period itself is never subject to a refund.",
+        },
+
+        { type: "heading", text: "3. Refund Criteria by Payment Method" },
+        { type: "paragraph", text: "Refund policy differs depending on how a Cardlogue subscription is paid for:" },
+        {
+          type: "table",
+          headers: ["Category", "Payment Method", "Refund Basis"],
+          rows: [
+            ["Individual subscription", "In-app purchase (App Store / Google Play)", "Follows the respective store's refund policy"],
+            ["Team subscription", "Web checkout (PortOne/Toss Payments or Paddle)", "Follows Section 4 of this Policy"],
+          ],
+        },
+        { type: "subheading", text: "3-1. Individual subscriptions (in-app purchase)" },
+        {
+          type: "paragraph",
+          text: "Individual subscriptions are billed through the app marketplace you use, and refund requests and processing follow that marketplace's own policy and procedure.",
+        },
+        {
+          type: "list",
+          items: [
+            "Android (Google Play): request a refund from your order history in your Google Play account",
+            "iOS (App Store): follow Apple's Media Services Terms and refund request procedure",
+          ],
+        },
+        {
+          type: "paragraph",
+          text: "We are not involved in the marketplace operator's refund decision, and refund approval is determined solely by that marketplace's policy.",
+        },
+        { type: "subheading", text: "3-2. Team subscriptions (web checkout)" },
+        {
+          type: "paragraph",
+          text: "Team subscriptions are billed directly by the team admin through our web checkout page, in proportion to the number of team members. In this case, service access is deemed to have begun, and the right of withdrawal may be limited under Article 17, Paragraph 2 of Korea's Act on Consumer Protection in Electronic Commerce.",
+        },
+        {
+          type: "callout",
+          text: "Before completing a team subscription payment, users are notified that \"you agree that service use begins immediately and the right of withdrawal is limited,\" and payment proceeds only after this is acknowledged.",
+        },
+
+        { type: "heading", text: "4. Team Subscription Refund Details" },
+        {
+          type: "list",
+          items: [
+            "Flat-rate billing: Team subscription fees are charged as a flat amount — team headcount as of the 1st of each month × 2,200 KRW — and are not prorated for headcount changes during that month.",
+            "Refunds for billing errors: If a duplicate charge occurred due to our system error, or the Services were not properly provided, we will refund the applicable amount after review.",
+            "Refunds for non-use: A refund solely on the grounds of not using the Services after payment is, in principle, restricted. However, if it is confirmed that the Services were not used at all on the day of payment, you may contact us for individual review.",
+            "Cancellation timing: Team subscription cancellation takes effect from the following month; fees already paid for the current month are not refunded.",
+          ],
+        },
+
+        { type: "heading", text: "5. Account and Data Handling" },
+        {
+          type: "paragraph",
+          text: "We do not delete your data when a subscription expires or a payment fails. Only paid features (adding new cards, creating or joining a team, etc.) are restricted; viewing, editing, and deleting your existing cards and digital cards remains available.",
+        },
+
+        { type: "heading", text: "6. Refund Request Procedure" },
+        { type: "paragraph", text: "If you would like a refund, please follow the procedure below:" },
+        {
+          type: "list",
+          items: [
+            "In-app purchase users: request directly through Google Play / App Store customer support",
+            "Web checkout (team subscription) users: contact us using the information below",
+          ],
+        },
+        { type: "paragraph", text: "We provide the outcome of a refund request within 7 business days of receiving it." },
+
+        { type: "heading", text: "7. Changes to This Policy" },
+        {
+          type: "paragraph",
+          text: "This Refund Policy may be revised in response to changes in law or the Services' operational needs. Changes are announced in advance via an in-service notice or this page.",
+        },
+
+        { type: "heading", text: "Business Information" },
+        {
+          type: "table",
+          headers: ["Item", "Details"],
+          rows: [
+            ["Company", "The Navy"],
+            ["Representative", "Juhyung Lee"],
+            ["Business Registration No.", "155-26-01968"],
+            ["Address", "166 Uchang-ro, Buk-gu, Pohang-si, Gyeongsangbuk-do, Republic of Korea (37627)"],
+            ["Phone", "070-7954-1968"],
+            ["Email", "globalmarketradar@gmail.com"],
+          ],
+        },
+      ] as LegalBlock[],
+      closingNote: "This Policy takes effect on July 12, 2026.",
+    },
   },
   ko: {
     meta: {
@@ -591,7 +693,7 @@ export const translations = {
       privacy: "개인정보처리방침",
       terms: "이용약관",
       rights: "All rights reserved.",
-      business: "더네이비(The Navy) · 대표: 이주형 · 사업자등록번호: 155-26-01968 · globalmarketradar@gmail.com",
+      business: "더네이비(The Navy) · 대표: 이주형 · 사업자등록번호: 155-26-01968 · 070-7954-1968 · globalmarketradar@gmail.com",
     },
     legal: {
       home: "홈",
@@ -681,6 +783,7 @@ export const translations = {
         ctaGooglePlay: "Google Play에서 다운로드",
         linkPrivacy: "개인정보처리방침",
         linkTerms: "이용약관",
+        linkRefund: "환불정책",
         linkContact: "문의하기",
       },
     },
@@ -1085,6 +1188,104 @@ export const translations = {
         { type: "paragraph", text: "본 약관에 대해 궁금한 점이 있으시면 globalmarketradar@gmail.com으로 문의해 주세요." },
       ] as LegalBlock[],
       closingNote: "본 약관은 2026년 7월 2일부터 시행합니다.",
+    },
+    refund: {
+      title: "환불정책",
+      blocks: [
+        { type: "heading", text: "1. 목적" },
+        {
+          type: "paragraph",
+          text: "본 환불정책은 더네이비(이하 \"회사\")가 운영하는 명함 관리 애플리케이션 Cardlogue(이하 \"서비스\")의 유료 구독 상품에 대한 환불 기준 및 절차를 안내합니다. 본 정책은 서비스 이용약관의 일부를 구성하며, 이용약관과 함께 적용됩니다.",
+        },
+
+        { type: "heading", text: "2. 무료 체험 기간" },
+        {
+          type: "paragraph",
+          text: "회사는 신규 이용자(게스트 및 정식 가입자 공통)에게 7일간 전체 기능 무료 체험을 제공합니다. 체험 기간 중에는 자동으로 결제가 이루어지지 않으며, 이용자가 별도로 구독 버튼을 눌러 결제를 진행한 경우에만 유료 구독이 시작됩니다. 따라서 체험 기간 자체에 대한 환불 대상은 발생하지 않습니다.",
+        },
+
+        { type: "heading", text: "3. 결제 경로에 따른 환불 기준" },
+        { type: "paragraph", text: "Cardlogue의 구독 결제는 결제 경로에 따라 아래와 같이 환불 정책이 다르게 적용됩니다." },
+        {
+          type: "table",
+          headers: ["구분", "결제 경로", "환불 기준"],
+          rows: [
+            ["개인 구독", "앱 내 결제 (인앱결제, In-App Purchase)", "Google Play / App Store의 환불 정책 적용"],
+            ["팀 구독", "웹 결제 (PortOne·토스페이먼츠 / Paddle)", "본 정책 4항 기준 적용"],
+          ],
+        },
+        { type: "subheading", text: "3-1. 개인 구독 (인앱결제)" },
+        {
+          type: "paragraph",
+          text: "개인 구독은 각 이용자가 이용 중인 앱 마켓을 통해 결제되며, 환불 신청 및 처리는 해당 마켓의 정책과 절차를 따릅니다.",
+        },
+        {
+          type: "list",
+          items: [
+            "Android (Google Play): Google Play 계정의 주문 내역에서 환불 요청",
+            "iOS (App Store): Apple의 미디어 서비스 약관 및 환불 요청 절차에 따라 처리",
+          ],
+        },
+        { type: "paragraph", text: "회사는 마켓 사업자의 환불 처리 결과에 관여하지 않으며, 환불 승인 여부는 각 마켓의 정책에 따라 결정됩니다." },
+        { type: "subheading", text: "3-2. 팀 구독 (웹결제)" },
+        {
+          type: "paragraph",
+          text: "팀 구독은 팀 관리자가 소속 팀원 수에 비례하여 회사가 제공하는 웹 결제 페이지를 통해 직접 결제하는 방식입니다. 이 경우 「전자상거래 등에서의 소비자보호에 관한 법률」 제17조 제2항에 따라, 서비스 이용이 개시된 것으로 간주되어 청약철회가 제한될 수 있습니다.",
+        },
+        {
+          type: "callout",
+          text: "팀 구독 결제 시, 이용자는 결제 진행 전 \"서비스 이용 개시에 동의하며 청약철회가 제한됨\"을 안내받고 이에 동의한 이후에만 결제가 진행됩니다.",
+        },
+
+        { type: "heading", text: "4. 팀 구독 환불 세부 기준" },
+        {
+          type: "list",
+          items: [
+            "정액 과금 원칙: 팀 구독료는 매월 1일 기준 팀 소속 인원수 × 2,200원으로 정액 청구되며, 월 중 인원 증감이 있더라도 해당 월 결제 금액은 일할 계산되지 않습니다.",
+            "결제 오류로 인한 환불: 회사의 시스템 오류로 인해 중복 결제되었거나 서비스가 정상적으로 제공되지 않은 경우, 확인 후 해당 금액을 환불합니다.",
+            "서비스 미이용에 따른 환불: 결제 이후 단순 미이용을 이유로 한 환불은 원칙적으로 제한됩니다. 단, 결제 당일 서비스를 전혀 이용하지 않았음이 확인되는 경우 회사에 문의하여 개별 심사를 받을 수 있습니다.",
+            "해지 시점: 팀 구독 해지는 익월부터 적용되며, 이미 결제된 당월 이용료는 환불되지 않습니다.",
+          ],
+        },
+
+        { type: "heading", text: "5. 계정 및 데이터 처리" },
+        {
+          type: "paragraph",
+          text: "구독이 만료되거나 결제에 실패한 경우에도 회사는 이용자의 데이터를 삭제하지 않습니다. 다만 유료 기능(신규 명함 추가, 팀 생성·참여 등)은 제한되며, 기존에 저장된 명함 및 디지털 명함의 조회·수정·삭제는 계속 허용됩니다.",
+        },
+
+        { type: "heading", text: "6. 환불 신청 절차" },
+        { type: "paragraph", text: "환불을 원하시는 경우 아래 절차로 문의해 주시기 바랍니다." },
+        {
+          type: "list",
+          items: [
+            "인앱결제 이용자: Google Play / App Store 고객센터를 통해 직접 신청",
+            "웹결제(팀 구독) 이용자: 하단 사업자 정보의 연락처로 문의",
+          ],
+        },
+        { type: "paragraph", text: "회사는 환불 요청 접수 후 영업일 기준 7일 이내 처리 결과를 안내합니다." },
+
+        { type: "heading", text: "7. 정책 변경" },
+        {
+          type: "paragraph",
+          text: "본 환불정책은 관련 법령 및 서비스 운영상 필요에 따라 개정될 수 있으며, 개정 시 서비스 내 공지 또는 본 페이지를 통해 사전 고지합니다.",
+        },
+
+        { type: "heading", text: "사업자 정보" },
+        {
+          type: "table",
+          headers: ["항목", "내용"],
+          rows: [
+            ["상호명", "더네이비 (The Navy)"],
+            ["대표자", "이주형"],
+            ["사업자등록번호", "155-26-01968"],
+            ["사업장 주소", "경북 포항시 북구 우창로 166 (37627)"],
+            ["전화번호", "070-7954-1968"],
+            ["이메일", "globalmarketradar@gmail.com"],
+          ],
+        },
+      ] as LegalBlock[],
+      closingNote: "본 정책은 2026년 7월 12일부터 시행합니다.",
     },
   },
 } as const;

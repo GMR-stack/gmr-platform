@@ -18,6 +18,7 @@ import LandingPage from "@/pages/landing";
 import CardloguePage from "@/pages/cardlogue";
 import PrivacyPage from "@/pages/privacy";
 import TermsPage from "@/pages/terms";
+import RefundPage from "@/pages/refund";
 import ResetPasswordPage from "@/pages/reset-password";
 import ReportPage from "@/pages/report";
 
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/cardlogue" component={CardloguePage} />
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/terms" component={TermsPage} />
+      <Route path="/refund" component={RefundPage} />
       <Route path="/login" component={LoginPage} />
       <Route path="/auth" component={LoginPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
