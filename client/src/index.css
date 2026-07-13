@@ -42,6 +42,27 @@
   animation: navy-line-flow 6s linear infinite;
 }
 
+@keyframes navy-drift-page {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-3%, 3%) scale(1.05); }
+}
+
+.animate-navy-drift-page {
+  animation: navy-drift-page 30s ease-in-out infinite;
+}
+
+@keyframes bubble-rise {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: var(--bubble-opacity, 0.35); }
+  90% { opacity: var(--bubble-opacity, 0.35); }
+  100% { transform: translateY(-110vh) translateX(var(--bubble-drift, 12px)); opacity: 0; }
+}
+
+.animate-bubble-rise {
+  animation: bubble-rise var(--bubble-duration, 16s) linear infinite;
+  animation-delay: var(--bubble-delay, 0s);
+}
+
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0,0,0, .10);

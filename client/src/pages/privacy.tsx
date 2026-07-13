@@ -4,25 +4,27 @@ import { NavyLogo } from "@/components/navy-logo";
 import { LanguageToggle } from "@/components/language-toggle";
 import { Button } from "@/components/ui/button";
 import { LegalBlockView } from "@/components/legal-blocks";
+import { PageGlow } from "@/components/page-glow";
 import { useLang } from "@/lib/i18n";
 import { translations } from "@/lib/translations";
 
 const LAST_UPDATED = "July 8, 2026";
-const NAVY = "#0A1F44";
+const NAVY = "#03045E";
 
 export default function PrivacyPage() {
   const { lang } = useLang();
   const t = translations[lang];
 
   return (
-    <div className="min-h-screen text-white" style={{ background: `linear-gradient(180deg, ${NAVY} 0%, #071531 100%)` }}>
+    <div className="min-h-screen text-white" style={{ background: `linear-gradient(180deg, #0077B6 0%, ${NAVY} 100%)` }}>
+      <PageGlow />
       <Helmet>
         <title>{t.privacy.title} — The Navy</title>
         <meta name="description" content="How The Navy collects, uses, and protects your information across our apps, including Cardlogue." />
         <link rel="canonical" href="https://www.globalmarketradar.com/privacy" />
         <meta name="robots" content="index, follow" />
       </Helmet>
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0A1F44]/90 backdrop-blur">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#03045E]/90 backdrop-blur">
         <div className="max-w-3xl mx-auto flex items-center justify-between px-4 h-14">
           <NavyLogo linkTo="/" size="sm" variant="light" />
           <div className="flex items-center gap-4">

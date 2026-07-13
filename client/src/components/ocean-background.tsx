@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-const NAVY = "#0A1F44";
+const NAVY = "#03045E";
 const CYAN = "#00D4FF";
 
 export function OceanBackground() {
@@ -19,7 +19,7 @@ export function OceanBackground() {
     <div
       ref={ref}
       className="fixed inset-0 -z-10 overflow-hidden pointer-events-none"
-      style={{ background: `linear-gradient(180deg, ${NAVY} 0%, #071531 100%)` }}
+      style={{ background: `linear-gradient(180deg, #0077B6 0%, ${NAVY} 100%)` }}
     >
       <div
         className="absolute -top-24 -left-16 w-[520px] h-[520px] rounded-full opacity-30 blur-3xl animate-navy-drift"

@@ -2,6 +2,8 @@ import { Link } from "wouter";
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import { NavyLogo } from "@/components/navy-logo";
+import { PageGlow } from "@/components/page-glow";
+import { WaveDivider } from "@/components/wave-divider";
 import { LanguageToggle } from "@/components/language-toggle";
 import { Reveal } from "@/components/reveal";
 import { Magnetic } from "@/components/magnetic";
@@ -11,7 +13,7 @@ import { useLang } from "@/lib/i18n";
 import { translations } from "@/lib/translations";
 import { ScanLine, QrCode, FolderKanban, Target, Users, Wallet, Download, ShieldCheck, Mail } from "lucide-react";
 
-const NAVY = "#0A1F44";
+const NAVY = "#03045E";
 // Gold/amber accent instead of the home page's cyan — reads as business
 // cards & networking rather than the Navy brand's digital-ocean theme.
 const GOLD = "#D4AF37";
@@ -20,7 +22,7 @@ function Header() {
   const { lang } = useLang();
   const t = translations[lang];
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0A1F44]/90 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#03045E]/90 backdrop-blur">
       <div className="max-w-5xl mx-auto flex items-center justify-between px-4 h-14">
         <NavyLogo linkTo="/" size="sm" variant="light" />
         <div className="flex items-center gap-4">
@@ -101,7 +103,7 @@ function Screenshots() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
   return (
-    <section className="py-8 px-4 border-t border-white/10" data-testid="section-cardlogue-screenshots">
+    <section className="py-8 px-4" data-testid="section-cardlogue-screenshots">
       <div className="max-w-5xl mx-auto">
         <Reveal>
           <div className="text-center mb-5">
@@ -148,7 +150,7 @@ function Values() {
           const Icon = VALUE_ICONS[i];
           return (
             <Reveal key={value.title} delay={i * 0.1}>
-              <Card className="h-full border border-white/15 bg-white/[0.04] backdrop-blur-sm" data-testid={`card-value-${i}`}>
+              <Card className="h-full border border-white/15 bg-white/[0.04] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-white/30 hover:bg-white/[0.06] hover:shadow-xl hover:shadow-black/20" data-testid={`card-value-${i}`}>
                 <CardContent className="p-4 space-y-2 text-center sm:text-left flex flex-col items-center sm:items-start">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "rgba(212,175,55,0.14)" }}>
                     <Icon className="w-6 h-6" style={{ color: GOLD }} strokeWidth={2} />
@@ -171,13 +173,13 @@ function Features() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
   return (
-    <section className="py-8 px-4 border-t border-white/10" data-testid="section-cardlogue-features">
+    <section className="py-8 px-4" data-testid="section-cardlogue-features">
       <div className="max-w-5xl mx-auto grid sm:grid-cols-3 gap-4">
         {t.features.map((feature, i) => {
           const Icon = FEATURE_ICONS[i];
           return (
             <Reveal key={feature.title} delay={i * 0.1}>
-              <Card className="h-full border border-white/15 bg-white/[0.04] backdrop-blur-sm" data-testid={`card-feature-${i}`}>
+              <Card className="h-full border border-white/15 bg-white/[0.04] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-white/30 hover:bg-white/[0.06] hover:shadow-xl hover:shadow-black/20" data-testid={`card-feature-${i}`}>
                 <CardContent className="p-4 space-y-2 text-center sm:text-left flex flex-col items-center sm:items-start">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "rgba(212,175,55,0.14)" }}>
                     <Icon className="w-6 h-6" style={{ color: GOLD }} strokeWidth={2} />
@@ -198,7 +200,7 @@ function Pricing() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
   return (
-    <section className="py-8 px-4 border-t border-white/10" data-testid="section-cardlogue-pricing">
+    <section className="py-8 px-4" data-testid="section-cardlogue-pricing">
       <div className="max-w-5xl mx-auto">
         <Reveal>
           <div className="text-center mb-5">
@@ -209,7 +211,7 @@ function Pricing() {
         <div className="grid sm:grid-cols-3 gap-4">
           {t.pricing.plans.map((plan, i) => (
             <Reveal key={plan.name} delay={i * 0.1}>
-              <Card className="h-full border border-white/15 bg-white/[0.04] backdrop-blur-sm" data-testid={`card-plan-${i}`}>
+              <Card className="h-full border border-white/15 bg-white/[0.04] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-white/30 hover:bg-white/[0.06] hover:shadow-xl hover:shadow-black/20" data-testid={`card-plan-${i}`}>
                 <CardContent className="p-4 space-y-2 text-center">
                   <h3 className="font-brand font-bold text-lg text-white">{plan.name}</h3>
                   <p className="font-brand text-2xl font-black" style={{ color: GOLD }}>
@@ -233,7 +235,7 @@ function Security() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
   return (
-    <section className="py-8 px-4 border-t border-white/10" data-testid="section-cardlogue-security">
+    <section className="py-8 px-4" data-testid="section-cardlogue-security">
       <div className="max-w-2xl mx-auto">
         <Reveal>
           <div className="flex items-center gap-3 justify-center mb-4">
@@ -257,7 +259,7 @@ function Faq() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
   return (
-    <section className="py-8 px-4 border-t border-white/10" data-testid="section-cardlogue-faq">
+    <section className="py-8 px-4" data-testid="section-cardlogue-faq">
       <div className="max-w-2xl mx-auto">
         <Reveal>
           <h2 className="font-brand text-2xl sm:text-3xl font-bold text-white text-center mb-4">{t.faq.title}</h2>
@@ -281,7 +283,7 @@ function BottomCta() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
   return (
-    <section className="py-10 px-4 border-t border-white/10 text-center" data-testid="section-cardlogue-bottom-cta">
+    <section className="py-10 px-4 text-center" data-testid="section-cardlogue-bottom-cta">
       <div className="max-w-2xl mx-auto">
         <Reveal>
           <h2 className="font-brand text-2xl sm:text-3xl font-bold text-white mb-4 text-balance break-keep">
@@ -319,7 +321,8 @@ export default function CardloguePage() {
   const t = translations[lang].cardlogue;
 
   return (
-    <div className="min-h-screen text-white" style={{ background: `linear-gradient(180deg, ${NAVY} 0%, #071531 100%)` }}>
+    <div className="min-h-screen text-white" style={{ background: `linear-gradient(180deg, #0077B6 0%, ${NAVY} 100%)` }}>
+      <PageGlow />
       <Helmet>
         <title>{t.meta.title}</title>
         <meta name="description" content={t.meta.description} />
@@ -328,12 +331,18 @@ export default function CardloguePage() {
       </Helmet>
       <Header />
       <Hero />
+      <WaveDivider />
       <Screenshots />
       <Values />
+      <WaveDivider />
       <Features />
+      <WaveDivider />
       <Pricing />
+      <WaveDivider />
       <Security />
+      <WaveDivider />
       <Faq />
+      <WaveDivider />
       <BottomCta />
     </div>
   );

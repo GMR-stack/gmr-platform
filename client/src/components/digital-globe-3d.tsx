@@ -44,7 +44,7 @@ function buildGlobe() {
   // Opaque (not transparent) so it renders in the opaque pass and reliably
   // writes/tests depth — that's what hides the far side of the globe behind
   // the near side, instead of transparent back-side geometry bleeding through.
-  globe.globeMaterial(new THREE.MeshBasicMaterial({ color: "#0A1F44" }));
+  globe.globeMaterial(new THREE.MeshBasicMaterial({ color: "#03045E" }));
 
   // Normalize three-globe's default radius-100 sphere down to radius 1.
   globe.scale.set(0.01, 0.01, 0.01);

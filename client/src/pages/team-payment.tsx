@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import * as PortOne from "@portone/browser-sdk/v2";
 import { useLang } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { PageGlow } from "@/components/page-glow";
 
-const NAVY = "#0A1F44";
+const NAVY = "#03045E";
 const GOLD = "#D4AF37";
 const SEAT_PRICE_KRW = 2200;
 const STORE_ID = import.meta.env.VITE_PORTONE_STORE_ID as string;
@@ -121,8 +122,9 @@ export default function TeamPaymentPage() {
   return (
     <div
       className="min-h-screen text-white flex items-center justify-center px-4"
-      style={{ background: `linear-gradient(180deg, ${NAVY} 0%, #071531 100%)` }}
+      style={{ background: `linear-gradient(180deg, #0077B6 0%, ${NAVY} 100%)` }}
     >
+      <PageGlow />
       <div className="w-full max-w-sm border border-white/15 bg-white/[0.04] backdrop-blur-sm rounded-2xl p-7 space-y-6 text-center">
         <h1 className="font-brand text-2xl font-bold">{t.title}</h1>
 
