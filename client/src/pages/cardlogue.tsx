@@ -75,6 +75,16 @@ function Hero() {
   return (
     <section className="px-4 py-10 sm:py-14 text-center" data-testid="section-cardlogue-hero">
       <div className="max-w-2xl mx-auto">
+        <motion.img
+          src="/cardlogue-icon.png"
+          alt="Cardlogue"
+          initial={{ opacity: 0, y: 16, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6 }}
+          className="w-20 h-20 sm:w-24 sm:h-24 rounded-[22%] mx-auto mb-6 shadow-2xl"
+          style={{ boxShadow: "0 16px 40px -12px rgba(0,0,0,0.5)" }}
+          data-testid="img-cardlogue-icon"
+        />
         <motion.h1
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
