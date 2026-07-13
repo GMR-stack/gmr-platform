@@ -50,6 +50,7 @@ export const translations = {
     },
     legal: {
       home: "Home",
+      cardlogue: "Cardlogue",
       lastUpdated: "Last updated",
     },
     cardlogue: {
@@ -716,6 +717,7 @@ export const translations = {
     },
     legal: {
       home: "홈",
+      cardlogue: "카드로그",
       lastUpdated: "최종 수정일",
     },
     cardlogue: {

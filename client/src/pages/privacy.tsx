@@ -33,6 +33,11 @@ export default function PrivacyPage() {
                 {t.legal.home}
               </Button>
             </Link>
+            <Link href="/cardlogue">
+              <Button variant="ghost" size="sm" className="text-white/70 hover:text-white" data-testid="link-privacy-cardlogue">
+                {t.legal.cardlogue}
+              </Button>
+            </Link>
             <LanguageToggle variant="light" />
           </div>
         </div>
