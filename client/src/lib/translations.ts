@@ -46,7 +46,7 @@ export const translations = {
       privacy: "Privacy Policy",
       terms: "Terms of Service",
       rights: "All rights reserved.",
-      business: "The Navy · Representative: Juhyung Lee · Business Registration No. 155-26-01968 · 070-7954-1968 · globalmarketradar@gmail.com",
+      business: "The Navy · Representative: Juhyung Lee · Business Registration No. 155-26-01968 · 166 Uchang-ro, Buk-gu, Pohang-si, Gyeongsangbuk-do, Republic of Korea (37627) · 070-7954-1968 · globalmarketradar@gmail.com",
     },
     legal: {
       home: "Home",
@@ -713,7 +713,7 @@ export const translations = {
       privacy: "개인정보처리방침",
       terms: "이용약관",
       rights: "All rights reserved.",
-      business: "더네이비(The Navy) · 대표: 이주형 · 사업자등록번호: 155-26-01968 · 070-7954-1968 · globalmarketradar@gmail.com",
+      business: "더네이비(The Navy) · 대표: 이주형 · 사업자등록번호: 155-26-01968 · 경북 포항시 북구 우창로 166 (37627) · 070-7954-1968 · globalmarketradar@gmail.com",
     },
     legal: {
       home: "홈",
