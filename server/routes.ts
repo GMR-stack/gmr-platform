@@ -15,7 +15,13 @@ import {
   isTeamBillingAdmin,
   getTeamMemberCount,
 } from "./portone";
-import { getPaddleEnvironment, createTransaction, verifyPaddleWebhookSignature } from "./paddle";
+import {
+  getPaddleEnvironment,
+  getPaddleSeatUnitPriceCents,
+  createTransaction,
+  rescheduleNextBilling,
+  verifyPaddleWebhookSignature,
+} from "./paddle";
 
 const TEAM_SEAT_PRICE_KRW = 2200;
 
@@ -719,8 +725,13 @@ ${freeReportUrls}
         return res.status(400).json({ message: `slotCount can't be below the current member count (${minSlots})` });
       }
 
+      // First charge is prorated for the days left in the current cycle —
+      // the recurring monthly amount takes over once the webhook anchors
+      // this subscription's billing date to the 1st (see the webhook below).
+      const amountCents = calcProratedSeatAmount(new Date(), slots, getPaddleSeatUnitPriceCents());
       const transaction = await createTransaction({
         slots,
+        amountCents,
         customData: { teamId, userId, slots },
       });
 
@@ -786,6 +797,16 @@ ${freeReportUrls}
             ? await supabase.from("subscriptions").update(subscriptionFields).eq("id", existing.id)
             : await supabase.from("subscriptions").insert(subscriptionFields);
           if (writeErr) throw writeErr;
+
+          // Anchor this subscription's recurring charge to the 1st, instead
+          // of the day-of-month the first (prorated) payment happened to
+          // land on. Harmless to repeat if both transaction.completed and
+          // subscription.created fire for the same purchase.
+          if (subscriptionId) {
+            await rescheduleNextBilling(subscriptionId, calcNextBillingAt(new Date())).catch((err) =>
+              console.error("Paddle reschedule next_billed_at error:", err.message),
+            );
+          }
         }
       } else if (eventType === "subscription.canceled") {
         const teamId = event.data?.custom_data?.teamId;

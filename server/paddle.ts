@@ -74,9 +74,9 @@ export async function getSubscription(subscriptionId: string) {
 // currency pricing for this item (acceptable for this product).
 export async function createTransaction(params: {
   slots: number;
+  amountCents: number;
   customData: Record<string, unknown>;
 }) {
-  const totalCents = params.slots * getPaddleSeatUnitPriceCents();
   return paddleFetch("/transactions", {
     method: "POST",
     body: JSON.stringify({
@@ -85,7 +85,7 @@ export async function createTransaction(params: {
           price: {
             description: `Cardlogue Team Subscription (${params.slots} seats)`,
             product_id: getPaddleProductId(),
-            unit_price: { amount: String(totalCents), currency_code: "USD" },
+            unit_price: { amount: String(params.amountCents), currency_code: "USD" },
             billing_cycle: { interval: "month", frequency: 1 },
             tax_mode: "account_setting",
             quantity: { minimum: 1, maximum: 1 },
@@ -94,6 +94,20 @@ export async function createTransaction(params: {
         },
       ],
       custom_data: params.customData,
+    }),
+  });
+}
+
+// Anchors every team's recurring charge to the 1st of the month (CLAUDE.md
+// 11-2), regardless of the day the first prorated payment landed on.
+// `proration_billing_mode: "do_not_bill"` reschedules the date only — it
+// does not trigger an extra charge.
+export async function rescheduleNextBilling(subscriptionId: string, nextBilledAt: Date) {
+  return paddleFetch(`/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      next_billed_at: nextBilledAt.toISOString(),
+      proration_billing_mode: "do_not_bill",
     }),
   });
 }
