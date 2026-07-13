@@ -111,7 +111,7 @@ function Screenshots() {
             <h2 className="font-brand text-2xl sm:text-3xl font-bold mt-3 text-white">{t.screenshots.title}</h2>
           </div>
         </Reveal>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {t.screenshots.items.map((item, i) => (
             <Reveal key={item.file} delay={i * 0.1}>
               <div className="space-y-3">

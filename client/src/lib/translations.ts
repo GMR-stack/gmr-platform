@@ -70,8 +70,7 @@ export const translations = {
         title: "A quick look inside Cardlogue",
         items: [
           { file: "scan", caption: "Scan a card and it's recognized instantly" },
-          { file: "mycard", caption: "Your own digital card, shared by QR" },
-          { file: "card", caption: "Every card your team has collected, in one wallet" },
+          { file: "mycard", caption: "Create your own digital card and share it by QR" },
           { file: "team", caption: "See who your team has met, together" },
         ],
       },
@@ -736,8 +735,7 @@ export const translations = {
         title: "카드로그, 이렇게 생겼어요",
         items: [
           { file: "scan", caption: "명함을 스캔하면 즉시 인식돼요" },
-          { file: "mycard", caption: "나만의 디지털 명함을 QR로 공유" },
-          { file: "card", caption: "팀이 모은 명함을 한 곳에서" },
+          { file: "mycard", caption: "나만의 디지털 명함을 만들고 QR로 공유" },
           { file: "team", caption: "누가 어떤 고객을 만났는지 함께 확인" },
         ],
       },
