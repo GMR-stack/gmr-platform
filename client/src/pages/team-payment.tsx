@@ -47,15 +47,6 @@ export default function TeamPaymentPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [params, setParams] = useState(getParams);
   const [paddle, setPaddle] = useState<Paddle | null>(null);
-  // Paddle's own formatted total (e.g. "$11.00") — never reformatted or
-  // computed on our side, only ever displayed as Paddle returns it.
-  const [paddleTotal, setPaddleTotal] = useState<string | null>(null);
-  // The transaction is created server-side (after validating team
-  // membership + the slot floor) with a fixed price/quantity — opening
-  // checkout with this transactionId instead of raw items is what keeps
-  // Paddle's own quantity stepper from letting the buyer change the seat
-  // count in the checkout overlay.
-  const [transactionId, setTransactionId] = useState<string | null>(null);
 
   useEffect(() => {
     setParams(getParams());
@@ -83,33 +74,6 @@ export default function TeamPaymentPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.provider]);
 
-  useEffect(() => {
-    if (params.provider !== "paddle" || !paddle || !params.teamId) return;
-    (async () => {
-      try {
-        const token = getCardlogueToken();
-        if (!token) throw new Error("missing Cardlogue session token");
-        const res = await fetch("/api/paddle/checkout-context", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ teamId: params.teamId, slotCount: params.slotCount }),
-        });
-        const ctx = await res.json();
-        if (!res.ok) throw new Error(ctx?.message || "failed to prepare checkout");
-        setTransactionId(ctx.transactionId);
-
-        const preview = await paddle.PricePreview({
-          items: [{ priceId: ctx.customPriceId, quantity: 1 }],
-        });
-        const totals = preview.data.details.lineItems[0]?.formattedTotals;
-        setPaddleTotal(totals?.total ?? null);
-      } catch (err: any) {
-        setErrorMessage(err?.message || "unknown error");
-        setStatus("error");
-      }
-    })();
-  }, [paddle, params.provider, params.teamId, params.slotCount]);
-
   const amount = params.slotCount * SEAT_PRICE_KRW;
   const missingParams = !params.teamId || !params.slotCount;
 
@@ -124,7 +88,6 @@ export default function TeamPaymentPage() {
     success: lang === "ko" ? "결제가 완료되었습니다. 앱으로 돌아가세요." : "Payment complete. You can return to the app.",
     error: lang === "ko" ? "결제에 실패했습니다" : "Payment failed",
     missing: lang === "ko" ? "잘못된 접근입니다 (필수 정보 누락)" : "Invalid request (missing required parameters)",
-    loadingPrice: lang === "ko" ? "가격 불러오는 중..." : "Loading price...",
   };
 
   function handleCancel() {
@@ -186,16 +149,30 @@ export default function TeamPaymentPage() {
   }
 
   async function handlePayPaddle() {
+    setStatus("processing");
     setErrorMessage("");
     try {
       if (!paddle) throw new Error("Paddle not ready");
-      if (!transactionId) throw new Error("checkout not ready yet");
+      const token = getCardlogueToken();
+      if (!token) throw new Error("missing Cardlogue session token");
 
-      setStatus("processing");
+      // Only created on an actual attempt to pay — not on page load — so
+      // reloading or abandoning this screen doesn't litter Paddle with
+      // draft transactions.
+      const res = await fetch("/api/paddle/checkout-context", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ teamId: params.teamId, slotCount: params.slotCount }),
+      });
+      const ctx = await res.json();
+      if (!res.ok) throw new Error(ctx?.message || "failed to prepare checkout");
+
       // Opened by transactionId (not `items`) so the seat count we already
       // validated server-side can't be edited in the checkout overlay.
+      // Paddle's own overlay displays the total, so we don't need a
+      // separate price preview on our side.
       paddle.Checkout.open({
-        transactionId,
+        transactionId: ctx.transactionId,
         customer: params.email ? { email: params.email } : undefined,
       });
     } catch (err: any) {
@@ -222,9 +199,11 @@ export default function TeamPaymentPage() {
           <>
             <div className="space-y-1">
               <p className="text-white/70">{t.seats}</p>
-              <p className="font-brand text-3xl font-black" style={{ color: GOLD }}>
-                {params.provider === "paddle" ? (paddleTotal ?? t.loadingPrice) : t.amount}
-              </p>
+              {params.provider !== "paddle" && (
+                <p className="font-brand text-3xl font-black" style={{ color: GOLD }}>
+                  {t.amount}
+                </p>
+              )}
             </div>
 
             {status === "confirm" && <p className="text-white/60 text-sm">{t.confirm}</p>}
@@ -238,7 +217,7 @@ export default function TeamPaymentPage() {
                 <Button
                   className="w-full font-brand font-semibold"
                   style={{ background: GOLD, color: NAVY }}
-                  disabled={status === "processing" || (params.provider === "paddle" && (!paddleTotal || !transactionId))}
+                  disabled={status === "processing" || (params.provider === "paddle" && !paddle)}
                   onClick={handlePay}
                   data-testid="button-team-pay"
                 >
