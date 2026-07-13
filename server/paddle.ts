@@ -27,12 +27,6 @@ export function getPaddleApiKey(): string {
   return key;
 }
 
-export function getPaddleSeatPriceId(): string {
-  const id = process.env.PADDLE_TEAM_SEAT_PRICE_ID;
-  if (!id) throw new Error("PADDLE_TEAM_SEAT_PRICE_ID not configured");
-  return id;
-}
-
 export function getPaddleProductId(): string {
   const id = process.env.PADDLE_PRODUCT_ID;
   if (!id) throw new Error("PADDLE_PRODUCT_ID not configured");
