@@ -15,7 +15,7 @@ import {
   isTeamBillingAdmin,
   getTeamMemberCount,
 } from "./portone";
-import { getPaddleEnvironment, getPaddleSeatPriceId, verifyPaddleWebhookSignature } from "./paddle";
+import { getPaddleEnvironment, getPaddleSeatPriceId, createTransaction, verifyPaddleWebhookSignature } from "./paddle";
 
 const TEAM_SEAT_PRICE_KRW = 2200;
 
@@ -719,10 +719,17 @@ ${freeReportUrls}
         return res.status(400).json({ message: `slotCount can't be below the current member count (${minSlots})` });
       }
 
-      return res.json({
-        priceId: getPaddleSeatPriceId(),
+      const priceId = getPaddleSeatPriceId();
+      const transaction = await createTransaction({
+        priceId,
         quantity: slots,
         customData: { teamId, userId },
+      });
+
+      return res.json({
+        priceId,
+        quantity: slots,
+        transactionId: transaction.data.id,
         environment: getPaddleEnvironment(),
       });
     } catch (err: any) {

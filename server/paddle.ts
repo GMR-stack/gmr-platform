@@ -53,6 +53,25 @@ export async function getSubscription(subscriptionId: string) {
   return paddleFetch(`/subscriptions/${encodeURIComponent(subscriptionId)}`);
 }
 
+// Pre-creating the transaction server-side (rather than opening checkout
+// with raw `items`) fixes the price/quantity before the buyer ever sees the
+// checkout overlay. Paddle's own quantity stepper only appears when
+// checkout is opened via `items` — passing a transactionId instead means
+// the buyer can't edit the seat count we already validated server-side.
+export async function createTransaction(params: {
+  priceId: string;
+  quantity: number;
+  customData: Record<string, unknown>;
+}) {
+  return paddleFetch("/transactions", {
+    method: "POST",
+    body: JSON.stringify({
+      items: [{ price_id: params.priceId, quantity: params.quantity }],
+      custom_data: params.customData,
+    }),
+  });
+}
+
 // Verifies the `Paddle-Signature` header (format: "ts=<unix>;h1=<hex hmac>")
 // against the raw request body, per Paddle's webhook signing spec:
 // HMAC-SHA256(secret, `${ts}:${rawBody}`) must equal h1.

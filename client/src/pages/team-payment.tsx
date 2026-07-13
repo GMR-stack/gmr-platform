@@ -50,6 +50,12 @@ export default function TeamPaymentPage() {
   // Paddle's own formatted total (e.g. "$11.00") — never reformatted or
   // computed on our side, only ever displayed as Paddle returns it.
   const [paddleTotal, setPaddleTotal] = useState<string | null>(null);
+  // The transaction is created server-side (after validating team
+  // membership + the slot floor) with a fixed price/quantity — opening
+  // checkout with this transactionId instead of raw items is what keeps
+  // Paddle's own quantity stepper from letting the buyer change the seat
+  // count in the checkout overlay.
+  const [transactionId, setTransactionId] = useState<string | null>(null);
 
   useEffect(() => {
     setParams(getParams());
@@ -90,6 +96,7 @@ export default function TeamPaymentPage() {
         });
         const ctx = await res.json();
         if (!res.ok) throw new Error(ctx?.message || "failed to prepare checkout");
+        setTransactionId(ctx.transactionId);
 
         const preview = await paddle.PricePreview({
           items: [{ priceId: ctx.priceId, quantity: ctx.quantity }],
@@ -181,22 +188,14 @@ export default function TeamPaymentPage() {
   async function handlePayPaddle() {
     setErrorMessage("");
     try {
-      const token = getCardlogueToken();
-      if (!token) throw new Error("missing Cardlogue session token");
       if (!paddle) throw new Error("Paddle not ready");
-
-      const res = await fetch("/api/paddle/checkout-context", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ teamId: params.teamId, slotCount: params.slotCount }),
-      });
-      const ctx = await res.json();
-      if (!res.ok) throw new Error(ctx?.message || "failed to prepare checkout");
+      if (!transactionId) throw new Error("checkout not ready yet");
 
       setStatus("processing");
+      // Opened by transactionId (not `items`) so the seat count we already
+      // validated server-side can't be edited in the checkout overlay.
       paddle.Checkout.open({
-        items: [{ priceId: ctx.priceId, quantity: ctx.quantity }],
-        customData: ctx.customData,
+        transactionId,
         customer: params.email ? { email: params.email } : undefined,
       });
     } catch (err: any) {
@@ -239,7 +238,7 @@ export default function TeamPaymentPage() {
                 <Button
                   className="w-full font-brand font-semibold"
                   style={{ background: GOLD, color: NAVY }}
-                  disabled={status === "processing" || (params.provider === "paddle" && !paddleTotal)}
+                  disabled={status === "processing" || (params.provider === "paddle" && (!paddleTotal || !transactionId))}
                   onClick={handlePay}
                   data-testid="button-team-pay"
                 >
