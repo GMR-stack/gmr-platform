@@ -33,6 +33,20 @@ export function getPaddleSeatPriceId(): string {
   return id;
 }
 
+export function getPaddleProductId(): string {
+  const id = process.env.PADDLE_PRODUCT_ID;
+  if (!id) throw new Error("PADDLE_PRODUCT_ID not configured");
+  return id;
+}
+
+export function getPaddleSeatUnitPriceCents(): number {
+  const raw = process.env.PADDLE_SEAT_UNIT_PRICE_USD_CENTS;
+  if (!raw) throw new Error("PADDLE_SEAT_UNIT_PRICE_USD_CENTS not configured");
+  const cents = Number(raw);
+  if (!Number.isInteger(cents) || cents < 1) throw new Error("PADDLE_SEAT_UNIT_PRICE_USD_CENTS must be a positive integer");
+  return cents;
+}
+
 async function paddleFetch(path: string, init: RequestInit = {}) {
   const res = await fetch(`${getPaddleApiBase()}${path}`, {
     ...init,
@@ -53,20 +67,38 @@ export async function getSubscription(subscriptionId: string) {
   return paddleFetch(`/subscriptions/${encodeURIComponent(subscriptionId)}`);
 }
 
-// Pre-creating the transaction server-side (rather than opening checkout
-// with raw `items`) fixes the price/quantity before the buyer ever sees the
-// checkout overlay. Paddle's own quantity stepper only appears when
-// checkout is opened via `items` — passing a transactionId instead means
-// the buyer can't edit the seat count we already validated server-side.
+// Paddle's checkout quantity stepper is governed by the *price's own*
+// min/max quantity config, not by anything we can override per-transaction
+// via `items: [{ price_id, quantity }]` — a shared catalog price wide
+// enough to fit every team size necessarily lets the buyer edit it back
+// down in the checkout UI, bypassing the slot-floor check we already did.
+//
+// Instead we mint a one-off "custom" (non-catalog) price per checkout,
+// with the seat count already baked into a single unit_price and its own
+// quantity locked to exactly 1 — there's no adjustable quantity for the
+// buyer to touch. Charged in a fixed currency (USD); no adaptive/local-
+// currency pricing for this item (acceptable for this product).
 export async function createTransaction(params: {
-  priceId: string;
-  quantity: number;
+  slots: number;
   customData: Record<string, unknown>;
 }) {
+  const totalCents = params.slots * getPaddleSeatUnitPriceCents();
   return paddleFetch("/transactions", {
     method: "POST",
     body: JSON.stringify({
-      items: [{ price_id: params.priceId, quantity: params.quantity }],
+      items: [
+        {
+          price: {
+            description: `Cardlogue Team Subscription (${params.slots} seats)`,
+            product_id: getPaddleProductId(),
+            unit_price: { amount: String(totalCents), currency_code: "USD" },
+            billing_cycle: { interval: "month", frequency: 1 },
+            tax_mode: "account_setting",
+            quantity: { minimum: 1, maximum: 1 },
+          },
+          quantity: 1,
+        },
+      ],
       custom_data: params.customData,
     }),
   });

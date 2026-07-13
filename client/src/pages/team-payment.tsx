@@ -99,7 +99,7 @@ export default function TeamPaymentPage() {
         setTransactionId(ctx.transactionId);
 
         const preview = await paddle.PricePreview({
-          items: [{ priceId: ctx.priceId, quantity: ctx.quantity }],
+          items: [{ priceId: ctx.customPriceId, quantity: 1 }],
         });
         const totals = preview.data.details.lineItems[0]?.formattedTotals;
         setPaddleTotal(totals?.total ?? null);

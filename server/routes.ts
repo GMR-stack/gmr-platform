@@ -15,7 +15,7 @@ import {
   isTeamBillingAdmin,
   getTeamMemberCount,
 } from "./portone";
-import { getPaddleEnvironment, getPaddleSeatPriceId, createTransaction, verifyPaddleWebhookSignature } from "./paddle";
+import { getPaddleEnvironment, createTransaction, verifyPaddleWebhookSignature } from "./paddle";
 
 const TEAM_SEAT_PRICE_KRW = 2200;
 
@@ -719,16 +719,16 @@ ${freeReportUrls}
         return res.status(400).json({ message: `slotCount can't be below the current member count (${minSlots})` });
       }
 
-      const priceId = getPaddleSeatPriceId();
       const transaction = await createTransaction({
-        priceId,
-        quantity: slots,
-        customData: { teamId, userId },
+        slots,
+        customData: { teamId, userId, slots },
       });
 
       return res.json({
-        priceId,
-        quantity: slots,
+        // The per-transaction custom price Paddle just minted for this
+        // checkout — used client-side only for PricePreview (display),
+        // never re-used across transactions.
+        customPriceId: transaction.data.items[0].price.id,
         transactionId: transaction.data.id,
         environment: getPaddleEnvironment(),
       });
@@ -754,8 +754,10 @@ ${freeReportUrls}
         const customData = data?.custom_data || data?.subscription?.custom_data;
         const teamId = customData?.teamId;
         const userId = customData?.userId;
-        const items = data?.items || [];
-        const slots = items[0]?.quantity ?? 1;
+        // The transaction's own item quantity is always 1 (the seat count is
+        // baked into that item's unit price instead — see createTransaction
+        // in server/paddle.ts), so the real seat count comes from custom_data.
+        const slots = Number(customData?.slots) || 1;
         const subscriptionId = data?.subscription_id || data?.id;
 
         if (teamId && userId) {
