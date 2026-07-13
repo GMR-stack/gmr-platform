@@ -727,7 +727,7 @@ ${freeReportUrls}
       });
     } catch (err: any) {
       console.error("Paddle checkout-context error:", err.message);
-      return res.status(500).json({ message: "Failed to prepare checkout", debug: err.message });
+      return res.status(500).json({ message: "Failed to prepare checkout" });
     }
   });
 
