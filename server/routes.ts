@@ -773,13 +773,6 @@ ${freeReportUrls}
 
         if (teamId && userId) {
           const supabase = getCardlogueSupabase();
-          const { data: existing, error: findErr } = await supabase
-            .from("subscriptions")
-            .select("id")
-            .eq("team_id", teamId)
-            .eq("type", "team")
-            .maybeSingle();
-          if (findErr) throw findErr;
 
           const subscriptionFields = {
             user_id: userId,
@@ -793,9 +786,13 @@ ${freeReportUrls}
             paddle_subscription_id: subscriptionId,
           };
 
-          const { error: writeErr } = existing
-            ? await supabase.from("subscriptions").update(subscriptionFields).eq("id", existing.id)
-            : await supabase.from("subscriptions").insert(subscriptionFields);
+          // Paddle redelivers webhooks (retries, duplicate events for the
+          // same purchase), so this must be idempotent — select-then-branch
+          // races two concurrent deliveries into two inserted rows. Upsert
+          // on the (team_id, type) unique constraint instead.
+          const { error: writeErr } = await supabase
+            .from("subscriptions")
+            .upsert(subscriptionFields, { onConflict: "team_id,type" });
           if (writeErr) throw writeErr;
 
           // Anchor this subscription's recurring charge to the 1st, instead
