@@ -71,13 +71,13 @@ function Hero() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
   return (
-    <section className="px-4 py-28 sm:py-36 text-center" data-testid="section-cardlogue-hero">
+    <section className="px-4 py-10 sm:py-14 text-center" data-testid="section-cardlogue-hero">
       <div className="max-w-2xl mx-auto">
         <motion.h1
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
-          className="font-brand text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight text-white mb-6 text-balance break-keep"
+          className="font-brand text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight text-white mb-4 text-balance break-keep"
           data-testid="text-cardlogue-hero-title"
         >
           {t.hero.title}
@@ -86,7 +86,7 @@ function Hero() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.1 }}
-          className="text-white/70 text-lg leading-relaxed mb-10 text-balance break-keep"
+          className="text-white/70 text-lg leading-relaxed mb-4 text-balance break-keep"
           data-testid="text-cardlogue-hero-subtitle"
         >
           {t.hero.subtitle}
@@ -101,23 +101,23 @@ function Screenshots() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
   return (
-    <section className="py-20 px-4 border-t border-white/10" data-testid="section-cardlogue-screenshots">
+    <section className="py-8 px-4 border-t border-white/10" data-testid="section-cardlogue-screenshots">
       <div className="max-w-5xl mx-auto">
         <Reveal>
-          <div className="text-center mb-14">
+          <div className="text-center mb-5">
             <span className="text-xs font-brand font-semibold uppercase tracking-widest text-white/40">
               {t.screenshots.eyebrow}
             </span>
-            <h2 className="font-brand text-2xl sm:text-3xl font-bold mt-3 text-white">{t.screenshots.title}</h2>
+            <h2 className="font-brand text-2xl sm:text-3xl font-bold mt-2 text-white">{t.screenshots.title}</h2>
           </div>
         </Reveal>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {t.screenshots.items.map((item, i) => (
             <Reveal key={item.file} delay={i * 0.1}>
-              <div className="space-y-3">
+              <div className="space-y-3 max-w-[230px] mx-auto">
                 <div
-                  className="rounded-[1.75rem] border-4 overflow-hidden shadow-2xl"
-                  style={{ borderColor: "rgba(255,255,255,0.12)", boxShadow: "0 20px 50px -20px rgba(0,0,0,0.6)" }}
+                  className="rounded-2xl border-2 overflow-hidden shadow-xl"
+                  style={{ borderColor: "rgba(255,255,255,0.12)", boxShadow: "0 12px 30px -14px rgba(0,0,0,0.6)" }}
                 >
                   <img
                     src={`/screenshots/${lang}/${item.file}.jpg`}
@@ -142,14 +142,14 @@ function Values() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
   return (
-    <section className="py-20 px-4" data-testid="section-cardlogue-values">
-      <div className="max-w-5xl mx-auto grid sm:grid-cols-3 gap-6">
+    <section className="py-8 px-4" data-testid="section-cardlogue-values">
+      <div className="max-w-5xl mx-auto grid sm:grid-cols-3 gap-4">
         {t.values.map((value, i) => {
           const Icon = VALUE_ICONS[i];
           return (
             <Reveal key={value.title} delay={i * 0.1}>
               <Card className="h-full border border-white/15 bg-white/[0.04] backdrop-blur-sm" data-testid={`card-value-${i}`}>
-                <CardContent className="p-7 space-y-4 text-center sm:text-left flex flex-col items-center sm:items-start">
+                <CardContent className="p-4 space-y-2 text-center sm:text-left flex flex-col items-center sm:items-start">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "rgba(212,175,55,0.14)" }}>
                     <Icon className="w-6 h-6" style={{ color: GOLD }} strokeWidth={2} />
                   </div>
@@ -171,14 +171,14 @@ function Features() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
   return (
-    <section className="py-20 px-4 border-t border-white/10" data-testid="section-cardlogue-features">
-      <div className="max-w-5xl mx-auto grid sm:grid-cols-3 gap-6">
+    <section className="py-8 px-4 border-t border-white/10" data-testid="section-cardlogue-features">
+      <div className="max-w-5xl mx-auto grid sm:grid-cols-3 gap-4">
         {t.features.map((feature, i) => {
           const Icon = FEATURE_ICONS[i];
           return (
             <Reveal key={feature.title} delay={i * 0.1}>
               <Card className="h-full border border-white/15 bg-white/[0.04] backdrop-blur-sm" data-testid={`card-feature-${i}`}>
-                <CardContent className="p-7 space-y-4 text-center sm:text-left flex flex-col items-center sm:items-start">
+                <CardContent className="p-4 space-y-2 text-center sm:text-left flex flex-col items-center sm:items-start">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "rgba(212,175,55,0.14)" }}>
                     <Icon className="w-6 h-6" style={{ color: GOLD }} strokeWidth={2} />
                   </div>
@@ -198,19 +198,19 @@ function Pricing() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
   return (
-    <section className="py-20 px-4 border-t border-white/10" data-testid="section-cardlogue-pricing">
+    <section className="py-8 px-4 border-t border-white/10" data-testid="section-cardlogue-pricing">
       <div className="max-w-5xl mx-auto">
         <Reveal>
-          <div className="text-center mb-14">
+          <div className="text-center mb-5">
             <span className="text-xs font-brand font-semibold uppercase tracking-widest text-white/40">{t.pricing.eyebrow}</span>
-            <h2 className="font-brand text-2xl sm:text-3xl font-bold mt-3 text-white">{t.pricing.title}</h2>
+            <h2 className="font-brand text-2xl sm:text-3xl font-bold mt-2 text-white">{t.pricing.title}</h2>
           </div>
         </Reveal>
-        <div className="grid sm:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-3 gap-4">
           {t.pricing.plans.map((plan, i) => (
             <Reveal key={plan.name} delay={i * 0.1}>
               <Card className="h-full border border-white/15 bg-white/[0.04] backdrop-blur-sm" data-testid={`card-plan-${i}`}>
-                <CardContent className="p-7 space-y-3 text-center">
+                <CardContent className="p-4 space-y-2 text-center">
                   <h3 className="font-brand font-bold text-lg text-white">{plan.name}</h3>
                   <p className="font-brand text-2xl font-black" style={{ color: GOLD }}>
                     {plan.price}
@@ -221,7 +221,7 @@ function Pricing() {
             </Reveal>
           ))}
         </div>
-        <p className="text-center text-xs text-white/40 mt-8" data-testid="text-pricing-footnote">
+        <p className="text-center text-xs text-white/40 mt-4" data-testid="text-pricing-footnote">
           {t.pricing.footnote}
         </p>
       </div>
@@ -233,15 +233,15 @@ function Security() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
   return (
-    <section className="py-20 px-4 border-t border-white/10" data-testid="section-cardlogue-security">
+    <section className="py-8 px-4 border-t border-white/10" data-testid="section-cardlogue-security">
       <div className="max-w-2xl mx-auto">
         <Reveal>
-          <div className="flex items-center gap-3 justify-center mb-8">
+          <div className="flex items-center gap-3 justify-center mb-4">
             <ShieldCheck className="w-6 h-6" style={{ color: GOLD }} />
             <h2 className="font-brand text-2xl sm:text-3xl font-bold text-white">{t.security.title}</h2>
           </div>
         </Reveal>
-        <ul className="space-y-3">
+        <ul className="space-y-2">
           {t.security.items.map((item) => (
             <li key={item} className="text-white/70 leading-relaxed pl-4 relative before:absolute before:left-0 before:content-['—']">
               {item}
@@ -257,15 +257,15 @@ function Faq() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
   return (
-    <section className="py-20 px-4 border-t border-white/10" data-testid="section-cardlogue-faq">
+    <section className="py-8 px-4 border-t border-white/10" data-testid="section-cardlogue-faq">
       <div className="max-w-2xl mx-auto">
         <Reveal>
-          <h2 className="font-brand text-2xl sm:text-3xl font-bold text-white text-center mb-10">{t.faq.title}</h2>
+          <h2 className="font-brand text-2xl sm:text-3xl font-bold text-white text-center mb-4">{t.faq.title}</h2>
         </Reveal>
-        <div className="space-y-6">
+        <div className="space-y-2">
           {t.faq.items.map((item, i) => (
             <Reveal key={item.q} delay={i * 0.05}>
-              <div className="border border-white/10 rounded-lg p-5 bg-white/[0.03]">
+              <div className="border border-white/10 rounded-lg p-3 bg-white/[0.03]">
                 <p className="font-brand font-semibold text-white mb-2">Q. {item.q}</p>
                 <p className="text-white/60 leading-relaxed text-sm">A. {item.a}</p>
               </div>
@@ -281,15 +281,15 @@ function BottomCta() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
   return (
-    <section className="py-24 px-4 border-t border-white/10 text-center" data-testid="section-cardlogue-bottom-cta">
+    <section className="py-10 px-4 border-t border-white/10 text-center" data-testid="section-cardlogue-bottom-cta">
       <div className="max-w-2xl mx-auto">
         <Reveal>
-          <h2 className="font-brand text-2xl sm:text-3xl font-bold text-white mb-10 text-balance break-keep">
+          <h2 className="font-brand text-2xl sm:text-3xl font-bold text-white mb-4 text-balance break-keep">
             {t.bottomCta.title}
           </h2>
         </Reveal>
         <DownloadButtons variant="compact" />
-        <div className="flex items-center justify-center gap-4 text-xs text-white/40 mt-12">
+        <div className="flex items-center justify-center gap-4 text-xs text-white/40 mt-6">
           <Link href="/privacy" className="hover:text-white/70" data-testid="link-bottom-privacy">
             {t.bottomCta.linkPrivacy}
           </Link>
@@ -306,7 +306,7 @@ function BottomCta() {
             <Mail className="w-3 h-3" /> {t.bottomCta.linkContact}
           </a>
         </div>
-        <p className="text-center text-[11px] text-white/30 leading-relaxed mt-6 pt-6 border-t border-white/10" data-testid="text-cardlogue-business-info">
+        <p className="text-center text-[11px] text-white/30 leading-relaxed mt-3 pt-3 border-t border-white/10" data-testid="text-cardlogue-business-info">
           {t.bottomCta.businessInfo}
         </p>
       </div>
