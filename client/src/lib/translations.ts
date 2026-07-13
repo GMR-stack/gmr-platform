@@ -106,7 +106,7 @@ export const translations = {
         eyebrow: "Pricing",
         title: "Simple, Transparent Pricing",
         plans: [
-          { name: "Free Trial", price: "Free for 14 days", audience: "All features included, for new users" },
+          { name: "Free Trial", price: "Free for 7 days", audience: "All features included, for new users" },
           { name: "Individual Plan", price: "2,200 KRW / month", audience: "For individual users" },
           { name: "Team Plan", price: "Headcount × 2,200 KRW / month", audience: "For teams and organizations" },
         ],
@@ -124,7 +124,7 @@ export const translations = {
         items: [
           {
             q: "Do I get billed automatically after the free trial?",
-            a: "No. You will not be automatically charged after the 14-day free trial ends. Feel free to try it without any commitment.",
+            a: "No. You will not be automatically charged after the 7-day free trial ends. Feel free to try it without any commitment.",
           },
           {
             q: "How do I cancel?",
@@ -443,7 +443,7 @@ export const translations = {
 
         { type: "heading", text: "Article 5 (Paid Services and Payment)" },
         { type: "subheading", text: "Free trial" },
-        { type: "paragraph", text: "New users may use all features free of charge for 14 days from the date of signup." },
+        { type: "paragraph", text: "New users may use all features free of charge for 7 days from the date of signup." },
         { type: "subheading", text: "Conversion to paid plan" },
         {
           type: "paragraph",
@@ -771,7 +771,7 @@ export const translations = {
         eyebrow: "가격",
         title: "간단하고 투명한 가격",
         plans: [
-          { name: "무료 체험", price: "14일 무료", audience: "모든 기능 이용 가능, 신규 이용자" },
+          { name: "무료 체험", price: "7일 무료", audience: "모든 기능 이용 가능, 신규 이용자" },
           { name: "개인 플랜", price: "월 2,200원", audience: "개인 이용자" },
           { name: "팀 플랜", price: "인원수 × 2,200원/월", audience: "팀/조직" },
         ],
@@ -789,7 +789,7 @@ export const translations = {
         items: [
           {
             q: "무료체험 후 자동으로 결제되나요?",
-            a: "아니요. 14일 무료체험 종료 후 자동결제 되지 않습니다. 부담없이 무료체험 하세요.",
+            a: "아니요. 7일 무료체험 종료 후 자동결제 되지 않습니다. 부담없이 무료체험 하세요.",
           },
           {
             q: "해지는 어떻게 하나요?",
@@ -1099,7 +1099,7 @@ export const translations = {
 
         { type: "heading", text: "제5조 (유료 서비스 및 결제)" },
         { type: "subheading", text: "무료체험" },
-        { type: "paragraph", text: "신규 이용자는 가입일로부터 14일간 모든 기능을 무료로 이용할 수 있습니다." },
+        { type: "paragraph", text: "신규 이용자는 가입일로부터 7일간 모든 기능을 무료로 이용할 수 있습니다." },
         { type: "subheading", text: "유료 전환" },
         {
           type: "paragraph",
