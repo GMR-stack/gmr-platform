@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import * as PortOne from "@portone/browser-sdk/v2";
+import { initializePaddle, type Paddle } from "@paddle/paddle-js";
 import { useLang } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { PageGlow } from "@/components/page-glow";
@@ -9,16 +10,21 @@ const GOLD = "#D4AF37";
 const SEAT_PRICE_KRW = 2200;
 const STORE_ID = import.meta.env.VITE_PORTONE_STORE_ID as string;
 const CHANNEL_KEY = import.meta.env.VITE_PORTONE_CHANNEL_KEY as string;
+const PADDLE_CLIENT_TOKEN = import.meta.env.VITE_PADDLE_CLIENT_TOKEN as string;
+const PADDLE_ENVIRONMENT = (import.meta.env.VITE_PADDLE_ENVIRONMENT as string) || "sandbox";
 
+type Provider = "portone" | "paddle";
 type Status = "confirm" | "processing" | "success" | "error";
 
 function getParams() {
   const params = new URLSearchParams(window.location.search);
+  const pg = params.get("pg");
   return {
     teamId: params.get("teamId") || "",
     slotCount: Number(params.get("slotCount") || "1"),
     name: params.get("name") || "",
     email: params.get("email") || "",
+    provider: (pg === "paddle" ? "paddle" : "portone") as Provider,
   };
 }
 
@@ -40,10 +46,62 @@ export default function TeamPaymentPage() {
   const [status, setStatus] = useState<Status>("confirm");
   const [errorMessage, setErrorMessage] = useState("");
   const [params, setParams] = useState(getParams);
+  const [paddle, setPaddle] = useState<Paddle | null>(null);
+  // Paddle's own formatted total (e.g. "$11.00") — never reformatted or
+  // computed on our side, only ever displayed as Paddle returns it.
+  const [paddleTotal, setPaddleTotal] = useState<string | null>(null);
 
   useEffect(() => {
     setParams(getParams());
   }, []);
+
+  useEffect(() => {
+    if (params.provider !== "paddle") return;
+    if (!PADDLE_CLIENT_TOKEN) {
+      setErrorMessage("missing Paddle client token");
+      setStatus("error");
+      return;
+    }
+    initializePaddle({
+      token: PADDLE_CLIENT_TOKEN,
+      environment: PADDLE_ENVIRONMENT === "production" ? "production" : "sandbox",
+      eventCallback(event) {
+        if (event.name === "checkout.completed") {
+          setStatus("success");
+          notifyApp({ type: "team-payment-success", teamId: params.teamId });
+        } else if (event.name === "checkout.closed" && status === "processing") {
+          setStatus("confirm");
+        }
+      },
+    }).then((instance) => setPaddle(instance ?? null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.provider]);
+
+  useEffect(() => {
+    if (params.provider !== "paddle" || !paddle || !params.teamId) return;
+    (async () => {
+      try {
+        const token = getCardlogueToken();
+        if (!token) throw new Error("missing Cardlogue session token");
+        const res = await fetch("/api/paddle/checkout-context", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ teamId: params.teamId, slotCount: params.slotCount }),
+        });
+        const ctx = await res.json();
+        if (!res.ok) throw new Error(ctx?.message || "failed to prepare checkout");
+
+        const preview = await paddle.PricePreview({
+          items: [{ priceId: ctx.priceId, quantity: ctx.quantity }],
+        });
+        const totals = preview.data.details.lineItems[0]?.formattedTotals;
+        setPaddleTotal(totals?.total ?? null);
+      } catch (err: any) {
+        setErrorMessage(err?.message || "unknown error");
+        setStatus("error");
+      }
+    })();
+  }, [paddle, params.provider, params.teamId, params.slotCount]);
 
   const amount = params.slotCount * SEAT_PRICE_KRW;
   const missingParams = !params.teamId || !params.slotCount;
@@ -59,13 +117,14 @@ export default function TeamPaymentPage() {
     success: lang === "ko" ? "결제가 완료되었습니다. 앱으로 돌아가세요." : "Payment complete. You can return to the app.",
     error: lang === "ko" ? "결제에 실패했습니다" : "Payment failed",
     missing: lang === "ko" ? "잘못된 접근입니다 (필수 정보 누락)" : "Invalid request (missing required parameters)",
+    loadingPrice: lang === "ko" ? "가격 불러오는 중..." : "Loading price...",
   };
 
   function handleCancel() {
     notifyApp({ type: "team-payment-cancelled", teamId: params.teamId });
   }
 
-  async function handlePay() {
+  async function handlePayPortOne() {
     setStatus("processing");
     setErrorMessage("");
     try {
@@ -119,6 +178,36 @@ export default function TeamPaymentPage() {
     }
   }
 
+  async function handlePayPaddle() {
+    setErrorMessage("");
+    try {
+      const token = getCardlogueToken();
+      if (!token) throw new Error("missing Cardlogue session token");
+      if (!paddle) throw new Error("Paddle not ready");
+
+      const res = await fetch("/api/paddle/checkout-context", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ teamId: params.teamId, slotCount: params.slotCount }),
+      });
+      const ctx = await res.json();
+      if (!res.ok) throw new Error(ctx?.message || "failed to prepare checkout");
+
+      setStatus("processing");
+      paddle.Checkout.open({
+        items: [{ priceId: ctx.priceId, quantity: ctx.quantity }],
+        customData: ctx.customData,
+        customer: params.email ? { email: params.email } : undefined,
+      });
+    } catch (err: any) {
+      setStatus("error");
+      setErrorMessage(err?.message || "unknown error");
+      notifyApp({ type: "team-payment-error", teamId: params.teamId, message: err?.message });
+    }
+  }
+
+  const handlePay = params.provider === "paddle" ? handlePayPaddle : handlePayPortOne;
+
   return (
     <div
       className="min-h-screen text-white flex items-center justify-center px-4"
@@ -135,7 +224,7 @@ export default function TeamPaymentPage() {
             <div className="space-y-1">
               <p className="text-white/70">{t.seats}</p>
               <p className="font-brand text-3xl font-black" style={{ color: GOLD }}>
-                {t.amount}
+                {params.provider === "paddle" ? (paddleTotal ?? t.loadingPrice) : t.amount}
               </p>
             </div>
 
@@ -150,7 +239,7 @@ export default function TeamPaymentPage() {
                 <Button
                   className="w-full font-brand font-semibold"
                   style={{ background: GOLD, color: NAVY }}
-                  disabled={status === "processing"}
+                  disabled={status === "processing" || (params.provider === "paddle" && !paddleTotal)}
                   onClick={handlePay}
                   data-testid="button-team-pay"
                 >

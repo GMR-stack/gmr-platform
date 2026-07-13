@@ -15,6 +15,7 @@ import {
   isTeamBillingAdmin,
   getTeamMemberCount,
 } from "./portone";
+import { getPaddleEnvironment, getPaddleSeatPriceId, verifyPaddleWebhookSignature } from "./paddle";
 
 const TEAM_SEAT_PRICE_KRW = 2200;
 
@@ -683,6 +684,113 @@ ${freeReportUrls}
     // registered in the PortOne console (결제알림(Webhook) 관리).
     console.log("[portone webhook]", JSON.stringify(req.body));
     return res.status(200).json({ received: true });
+  });
+
+  // ── Cardlogue team payment (Paddle, international) ──────────────────────
+  // Paddle Checkout runs entirely client-side, so custom_data attached to a
+  // checkout is just client-supplied and not trustworthy on its own. This
+  // endpoint does the same membership/slot-floor check as PortOne's
+  // team-subscribe route, then hands back a server-approved teamId/userId
+  // pair for the client to embed as custom_data — the webhook below only
+  // ever trusts custom_data that passed through here.
+  app.post("/api/paddle/checkout-context", async (req, res) => {
+    try {
+      const { teamId, slotCount } = req.body;
+      if (!teamId || !slotCount) {
+        return res.status(400).json({ message: "Missing teamId or slotCount" });
+      }
+      const slots = Number(slotCount);
+      if (!Number.isInteger(slots) || slots < 1) {
+        return res.status(400).json({ message: "Invalid slotCount" });
+      }
+
+      const cardlogueUser = getCardlogueUserFromToken(req);
+      if (!cardlogueUser) {
+        return res.status(401).json({ message: "Missing or invalid Cardlogue session" });
+      }
+      const userId = cardlogueUser.sub;
+      if (!(await isTeamBillingAdmin(teamId, userId))) {
+        return res.status(403).json({ message: "Not an owner/admin of this team" });
+      }
+
+      const memberCount = await getTeamMemberCount(teamId);
+      const minSlots = Math.max(2, memberCount);
+      if (slots < minSlots) {
+        return res.status(400).json({ message: `slotCount can't be below the current member count (${minSlots})` });
+      }
+
+      return res.json({
+        priceId: getPaddleSeatPriceId(),
+        quantity: slots,
+        customData: { teamId, userId },
+        environment: getPaddleEnvironment(),
+      });
+    } catch (err: any) {
+      console.error("Paddle checkout-context error:", err.message);
+      return res.status(500).json({ message: "Failed to prepare checkout" });
+    }
+  });
+
+  app.post("/api/paddle/webhook", async (req, res) => {
+    try {
+      const signatureHeader = req.headers["paddle-signature"] as string | undefined;
+      if (!verifyPaddleWebhookSignature(req.rawBody as Buffer, signatureHeader)) {
+        return res.status(401).json({ message: "Invalid signature" });
+      }
+
+      const event = req.body;
+      const eventType = event?.event_type;
+      console.log("[paddle webhook]", eventType);
+
+      if (eventType === "transaction.completed" || eventType === "subscription.created" || eventType === "subscription.activated") {
+        const data = event.data;
+        const customData = data?.custom_data || data?.subscription?.custom_data;
+        const teamId = customData?.teamId;
+        const userId = customData?.userId;
+        const items = data?.items || [];
+        const slots = items[0]?.quantity ?? 1;
+        const subscriptionId = data?.subscription_id || data?.id;
+
+        if (teamId && userId) {
+          const supabase = getCardlogueSupabase();
+          const { data: existing, error: findErr } = await supabase
+            .from("subscriptions")
+            .select("id")
+            .eq("team_id", teamId)
+            .eq("type", "team")
+            .maybeSingle();
+          if (findErr) throw findErr;
+
+          const subscriptionFields = {
+            user_id: userId,
+            team_id: teamId,
+            type: "team",
+            status: "active",
+            slot_count: slots,
+            pending_slot_count: null,
+            payment_method: "web",
+            next_billing_at: calcNextBillingAt(new Date()).toISOString(),
+            paddle_subscription_id: subscriptionId,
+          };
+
+          const { error: writeErr } = existing
+            ? await supabase.from("subscriptions").update(subscriptionFields).eq("id", existing.id)
+            : await supabase.from("subscriptions").insert(subscriptionFields);
+          if (writeErr) throw writeErr;
+        }
+      } else if (eventType === "subscription.canceled") {
+        const teamId = event.data?.custom_data?.teamId;
+        if (teamId) {
+          const supabase = getCardlogueSupabase();
+          await supabase.from("subscriptions").update({ status: "expired" }).eq("team_id", teamId).eq("type", "team");
+        }
+      }
+
+      return res.status(200).json({ received: true });
+    } catch (err: any) {
+      console.error("Paddle webhook error:", err.message);
+      return res.status(500).json({ message: "Webhook processing failed" });
+    }
   });
 
   return httpServer;
