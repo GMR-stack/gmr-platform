@@ -97,6 +97,45 @@ function Hero() {
   );
 }
 
+function Screenshots() {
+  const { lang } = useLang();
+  const t = translations[lang].cardlogue;
+  return (
+    <section className="py-20 px-4 border-t border-white/10" data-testid="section-cardlogue-screenshots">
+      <div className="max-w-5xl mx-auto">
+        <Reveal>
+          <div className="text-center mb-14">
+            <span className="text-xs font-brand font-semibold uppercase tracking-widest text-white/40">
+              {t.screenshots.eyebrow}
+            </span>
+            <h2 className="font-brand text-2xl sm:text-3xl font-bold mt-3 text-white">{t.screenshots.title}</h2>
+          </div>
+        </Reveal>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+          {t.screenshots.items.map((item, i) => (
+            <Reveal key={item.file} delay={i * 0.1}>
+              <div className="space-y-3">
+                <div
+                  className="rounded-[1.75rem] border-4 overflow-hidden shadow-2xl"
+                  style={{ borderColor: "rgba(255,255,255,0.12)", boxShadow: "0 20px 50px -20px rgba(0,0,0,0.6)" }}
+                >
+                  <img
+                    src={`/screenshots/${lang}/${item.file}.jpg`}
+                    alt={item.caption}
+                    className="w-full h-auto block"
+                    loading="lazy"
+                  />
+                </div>
+                <p className="text-xs text-white/50 text-center leading-relaxed px-1">{item.caption}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 const VALUE_ICONS = [Target, Users, FolderKanban];
 
 function Values() {
@@ -289,6 +328,7 @@ export default function CardloguePage() {
       </Helmet>
       <Header />
       <Hero />
+      <Screenshots />
       <Values />
       <Features />
       <Pricing />

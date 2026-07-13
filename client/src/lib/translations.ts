@@ -65,6 +65,16 @@ export const translations = {
         ctaAppStore: "Download on the App Store",
         ctaGooglePlay: "Get it on Google Play",
       },
+      screenshots: {
+        eyebrow: "See it in action",
+        title: "A quick look inside Cardlogue",
+        items: [
+          { file: "scan", caption: "Scan a card and it's recognized instantly" },
+          { file: "mycard", caption: "Your own digital card, shared by QR" },
+          { file: "card", caption: "Every card your team has collected, in one wallet" },
+          { file: "team", caption: "See who your team has met, together" },
+        ],
+      },
       values: [
         {
           title: "Accurate Recognition",
@@ -720,6 +730,16 @@ export const translations = {
         subtitle: "스캔 한 번으로 정리되는 팀 전체의 인맥 자산. 카드로그로 명함 관리를 팀 업무의 일부로 만드세요.",
         ctaAppStore: "App Store에서 다운로드",
         ctaGooglePlay: "Google Play에서 다운로드",
+      },
+      screenshots: {
+        eyebrow: "실제 화면",
+        title: "카드로그, 이렇게 생겼어요",
+        items: [
+          { file: "scan", caption: "명함을 스캔하면 즉시 인식돼요" },
+          { file: "mycard", caption: "나만의 디지털 명함을 QR로 공유" },
+          { file: "card", caption: "팀이 모은 명함을 한 곳에서" },
+          { file: "team", caption: "누가 어떤 고객을 만났는지 함께 확인" },
+        ],
       },
       values: [
         {
