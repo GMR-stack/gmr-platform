@@ -98,6 +98,64 @@ export async function createTransaction(params: {
   });
 }
 
+// A team that already has an active subscription has a card on file —
+// charging a seat increase should use it directly (Paddle bills the saved
+// payment method immediately), not send the buyer through checkout again.
+export async function chargeExistingSubscription(params: {
+  subscriptionId: string;
+  amountCents: number;
+  description: string;
+}) {
+  return paddleFetch(`/subscriptions/${encodeURIComponent(params.subscriptionId)}/charge`, {
+    method: "POST",
+    body: JSON.stringify({
+      effective_from: "immediately",
+      items: [
+        {
+          price: {
+            description: params.description,
+            product_id: getPaddleProductId(),
+            unit_price: { amount: String(params.amountCents), currency_code: "USD" },
+            tax_mode: "account_setting",
+          },
+          quantity: 1,
+        },
+      ],
+    }),
+  });
+}
+
+// Swaps the subscription's recurring item to a new custom price reflecting
+// the new total seat count, so future renewals bill the right amount.
+// `do_not_bill` because the seat-increase difference for the *current*
+// cycle is charged separately via chargeExistingSubscription — this call
+// must not also trigger Paddle's own automatic proration charge.
+export async function updateSubscriptionRecurringPrice(params: {
+  subscriptionId: string;
+  slots: number;
+  totalCents: number;
+}) {
+  return paddleFetch(`/subscriptions/${encodeURIComponent(params.subscriptionId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      items: [
+        {
+          price: {
+            description: `Cardlogue Team Subscription (${params.slots} seats)`,
+            product_id: getPaddleProductId(),
+            unit_price: { amount: String(params.totalCents), currency_code: "USD" },
+            billing_cycle: { interval: "month", frequency: 1 },
+            tax_mode: "account_setting",
+            quantity: { minimum: 1, maximum: 1 },
+          },
+          quantity: 1,
+        },
+      ],
+      proration_billing_mode: "do_not_bill",
+    }),
+  });
+}
+
 // Anchors every team's recurring charge to the 1st of the month (CLAUDE.md
 // 11-2), regardless of the day the first prorated payment landed on.
 // `proration_billing_mode: "do_not_bill"` reschedules the date only — it

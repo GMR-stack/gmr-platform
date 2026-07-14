@@ -19,6 +19,8 @@ import {
   getPaddleEnvironment,
   getPaddleSeatUnitPriceCents,
   createTransaction,
+  chargeExistingSubscription,
+  updateSubscriptionRecurringPrice,
   rescheduleNextBilling,
   verifyPaddleWebhookSignature,
 } from "./paddle";
@@ -725,23 +727,90 @@ ${freeReportUrls}
         return res.status(400).json({ message: `slotCount can't be below the current member count (${minSlots})` });
       }
 
-      // First charge is prorated for the days left in the current cycle —
-      // the recurring monthly amount takes over once the webhook anchors
-      // this subscription's billing date to the 1st (see the webhook below).
-      const amountCents = calcProratedSeatAmount(new Date(), slots, getPaddleSeatUnitPriceCents());
-      const transaction = await createTransaction({
-        slots,
-        amountCents,
-        customData: { teamId, userId, slots },
-      });
+      const supabase = getCardlogueSupabase();
+      const { data: existing, error: findErr } = await supabase
+        .from("subscriptions")
+        .select("id, status, slot_count, next_billing_at, paddle_subscription_id")
+        .eq("team_id", teamId)
+        .eq("type", "team")
+        .maybeSingle();
+      if (findErr) throw findErr;
 
+      const isExistingActive = existing?.status === "active" && existing?.paddle_subscription_id;
+      const unitPriceCents = getPaddleSeatUnitPriceCents();
+      const now = new Date();
+
+      if (!isExistingActive) {
+        // New team subscription (or reactivating one with no Paddle
+        // subscription on file yet): needs an actual checkout to collect a
+        // card. First charge is prorated for the days left in this cycle —
+        // the webhook anchors billing to the 1st once this completes.
+        const amountCents = calcProratedSeatAmount(now, slots, unitPriceCents);
+        const transaction = await createTransaction({
+          slots,
+          amountCents,
+          customData: { teamId, userId, slots },
+        });
+        return res.json({
+          needsCheckout: true,
+          customPriceId: transaction.data.items[0].price.id,
+          transactionId: transaction.data.id,
+          environment: getPaddleEnvironment(),
+        });
+      }
+
+      // Every other case already has a card on file (the existing Paddle
+      // subscription) — no checkout, no re-entering payment details.
+      const subscriptionId = existing!.paddle_subscription_id as string;
+
+      if (slots === existing!.slot_count) {
+        // Same seat count — nothing to charge or change.
+        return res.json({ needsCheckout: false, slotCount: slots, amount: 0, nextBillingAt: existing!.next_billing_at });
+      }
+
+      if (slots > existing!.slot_count) {
+        // Seat increase: charge only the added seats now (prorated for the
+        // rest of this cycle) directly against the saved card, and update
+        // the subscription's recurring price so future renewals bill the
+        // new total — neither step opens a checkout.
+        const addedSeats = slots - existing!.slot_count;
+        const amountCents = calcProratedSeatAmount(now, addedSeats, unitPriceCents);
+        await chargeExistingSubscription({
+          subscriptionId,
+          amountCents,
+          description: `Cardlogue 팀 플랜 좌석 추가 (+${addedSeats})`,
+        });
+        await updateSubscriptionRecurringPrice({
+          subscriptionId,
+          slots,
+          totalCents: slots * unitPriceCents,
+        });
+        const { error: writeErr } = await supabase
+          .from("subscriptions")
+          .update({ slot_count: slots, pending_slot_count: null })
+          .eq("id", existing!.id);
+        if (writeErr) throw writeErr;
+        return res.json({
+          needsCheckout: false,
+          slotCount: slots,
+          amount: amountCents,
+          nextBillingAt: existing!.next_billing_at,
+        });
+      }
+
+      // Seat decrease: free, but only takes effect on the next billing date
+      // — record the intent and leave the active subscription untouched
+      // until then (no Paddle call at all).
+      const { error: writeErr } = await supabase
+        .from("subscriptions")
+        .update({ pending_slot_count: slots })
+        .eq("id", existing!.id);
+      if (writeErr) throw writeErr;
       return res.json({
-        // The per-transaction custom price Paddle just minted for this
-        // checkout — used client-side only for PricePreview (display),
-        // never re-used across transactions.
-        customPriceId: transaction.data.items[0].price.id,
-        transactionId: transaction.data.id,
-        environment: getPaddleEnvironment(),
+        needsCheckout: false,
+        slotCount: existing!.slot_count,
+        amount: 0,
+        nextBillingAt: existing!.next_billing_at,
       });
     } catch (err: any) {
       console.error("Paddle checkout-context error:", err.message);

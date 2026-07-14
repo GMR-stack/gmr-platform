@@ -167,6 +167,21 @@ export default function TeamPaymentPage() {
       const ctx = await res.json();
       if (!res.ok) throw new Error(ctx?.message || "failed to prepare checkout");
 
+      if (!ctx.needsCheckout) {
+        // Same seat count, an increase (charged directly against the card
+        // already on file), or a decrease (free, deferred) — none of these
+        // need the buyer to see a checkout overlay at all.
+        setStatus("success");
+        notifyApp({
+          type: "team-payment-success",
+          teamId: params.teamId,
+          slotCount: ctx.slotCount,
+          amount: ctx.amount,
+          nextBillingAt: ctx.nextBillingAt,
+        });
+        return;
+      }
+
       // Opened by transactionId (not `items`) so the seat count we already
       // validated server-side can't be edited in the checkout overlay.
       // Paddle's own overlay displays the total, so we don't need a
