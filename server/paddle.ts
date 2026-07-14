@@ -170,6 +170,25 @@ export async function rescheduleNextBilling(subscriptionId: string, nextBilledAt
   });
 }
 
+// Cancels at the end of the already-paid period (not immediately) — the
+// team keeps full access until then, no refund, and Paddle stops billing
+// automatically. Paddle fires `subscription.canceled` when it actually
+// takes effect; the webhook already handles that event.
+export async function cancelSubscriptionAtPeriodEnd(subscriptionId: string) {
+  return paddleFetch(`/subscriptions/${encodeURIComponent(subscriptionId)}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ effective_from: "next_billing_period" }),
+  });
+}
+
+// Generates a $0 transaction scoped to just replacing this subscription's
+// saved payment method — used when a team's ownership transfers to someone
+// else and they need to register their own card, without re-charging them
+// or touching the recurring price/seat count at all.
+export async function createPaymentMethodUpdateTransaction(subscriptionId: string) {
+  return paddleFetch(`/subscriptions/${encodeURIComponent(subscriptionId)}/update-payment-method-transaction`);
+}
+
 // Verifies the `Paddle-Signature` header (format: "ts=<unix>;h1=<hex hmac>")
 // against the raw request body, per Paddle's webhook signing spec:
 // HMAC-SHA256(secret, `${ts}:${rawBody}`) must equal h1.
