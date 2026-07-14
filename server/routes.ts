@@ -624,7 +624,6 @@ ${freeReportUrls}
           type: "team",
           status: "active",
           slot_count: slots,
-          pending_slot_count: null,
           payment_method: "web",
           next_billing_at: calcNextBillingAt(now).toISOString(),
           portone_billing_key: billingKey,
@@ -637,13 +636,16 @@ ${freeReportUrls}
         amount = calcProratedSeatAmount(now, slots - existing!.slot_count, TEAM_SEAT_PRICE_KRW);
         subscriptionFields = {
           slot_count: slots,
-          pending_slot_count: null,
           portone_billing_key: billingKey,
         };
       } else {
-        // Seat decrease: free, but only takes effect on the next billing date.
+        // Seat decrease: capacity (slot_count) drops immediately; the billed
+        // amount doesn't change (no refund) until the next renewal, so
+        // there's nothing else to update here. pending_slot_count is no
+        // longer used — whatever syncs the recurring charge to slot_count
+        // at each renewal (not built yet) reads slot_count directly.
         subscriptionFields = {
-          pending_slot_count: slots,
+          slot_count: slots,
           portone_billing_key: billingKey,
         };
       }
@@ -787,7 +789,7 @@ ${freeReportUrls}
         });
         const { error: writeErr } = await supabase
           .from("subscriptions")
-          .update({ slot_count: slots, pending_slot_count: null })
+          .update({ slot_count: slots })
           .eq("id", existing!.id);
         if (writeErr) throw writeErr;
         return res.json({
@@ -798,17 +800,20 @@ ${freeReportUrls}
         });
       }
 
-      // Seat decrease: free, but only takes effect on the next billing date
-      // — record the intent and leave the active subscription untouched
-      // until then (no Paddle call at all).
+      // Seat decrease: capacity (slot_count) drops immediately, but the
+      // billed amount doesn't change (no refund) until the next renewal —
+      // so we leave Paddle's subscription price untouched here. Whatever
+      // syncs the recurring price to slot_count at each renewal (not built
+      // yet) is the only thing that needs to know the new lower price;
+      // pending_slot_count is no longer used for this.
       const { error: writeErr } = await supabase
         .from("subscriptions")
-        .update({ pending_slot_count: slots })
+        .update({ slot_count: slots })
         .eq("id", existing!.id);
       if (writeErr) throw writeErr;
       return res.json({
         needsCheckout: false,
-        slotCount: existing!.slot_count,
+        slotCount: slots,
         amount: 0,
         nextBillingAt: existing!.next_billing_at,
       });
@@ -849,7 +854,6 @@ ${freeReportUrls}
             type: "team",
             status: "active",
             slot_count: slots,
-            pending_slot_count: null,
             payment_method: "web",
             next_billing_at: calcNextBillingAt(new Date()).toISOString(),
             paddle_subscription_id: subscriptionId,
