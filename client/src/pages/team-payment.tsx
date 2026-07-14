@@ -19,13 +19,34 @@ type Status = "confirm" | "processing" | "success" | "error";
 function getParams() {
   const params = new URLSearchParams(window.location.search);
   const pg = params.get("pg");
+  const currentSlotCountRaw = params.get("currentSlotCount");
   return {
     teamId: params.get("teamId") || "",
     slotCount: Number(params.get("slotCount") || "1"),
+    // Only present when the app already has an active subscription for this
+    // team — lets us tell a decrease apart from a new subscribe/increase
+    // before ever calling the server, since a decrease shows different
+    // confirm copy (and never opens a card form).
+    currentSlotCount: currentSlotCountRaw != null ? Number(currentSlotCountRaw) : null,
     name: params.get("name") || "",
     email: params.get("email") || "",
     provider: (pg === "paddle" ? "paddle" : "portone") as Provider,
   };
+}
+
+// Team billing is anchored to the 1st of the month (CLAUDE.md 11-2) — used
+// here only to tell the user when a seat decrease actually takes effect.
+// Mirrors server/portone.ts calcNextBillingAt; keep both in sync.
+const TEAM_BILLING_GRACE_DAYS = 3;
+function calcNextBillingAt(paymentDate: Date): Date {
+  const year = paymentDate.getFullYear();
+  const month = paymentDate.getMonth();
+  const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+  const remainingDays = lastDayOfMonth - paymentDate.getDate();
+  if (remainingDays <= TEAM_BILLING_GRACE_DAYS) {
+    return new Date(year, month + 2, 1);
+  }
+  return new Date(year, month + 1, 1);
 }
 
 function notifyApp(payload: Record<string, unknown>) {
@@ -76,13 +97,25 @@ export default function TeamPaymentPage() {
 
   const amount = params.slotCount * SEAT_PRICE_KRW;
   const missingParams = !params.teamId || !params.slotCount;
+  const isDecrease = params.currentSlotCount != null && params.slotCount < params.currentSlotCount;
+  const isIncrease = params.currentSlotCount != null && params.slotCount > params.currentSlotCount;
+  const nextBillingLabel = calcNextBillingAt(new Date()).toLocaleDateString(lang === "ko" ? "ko-KR" : "en-US");
 
   const t = {
     title: lang === "ko" ? "팀 플랜 결제" : "Team Plan Payment",
     seats: lang === "ko" ? `인원 ${params.slotCount}명` : `${params.slotCount} seats`,
     amount: lang === "ko" ? `월 ${amount.toLocaleString()}원` : `${amount.toLocaleString()} KRW / month`,
     confirm: lang === "ko" ? "이 내용으로 결제할까요?" : "Proceed with this payment?",
-    pay: lang === "ko" ? "확인 (카드 등록하고 결제)" : "Confirm & pay",
+    confirmDecrease:
+      lang === "ko"
+        ? `${params.currentSlotCount}슬롯에서 ${params.slotCount}슬롯으로 줄입니다. 지금은 청구되지 않고, ${nextBillingLabel}부터 ${params.slotCount}슬롯 요금만 청구돼요.`
+        : `Reducing from ${params.currentSlotCount} to ${params.slotCount} seats. Nothing is charged now — starting ${nextBillingLabel}, you'll only be billed for ${params.slotCount} seats.`,
+    confirmIncrease:
+      lang === "ko"
+        ? `${params.currentSlotCount}슬롯에서 ${params.slotCount}슬롯으로 늘립니다. 늘어난 ${params.slotCount - (params.currentSlotCount ?? 0)}슬롯분만 오늘 일할 계산되어 즉시 청구돼요.`
+        : `Increasing from ${params.currentSlotCount} to ${params.slotCount} seats. Only the added ${params.slotCount - (params.currentSlotCount ?? 0)} seats are charged today, prorated.`,
+    pay: lang === "ko" ? "확인" : "Confirm",
+    payNew: lang === "ko" ? "확인 (카드 등록하고 결제)" : "Confirm & pay",
     cancel: lang === "ko" ? "취소" : "Cancel",
     processing: lang === "ko" ? "결제 처리 중..." : "Processing...",
     success: lang === "ko" ? "결제가 완료되었습니다. 앱으로 돌아가세요." : "Payment complete. You can return to the app.",
@@ -214,14 +247,18 @@ export default function TeamPaymentPage() {
           <>
             <div className="space-y-1">
               <p className="text-white/70">{t.seats}</p>
-              {params.provider !== "paddle" && (
+              {params.provider !== "paddle" && !isDecrease && (
                 <p className="font-brand text-3xl font-black" style={{ color: GOLD }}>
                   {t.amount}
                 </p>
               )}
             </div>
 
-            {status === "confirm" && <p className="text-white/60 text-sm">{t.confirm}</p>}
+            {status === "confirm" && (
+              <p className="text-white/60 text-sm">
+                {isDecrease ? t.confirmDecrease : isIncrease ? t.confirmIncrease : t.confirm}
+              </p>
+            )}
 
             {status === "success" ? (
               <p className="text-sm text-white/80" data-testid="text-payment-success">
@@ -236,7 +273,7 @@ export default function TeamPaymentPage() {
                   onClick={handlePay}
                   data-testid="button-team-pay"
                 >
-                  {status === "processing" ? t.processing : t.pay}
+                  {status === "processing" ? t.processing : params.currentSlotCount == null ? t.payNew : t.pay}
                 </Button>
                 {status !== "processing" && (
                   <Button
