@@ -117,6 +117,11 @@ export async function isTeamBillingAdmin(teamId: string, userId: string): Promis
     .eq("team_id", teamId)
     .eq("user_id", userId)
     .maybeSingle();
+  // Temporary diagnostic logging for the "Not an owner/admin" investigation —
+  // remove once resolved. Cardlogue auto-deletes the team on payment failure,
+  // destroying DB-side evidence, so this is the only way to see what the
+  // token's userId and this query actually were at the moment of the check.
+  console.log("[isTeamBillingAdmin]", JSON.stringify({ teamId, userId, data, error: error?.message }));
   if (error || !data) return false;
   return data.role === "owner" || data.role === "admin";
 }
