@@ -62,6 +62,26 @@ function getCardlogueToken(): string | undefined {
   return (window as any).__CARDLOGUE_TOKEN;
 }
 
+// On mobile, requestIssueBillingKey uses windowType.mobile: "REDIRECTION" —
+// no popup, the page navigates to KCP's auth flow and back to redirectUrl
+// (this same URL) with the result as query params instead of a resolved
+// promise. Field names mirror @portone/browser-sdk's IssueBillingKeyResponse;
+// exact casing wasn't confirmed from docs, so this logs the raw query string
+// once on first sight to make that verifiable from device logs if it's wrong.
+function getPortoneRedirectResult() {
+  const params = new URLSearchParams(window.location.search);
+  const billingKey = params.get("billingKey");
+  const code = params.get("code");
+  if (!billingKey && !code) return null;
+  console.log("[team-payment] PortOne redirect result:", window.location.search);
+  return {
+    billingKey,
+    code,
+    message: params.get("message"),
+    pgMessage: params.get("pgMessage"),
+  };
+}
+
 export default function TeamPaymentPage() {
   const { lang } = useLang();
   const [status, setStatus] = useState<Status>("confirm");
@@ -71,6 +91,32 @@ export default function TeamPaymentPage() {
 
   useEffect(() => {
     setParams(getParams());
+  }, []);
+
+  // Returning from a mobile REDIRECTION-mode billing-key flow (see
+  // handlePayPortOne) — the page reloaded with the result as query params
+  // instead of a resolved promise.
+  useEffect(() => {
+    const result = getPortoneRedirectResult();
+    if (!result) return;
+    const cleanedSearch = new URLSearchParams(window.location.search);
+    ["billingKey", "code", "message", "pgMessage"].forEach((key) => cleanedSearch.delete(key));
+    const cleanedQuery = cleanedSearch.toString();
+    history.replaceState(null, "", window.location.pathname + (cleanedQuery ? `?${cleanedQuery}` : ""));
+
+    setStatus("processing");
+    if (result.code || !result.billingKey) {
+      setStatus("error");
+      setErrorMessage(result.message || result.pgMessage || "billing key issue failed");
+      notifyApp({ type: "team-payment-error", teamId: getParams().teamId, message: result.message });
+      return;
+    }
+    finishPortoneSubscribe(result.billingKey).catch((err: any) => {
+      setStatus("error");
+      setErrorMessage(err?.message || "unknown error");
+      notifyApp({ type: "team-payment-error", teamId: getParams().teamId, message: err?.message });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -127,6 +173,34 @@ export default function TeamPaymentPage() {
     notifyApp({ type: "team-payment-cancelled", teamId: params.teamId });
   }
 
+  async function finishPortoneSubscribe(billingKey: string) {
+    const token = getCardlogueToken();
+    if (!token) throw new Error("missing Cardlogue session token");
+
+    const res = await fetch("/api/portone/team-subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        billingKey,
+        teamId: params.teamId,
+        slotCount: params.slotCount,
+        customerName: params.name,
+        customerEmail: params.email,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "subscribe failed");
+
+    setStatus("success");
+    notifyApp({
+      type: "team-payment-success",
+      teamId: params.teamId,
+      slotCount: data.slotCount,
+      amount: data.amount,
+      nextBillingAt: data.nextBillingAt,
+    });
+  }
+
   async function handlePayPortOne() {
     setStatus("processing");
     setErrorMessage("");
@@ -144,36 +218,19 @@ export default function TeamPaymentPage() {
           fullName: params.name || undefined,
           email: params.email || undefined,
         },
+        // KCP's phone-verification popup doesn't work inside Cardlogue's app
+        // WebView (window.open/iframe issues) — on mobile, redirect the whole
+        // page to KCP's auth flow and back instead of using a popup. PC keeps
+        // the default (popup/iframe), which already works fine.
+        windowType: { mobile: "REDIRECTION" },
+        redirectUrl: window.location.href,
       } as any);
 
       if ((issueResponse as any)?.code != null) {
         throw new Error((issueResponse as any).message || "billing key issue failed");
       }
 
-      const billingKey = (issueResponse as any).billingKey;
-
-      const res = await fetch("/api/portone/team-subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          billingKey,
-          teamId: params.teamId,
-          slotCount: params.slotCount,
-          customerName: params.name,
-          customerEmail: params.email,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "subscribe failed");
-
-      setStatus("success");
-      notifyApp({
-        type: "team-payment-success",
-        teamId: params.teamId,
-        slotCount: data.slotCount,
-        amount: data.amount,
-        nextBillingAt: data.nextBillingAt,
-      });
+      await finishPortoneSubscribe((issueResponse as any).billingKey);
     } catch (err: any) {
       setStatus("error");
       setErrorMessage(err?.message || "unknown error");

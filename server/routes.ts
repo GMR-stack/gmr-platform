@@ -14,6 +14,7 @@ import {
   getCardlogueUserFromToken,
   isTeamBillingAdmin,
   getTeamMemberCount,
+  TEAM_SEAT_PRICE_KRW,
 } from "./portone";
 import {
   getPaddleEnvironment,
@@ -26,8 +27,6 @@ import {
   createPaymentMethodUpdateTransaction,
   verifyPaddleWebhookSignature,
 } from "./paddle";
-
-const TEAM_SEAT_PRICE_KRW = 2200;
 
 async function sendAdminEmail(subject: string, body: string) {
   const gmailUser = process.env.GMAIL_USER;
@@ -983,6 +982,20 @@ ${freeReportUrls}
               console.error("Paddle reschedule next_billed_at error:", err.message),
             );
           }
+        }
+      } else if (eventType === "transaction.completed" && event.data?.origin === "subscription_recurring") {
+        // Paddle's own automatic renewal charge — nothing for us to charge,
+        // but the local next_billing_at mirror must advance or every later
+        // batch run (server/team-billing-batch.ts) would treat this
+        // subscription as perpetually due.
+        const subscriptionId = event.data?.subscription_id;
+        if (subscriptionId) {
+          const supabase = getCardlogueSupabase();
+          await supabase
+            .from("subscriptions")
+            .update({ next_billing_at: calcNextBillingAt(new Date()).toISOString() })
+            .eq("paddle_subscription_id", subscriptionId)
+            .eq("type", "team");
         }
       } else if (eventType === "subscription.canceled") {
         const teamId = event.data?.custom_data?.teamId;

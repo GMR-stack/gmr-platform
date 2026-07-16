@@ -3,6 +3,8 @@ import type { Request } from "express";
 
 const PORTONE_API_BASE = "https://api.portone.io";
 
+export const TEAM_SEAT_PRICE_KRW = 2200;
+
 export function getPortoneSecret(): string {
   const secret = process.env.PORTONE_API_SECRET;
   if (!secret) throw new Error("PORTONE_API_SECRET not configured");
