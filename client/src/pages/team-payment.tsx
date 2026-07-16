@@ -68,6 +68,12 @@ function getCardlogueToken(): string | undefined {
 // promise. Field names mirror @portone/browser-sdk's IssueBillingKeyResponse;
 // exact casing wasn't confirmed from docs, so this logs the raw query string
 // once on first sight to make that verifiable from device logs if it's wrong.
+// PortOne's mobile REDIRECTION flow navigates away and back — it's not
+// guaranteed to preserve our own query params (teamId, slotCount, etc.)
+// alongside its own result params on the return trip, so those are stashed
+// here before leaving and restored on return instead of trusting the URL.
+const REDIRECT_PARAMS_KEY = "team-payment-redirect-params";
+
 function getPortoneRedirectResult() {
   const params = new URLSearchParams(window.location.search);
   const billingKey = params.get("billingKey");
@@ -105,16 +111,24 @@ export default function TeamPaymentPage() {
     history.replaceState(null, "", window.location.pathname + (cleanedQuery ? `?${cleanedQuery}` : ""));
 
     setStatus("processing");
+
+    // Restore the params saved right before leaving for the redirect — don't
+    // trust window.location.search to still have them after the round-trip.
+    const stashed = sessionStorage.getItem(REDIRECT_PARAMS_KEY);
+    const restoredParams: typeof params = stashed ? JSON.parse(stashed) : getParams();
+    sessionStorage.removeItem(REDIRECT_PARAMS_KEY);
+    setParams(restoredParams);
+
     if (result.code || !result.billingKey) {
       setStatus("error");
       setErrorMessage(result.message || result.pgMessage || "billing key issue failed");
-      notifyApp({ type: "team-payment-error", teamId: getParams().teamId, message: result.message });
+      notifyApp({ type: "team-payment-error", teamId: restoredParams.teamId, message: result.message });
       return;
     }
-    finishPortoneSubscribe(result.billingKey).catch((err: any) => {
+    finishPortoneSubscribe(result.billingKey, restoredParams).catch((err: any) => {
       setStatus("error");
       setErrorMessage(err?.message || "unknown error");
-      notifyApp({ type: "team-payment-error", teamId: getParams().teamId, message: err?.message });
+      notifyApp({ type: "team-payment-error", teamId: restoredParams.teamId, message: err?.message });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -173,7 +187,7 @@ export default function TeamPaymentPage() {
     notifyApp({ type: "team-payment-cancelled", teamId: params.teamId });
   }
 
-  async function finishPortoneSubscribe(billingKey: string) {
+  async function finishPortoneSubscribe(billingKey: string, target: typeof params = params) {
     const token = getCardlogueToken();
     if (!token) throw new Error("missing Cardlogue session token");
 
@@ -182,10 +196,10 @@ export default function TeamPaymentPage() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         billingKey,
-        teamId: params.teamId,
-        slotCount: params.slotCount,
-        customerName: params.name,
-        customerEmail: params.email,
+        teamId: target.teamId,
+        slotCount: target.slotCount,
+        customerName: target.name,
+        customerEmail: target.email,
       }),
     });
     const data = await res.json();
@@ -194,7 +208,7 @@ export default function TeamPaymentPage() {
     setStatus("success");
     notifyApp({
       type: "team-payment-success",
-      teamId: params.teamId,
+      teamId: target.teamId,
       slotCount: data.slotCount,
       amount: data.amount,
       nextBillingAt: data.nextBillingAt,
@@ -207,6 +221,11 @@ export default function TeamPaymentPage() {
     try {
       const token = getCardlogueToken();
       if (!token) throw new Error("missing Cardlogue session token");
+
+      // Stashed so the mobile REDIRECTION round-trip below can restore
+      // teamId/slotCount/etc. without depending on whether PortOne preserves
+      // our own query params alongside its own result params on return.
+      sessionStorage.setItem(REDIRECT_PARAMS_KEY, JSON.stringify(params));
 
       const issueResponse = await PortOne.requestIssueBillingKey({
         storeId: STORE_ID,
