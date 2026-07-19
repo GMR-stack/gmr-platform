@@ -21,6 +21,10 @@ function getParams() {
   const pg = params.get("pg");
   const currentSlotCountRaw = params.get("currentSlotCount");
   return {
+    // Empty teamId is the signal for "brand-new team, not created yet" — the
+    // server creates teams/team_members/subscriptions together only once
+    // payment succeeds (see draftTeamName below), instead of Cardlogue
+    // creating the team upfront and rolling it back on failure/cancel.
     teamId: params.get("teamId") || "",
     slotCount: Number(params.get("slotCount") || "1"),
     // Only present when the app already has an active subscription for this
@@ -31,6 +35,11 @@ function getParams() {
     name: params.get("name") || "",
     email: params.get("email") || "",
     provider: (pg === "paddle" ? "paddle" : "portone") as Provider,
+    // Only present (and only meaningful) when teamId is empty — the team's
+    // not-yet-created details, sent to the server on payment success.
+    draftTeamName: params.get("draftTeamName") || "",
+    draftTeamDescription: params.get("draftTeamDescription") || "",
+    draftTeamIsPublic: params.get("draftTeamIsPublic") === "true",
   };
 }
 
@@ -156,7 +165,7 @@ export default function TeamPaymentPage() {
   }, [params.provider]);
 
   const amount = params.slotCount * SEAT_PRICE_KRW;
-  const missingParams = !params.teamId || !params.slotCount;
+  const missingParams = (!params.teamId && !params.draftTeamName) || !params.slotCount;
   const isDecrease = params.currentSlotCount != null && params.slotCount < params.currentSlotCount;
   const isIncrease = params.currentSlotCount != null && params.slotCount > params.currentSlotCount;
   const nextBillingLabel = calcNextBillingAt(new Date()).toLocaleDateString(lang === "ko" ? "ko-KR" : "en-US");
@@ -194,13 +203,25 @@ export default function TeamPaymentPage() {
     const res = await fetch("/api/portone/team-subscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        billingKey,
-        teamId: target.teamId,
-        slotCount: target.slotCount,
-        customerName: target.name,
-        customerEmail: target.email,
-      }),
+      body: JSON.stringify(
+        target.teamId
+          ? {
+              billingKey,
+              teamId: target.teamId,
+              slotCount: target.slotCount,
+              customerName: target.name,
+              customerEmail: target.email,
+            }
+          : {
+              billingKey,
+              slotCount: target.slotCount,
+              customerName: target.name,
+              customerEmail: target.email,
+              draftTeamName: target.draftTeamName,
+              draftTeamDescription: target.draftTeamDescription,
+              draftTeamIsPublic: target.draftTeamIsPublic,
+            },
+      ),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.message || "subscribe failed");
@@ -208,7 +229,10 @@ export default function TeamPaymentPage() {
     setStatus("success");
     notifyApp({
       type: "team-payment-success",
-      teamId: target.teamId,
+      // For an existing team the server just echoes teamId back; for a new
+      // team this is the freshly created one — either way, trust the
+      // response over target.teamId (which is "" for a new team).
+      teamId: data.teamId,
       slotCount: data.slotCount,
       amount: data.amount,
       nextBillingAt: data.nextBillingAt,

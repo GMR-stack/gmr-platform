@@ -572,9 +572,13 @@ ${freeReportUrls}
   // ── Cardlogue team payment (PortOne, Korea) ─────────────────────────────
   app.post("/api/portone/team-subscribe", async (req, res) => {
     try {
-      const { billingKey, teamId, slotCount, customerName, customerEmail } = req.body;
-      if (!billingKey || !teamId || !slotCount) {
-        return res.status(400).json({ message: "Missing billingKey, teamId, or slotCount" });
+      const { billingKey, teamId, slotCount, customerName, customerEmail, draftTeamName, draftTeamDescription, draftTeamIsPublic } = req.body;
+      if (!billingKey || !slotCount) {
+        return res.status(400).json({ message: "Missing billingKey or slotCount" });
+      }
+      const isNewTeam = !teamId;
+      if (isNewTeam && !draftTeamName) {
+        return res.status(400).json({ message: "Missing teamId or draftTeamName" });
       }
       const slots = Number(slotCount);
       if (!Number.isInteger(slots) || slots < 1) {
@@ -582,13 +586,111 @@ ${freeReportUrls}
       }
 
       // The request body's userId is not trusted — the caller's identity comes
-      // only from their Cardlogue session token, and they must actually be an
-      // owner/admin of teamId to touch its billing.
+      // only from their Cardlogue session token.
       const cardlogueUser = getCardlogueUserFromToken(req);
       if (!cardlogueUser) {
         return res.status(401).json({ message: "Missing or invalid Cardlogue session" });
       }
       const userId = cardlogueUser.sub;
+
+      // A brand-new team has no existing membership to check ownership
+      // against — the caller becomes the owner by definition of creating it.
+      // Team creation itself is deferred until after a successful charge
+      // (see below) so a failed/cancelled payment leaves nothing behind.
+      if (isNewTeam) {
+        const minSlots = 2;
+        if (slots < minSlots) {
+          return res.status(400).json({ message: `slotCount can't be below ${minSlots}` });
+        }
+
+        await getBillingKeyInfo(billingKey);
+
+        const supabase = getCardlogueSupabase();
+        // Idempotency guard: if the client retries this whole request after a
+        // successful charge+team-creation but a lost response (network drop
+        // before it saw the reply), this billing key was already used to
+        // create a team — return that team instead of charging/creating again.
+        const { data: alreadyCreated } = await supabase
+          .from("subscriptions")
+          .select("team_id, next_billing_at, slot_count")
+          .eq("portone_billing_key", billingKey)
+          .eq("type", "team")
+          .maybeSingle();
+        if (alreadyCreated) {
+          return res.json({
+            message: "Team created",
+            teamId: alreadyCreated.team_id,
+            nextBillingAt: alreadyCreated.next_billing_at,
+            amount: slots * TEAM_SEAT_PRICE_KRW,
+            slotCount: alreadyCreated.slot_count,
+          });
+        }
+
+        const amount = slots * TEAM_SEAT_PRICE_KRW;
+        const now = new Date();
+        // Scoped to this billing key so a client retry after a lost response
+        // dedupes against PortOne's own duplicate-payment guard.
+        const paymentId = `team-new-${billingKey}`;
+        try {
+          await chargeBillingKey({
+            paymentId,
+            billingKey,
+            orderName: `Cardlogue 팀 플랜 (${slots}인)`,
+            amount,
+            customerName: customerName || "Cardlogue User",
+            customerEmail,
+          });
+        } catch (chargeErr: any) {
+          const existingPayment = await getPaymentStatus(paymentId).catch(() => null);
+          if (existingPayment?.status !== "PAID") throw chargeErr;
+        }
+
+        const { data: newTeam, error: teamErr } = await supabase
+          .from("teams")
+          .insert({ name: draftTeamName, description: draftTeamDescription || null, is_public: !!draftTeamIsPublic, owner_id: userId })
+          .select("id")
+          .single();
+        if (teamErr) throw teamErr;
+        const newTeamId = newTeam.id as string;
+
+        try {
+          const { error: memberErr } = await supabase
+            .from("team_members")
+            .insert({ team_id: newTeamId, user_id: userId, role: "owner" });
+          if (memberErr) throw memberErr;
+
+          const { error: subErr } = await supabase.from("subscriptions").insert({
+            user_id: userId,
+            team_id: newTeamId,
+            type: "team",
+            status: "active",
+            slot_count: slots,
+            payment_method: "web",
+            next_billing_at: calcNextBillingAt(now).toISOString(),
+            portone_billing_key: billingKey,
+          });
+          if (subErr) throw subErr;
+        } catch (postChargeErr: any) {
+          // Payment already succeeded — don't leave a broken half-created
+          // team behind. Best-effort cleanup; log loudly if even that fails
+          // since at that point it needs manual attention.
+          const { error: cleanupErr } = await supabase.from("teams").delete().eq("id", newTeamId);
+          if (cleanupErr) {
+            console.error("PortOne team-subscribe: failed to clean up team after post-charge error", { newTeamId, cleanupErr, postChargeErr });
+          }
+          throw postChargeErr;
+        }
+
+        return res.json({
+          message: "Team created",
+          teamId: newTeamId,
+          nextBillingAt: calcNextBillingAt(now),
+          amount,
+          slotCount: slots,
+        });
+      }
+
+      // They must actually be an owner/admin of teamId to touch its billing.
       if (!(await isTeamBillingAdmin(teamId, userId))) {
         return res.status(403).json({ message: "Not an owner/admin of this team" });
       }
@@ -684,6 +786,7 @@ ${freeReportUrls}
 
       return res.json({
         message: "Team subscription updated",
+        teamId,
         nextBillingAt: existing?.next_billing_at ?? calcNextBillingAt(now),
         amount,
         slotCount: slots,
