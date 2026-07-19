@@ -18,6 +18,9 @@ import OAuthConsentPage from "@/pages/oauth-consent";
 import LandingPage from "@/pages/landing";
 import CardloguePage from "@/pages/cardlogue";
 import TeamPaymentPage from "@/pages/team-payment";
+import TeamLoginPage from "@/pages/team-login";
+import TeamManagePage from "@/pages/team-manage";
+import TeamCardsPage from "@/pages/team-cards";
 import PrivacyPage from "@/pages/privacy";
 import TermsPage from "@/pages/terms";
 import RefundPage from "@/pages/refund";
@@ -38,6 +41,9 @@ function Router() {
       <Route path="/" component={LandingPage} />
       <Route path="/cardlogue" component={CardloguePage} />
       <Route path="/team/payment" component={TeamPaymentPage} />
+      <Route path="/team/login" component={TeamLoginPage} />
+      <Route path="/team/manage" component={TeamManagePage} />
+      <Route path="/team/cards" component={TeamCardsPage} />
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/terms" component={TermsPage} />
       <Route path="/refund" component={RefundPage} />

@@ -6,6 +6,9 @@ import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 import {
   getBillingKeyInfo,
+  deleteBillingKey,
+  extractCardSummary,
+  recordTeamPaymentCard,
   chargeBillingKey,
   getPaymentStatus,
   calcNextBillingAt,
@@ -681,6 +684,8 @@ ${freeReportUrls}
           throw postChargeErr;
         }
 
+        await recordTeamPaymentCard(newTeamId, billingKey, userId);
+
         return res.json({
           message: "Team created",
           teamId: newTeamId,
@@ -784,6 +789,8 @@ ${freeReportUrls}
         : await supabase.from("subscriptions").insert(subscriptionFields);
       if (writeErr) throw writeErr;
 
+      await recordTeamPaymentCard(teamId, billingKey, userId);
+
       return res.json({
         message: "Team subscription updated",
         teamId,
@@ -802,6 +809,363 @@ ${freeReportUrls}
     // registered in the PortOne console (결제알림(Webhook) 관리).
     console.log("[portone webhook]", JSON.stringify(req.body));
     return res.status(200).json({ received: true });
+  });
+
+  // ── Cardlogue web account (browser flow for PG/card-issuer review) ──────
+  // The payment pages normally run inside the Cardlogue app's WebView, which
+  // injects the user's Supabase session token. For the browser flow there's
+  // no app to inject it, so this proxies Supabase's password grant using the
+  // server-side credentials — the client never needs Cardlogue's Supabase
+  // URL/keys, and the token it gets back is the same kind the app injects.
+  app.post("/api/cardlogue/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      if (!email || !password) {
+        return res.status(400).json({ message: "Missing email or password" });
+      }
+      const url = process.env.CARDLOGUE_SUPABASE_URL;
+      const key = process.env.CARDLOGUE_SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !key) {
+        return res.status(500).json({ message: "Cardlogue auth not configured" });
+      }
+      const authRes = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: key },
+        body: JSON.stringify({ email, password }),
+      });
+      const data: any = await authRes.json().catch(() => ({}));
+      if (!authRes.ok || !data?.access_token) {
+        return res.status(401).json({ message: data?.error_description || data?.msg || "Invalid email or password" });
+      }
+      return res.json({
+        accessToken: data.access_token,
+        expiresAt: data.expires_at ?? null,
+        user: {
+          id: data.user?.id,
+          email: data.user?.email,
+          name: data.user?.user_metadata?.name || data.user?.user_metadata?.full_name || null,
+        },
+      });
+    } catch (err: any) {
+      console.error("Cardlogue login error:", err.message);
+      return res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // Teams the logged-in Cardlogue user belongs to, with each team's
+  // subscription state — feeds the browser team-management page.
+  app.get("/api/cardlogue/my-teams", async (req, res) => {
+    try {
+      const cardlogueUser = getCardlogueUserFromToken(req);
+      if (!cardlogueUser) {
+        return res.status(401).json({ message: "Missing or invalid Cardlogue session" });
+      }
+      const supabase = getCardlogueSupabase();
+      const { data: memberships, error: memberErr } = await supabase
+        .from("team_members")
+        .select("team_id, role, teams(id, name)")
+        .eq("user_id", cardlogueUser.sub);
+      if (memberErr) throw memberErr;
+
+      const teamIds = (memberships ?? []).map((m: any) => m.team_id);
+      const subsByTeam: Record<string, any> = {};
+      const countByTeam: Record<string, number> = {};
+      if (teamIds.length > 0) {
+        const { data: subs, error: subErr } = await supabase
+          .from("subscriptions")
+          .select("team_id, status, slot_count, next_billing_at, pending_cancellation, portone_billing_key, paddle_subscription_id")
+          .eq("type", "team")
+          .in("team_id", teamIds);
+        if (subErr) throw subErr;
+        for (const s of subs ?? []) subsByTeam[s.team_id] = s;
+
+        const { data: allMembers, error: countErr } = await supabase
+          .from("team_members")
+          .select("team_id")
+          .in("team_id", teamIds);
+        if (countErr) throw countErr;
+        for (const m of allMembers ?? []) countByTeam[m.team_id] = (countByTeam[m.team_id] ?? 0) + 1;
+      }
+
+      return res.json({
+        teams: (memberships ?? []).map((m: any) => {
+          const sub = subsByTeam[m.team_id];
+          return {
+            teamId: m.team_id,
+            name: m.teams?.name ?? "",
+            role: m.role,
+            memberCount: countByTeam[m.team_id] ?? 1,
+            subscription: sub
+              ? {
+                  status: sub.status,
+                  slotCount: sub.slot_count,
+                  nextBillingAt: sub.next_billing_at,
+                  pendingCancellation: !!sub.pending_cancellation,
+                  provider: sub.portone_billing_key ? "portone" : sub.paddle_subscription_id ? "paddle" : null,
+                }
+              : null,
+          };
+        }),
+      });
+    } catch (err: any) {
+      console.error("Cardlogue my-teams error:", err.message);
+      return res.status(500).json({ message: "Failed to load teams" });
+    }
+  });
+
+  // ── Cardlogue team card management (PortOne billing keys) ───────────────
+  // Multiple cards per team: each registered card is its own billing key in
+  // team_payment_cards, and subscriptions.portone_billing_key points at the
+  // one the monthly batch charges. Selecting a card just moves that pointer;
+  // the batch itself needs no changes.
+  app.get("/api/portone/team-cards", async (req, res) => {
+    try {
+      const teamId = String(req.query.teamId || "");
+      if (!teamId) return res.status(400).json({ message: "Missing teamId" });
+
+      const cardlogueUser = getCardlogueUserFromToken(req);
+      if (!cardlogueUser) {
+        return res.status(401).json({ message: "Missing or invalid Cardlogue session" });
+      }
+      if (!(await isTeamBillingAdmin(teamId, cardlogueUser.sub))) {
+        return res.status(403).json({ message: "Not an owner/admin of this team" });
+      }
+
+      const supabase = getCardlogueSupabase();
+      const { data: sub, error: subErr } = await supabase
+        .from("subscriptions")
+        .select("status, portone_billing_key")
+        .eq("team_id", teamId)
+        .eq("type", "team")
+        .maybeSingle();
+      if (subErr) throw subErr;
+      const activeBillingKey = sub?.portone_billing_key ?? null;
+
+      // The subscription's current key can be missing from the list (card
+      // registered before this feature shipped and not caught by the
+      // migration backfill) — recover it so the active card always shows.
+      if (activeBillingKey) {
+        const { data: activeRow } = await supabase
+          .from("team_payment_cards")
+          .select("id")
+          .eq("billing_key", activeBillingKey)
+          .maybeSingle();
+        if (!activeRow) {
+          await recordTeamPaymentCard(teamId, activeBillingKey, cardlogueUser.sub);
+        }
+      }
+
+      const { data: cards, error: cardsErr } = await supabase
+        .from("team_payment_cards")
+        .select("id, billing_key, card_name, card_number_masked, created_at")
+        .eq("team_id", teamId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true });
+      if (cardsErr) throw cardsErr;
+
+      // Rows whose card info was never captured (migration backfill, or the
+      // PortOne lookup failed at registration) get filled here, once.
+      for (const card of cards ?? []) {
+        if (card.card_name || card.card_number_masked) continue;
+        try {
+          const info = await getBillingKeyInfo(card.billing_key);
+          const summary = extractCardSummary(info);
+          if (summary.cardName || summary.cardNumberMasked) {
+            await supabase
+              .from("team_payment_cards")
+              .update({ card_name: summary.cardName, card_number_masked: summary.cardNumberMasked })
+              .eq("id", card.id);
+            card.card_name = summary.cardName;
+            card.card_number_masked = summary.cardNumberMasked;
+          }
+        } catch {
+          // Leave it blank; the client renders a placeholder label.
+        }
+      }
+
+      return res.json({
+        subscriptionStatus: sub?.status ?? null,
+        cards: (cards ?? []).map((c) => ({
+          id: c.id,
+          cardName: c.card_name,
+          cardNumberMasked: c.card_number_masked,
+          createdAt: c.created_at,
+          isActive: c.billing_key === activeBillingKey,
+        })),
+      });
+    } catch (err: any) {
+      console.error("PortOne team-cards list error:", err.message);
+      return res.status(500).json({ message: "Failed to load cards" });
+    }
+  });
+
+  // Registers a freshly issued billing key as a new card in the team's list.
+  // Registration only — nothing is charged and the active card doesn't
+  // change until the user explicitly selects it.
+  app.post("/api/portone/team-cards", async (req, res) => {
+    try {
+      const { teamId, billingKey } = req.body;
+      if (!teamId || !billingKey) {
+        return res.status(400).json({ message: "Missing teamId or billingKey" });
+      }
+      const cardlogueUser = getCardlogueUserFromToken(req);
+      if (!cardlogueUser) {
+        return res.status(401).json({ message: "Missing or invalid Cardlogue session" });
+      }
+      if (!(await isTeamBillingAdmin(teamId, cardlogueUser.sub))) {
+        return res.status(403).json({ message: "Not an owner/admin of this team" });
+      }
+
+      // Confirm PortOne actually issued this key (and grab the card info)
+      // before trusting the client-supplied value.
+      const info = await getBillingKeyInfo(billingKey);
+      const summary = extractCardSummary(info);
+
+      const supabase = getCardlogueSupabase();
+      const { data: card, error: upsertErr } = await supabase
+        .from("team_payment_cards")
+        .upsert(
+          {
+            team_id: teamId,
+            billing_key: billingKey,
+            card_name: summary.cardName,
+            card_number_masked: summary.cardNumberMasked,
+            created_by: cardlogueUser.sub,
+            deleted_at: null,
+          },
+          { onConflict: "billing_key" },
+        )
+        .select("id, card_name, card_number_masked, created_at")
+        .single();
+      if (upsertErr) throw upsertErr;
+
+      return res.json({
+        message: "Card registered",
+        card: {
+          id: card.id,
+          cardName: card.card_name,
+          cardNumberMasked: card.card_number_masked,
+          createdAt: card.created_at,
+          isActive: false,
+        },
+      });
+    } catch (err: any) {
+      console.error("PortOne team-cards register error:", err.message);
+      return res.status(500).json({ message: "Failed to register card" });
+    }
+  });
+
+  // Points the subscription's auto-billing at a different registered card.
+  app.post("/api/portone/team-cards/select", async (req, res) => {
+    try {
+      const { teamId, cardId } = req.body;
+      if (!teamId || !cardId) {
+        return res.status(400).json({ message: "Missing teamId or cardId" });
+      }
+      const cardlogueUser = getCardlogueUserFromToken(req);
+      if (!cardlogueUser) {
+        return res.status(401).json({ message: "Missing or invalid Cardlogue session" });
+      }
+      if (!(await isTeamBillingAdmin(teamId, cardlogueUser.sub))) {
+        return res.status(403).json({ message: "Not an owner/admin of this team" });
+      }
+
+      const supabase = getCardlogueSupabase();
+      const { data: card, error: cardErr } = await supabase
+        .from("team_payment_cards")
+        .select("id, billing_key")
+        .eq("id", cardId)
+        .eq("team_id", teamId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (cardErr) throw cardErr;
+      if (!card) return res.status(404).json({ message: "Card not found" });
+
+      const { data: sub, error: subErr } = await supabase
+        .from("subscriptions")
+        .select("id, portone_billing_key")
+        .eq("team_id", teamId)
+        .eq("type", "team")
+        .maybeSingle();
+      if (subErr) throw subErr;
+      if (!sub) return res.status(400).json({ message: "No subscription for this team" });
+      // A Paddle-billed team has no PortOne key to swap — switching PG
+      // mid-subscription isn't supported here.
+      if (!sub.portone_billing_key) {
+        return res.status(400).json({ message: "This team is not billed through PortOne" });
+      }
+
+      const { error: writeErr } = await supabase
+        .from("subscriptions")
+        .update({ portone_billing_key: card.billing_key })
+        .eq("id", sub.id);
+      if (writeErr) throw writeErr;
+
+      return res.json({ message: "Card selected", activeCardId: card.id });
+    } catch (err: any) {
+      console.error("PortOne team-cards select error:", err.message);
+      return res.status(500).json({ message: "Failed to select card" });
+    }
+  });
+
+  // Removes a card: deletes the billing key on PortOne's side (so the card
+  // mandate doesn't linger with the card issuer) and soft-deletes the row.
+  // The card currently wired to auto-billing can't be removed — select a
+  // different one first.
+  app.post("/api/portone/team-cards/delete", async (req, res) => {
+    try {
+      const { teamId, cardId } = req.body;
+      if (!teamId || !cardId) {
+        return res.status(400).json({ message: "Missing teamId or cardId" });
+      }
+      const cardlogueUser = getCardlogueUserFromToken(req);
+      if (!cardlogueUser) {
+        return res.status(401).json({ message: "Missing or invalid Cardlogue session" });
+      }
+      if (!(await isTeamBillingAdmin(teamId, cardlogueUser.sub))) {
+        return res.status(403).json({ message: "Not an owner/admin of this team" });
+      }
+
+      const supabase = getCardlogueSupabase();
+      const { data: card, error: cardErr } = await supabase
+        .from("team_payment_cards")
+        .select("id, billing_key")
+        .eq("id", cardId)
+        .eq("team_id", teamId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (cardErr) throw cardErr;
+      if (!card) return res.status(404).json({ message: "Card not found" });
+
+      const { data: sub, error: subErr } = await supabase
+        .from("subscriptions")
+        .select("status, portone_billing_key")
+        .eq("team_id", teamId)
+        .eq("type", "team")
+        .maybeSingle();
+      if (subErr) throw subErr;
+      if (sub?.status === "active" && sub.portone_billing_key === card.billing_key) {
+        return res.status(400).json({ message: "This card is used for auto-billing — select another card first" });
+      }
+
+      try {
+        await deleteBillingKey(card.billing_key);
+      } catch (err: any) {
+        // Already gone on PortOne's side is fine — still remove it locally.
+        if (!String(err?.message).includes("ALREADY_DELETED")) throw err;
+      }
+
+      const { error: writeErr } = await supabase
+        .from("team_payment_cards")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", card.id);
+      if (writeErr) throw writeErr;
+
+      return res.json({ message: "Card deleted" });
+    } catch (err: any) {
+      console.error("PortOne team-cards delete error:", err.message);
+      return res.status(500).json({ message: "Failed to delete card" });
+    }
   });
 
   // ── Cardlogue team payment (Paddle, international) ──────────────────────

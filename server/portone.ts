@@ -31,6 +31,25 @@ export async function getBillingKeyInfo(billingKey: string) {
   return portoneFetch(`/billing-keys/${encodeURIComponent(billingKey)}`);
 }
 
+// Removes the billing key on PortOne's side so the card mandate doesn't
+// linger after the user deletes the card from their list.
+export async function deleteBillingKey(billingKey: string) {
+  return portoneFetch(`/billing-keys/${encodeURIComponent(billingKey)}`, { method: "DELETE" });
+}
+
+// Pulls a display summary (issuer name + masked number) out of PortOne's
+// billing-key lookup response. Field shapes follow PortOne V2's
+// BillingKeyPaymentMethodCard; every access is defensive since only the
+// happy path has been observed live.
+export function extractCardSummary(billingKeyInfo: any): { cardName: string | null; cardNumberMasked: string | null } {
+  const method = billingKeyInfo?.methods?.find((m: any) => m?.card) ?? billingKeyInfo?.methods?.[0];
+  const card = method?.card;
+  return {
+    cardName: card?.name || card?.issuer || card?.publisher || null,
+    cardNumberMasked: card?.number || null,
+  };
+}
+
 export async function getPaymentStatus(paymentId: string) {
   return portoneFetch(`/payments/${encodeURIComponent(paymentId)}`);
 }
@@ -136,6 +155,40 @@ export async function getTeamMemberCount(teamId: string): Promise<number> {
     .eq("team_id", teamId);
   if (error) throw error;
   return count ?? 1;
+}
+
+// Records a billing key in the team's card list (team_payment_cards) so it
+// shows up in card management. Best-effort: a failure here must never fail
+// the payment that just succeeded — the batch charges from
+// subscriptions.portone_billing_key, not from this table.
+export async function recordTeamPaymentCard(teamId: string, billingKey: string, createdBy: string) {
+  try {
+    let cardName: string | null = null;
+    let cardNumberMasked: string | null = null;
+    try {
+      const info = await getBillingKeyInfo(billingKey);
+      ({ cardName, cardNumberMasked } = extractCardSummary(info));
+    } catch {
+      // Card info stays null and gets lazily filled on the next list fetch.
+    }
+    const supabase = getCardlogueSupabase();
+    // deleted_at: null resurrects a card the user previously removed and is
+    // now re-registering.
+    const { error } = await supabase.from("team_payment_cards").upsert(
+      {
+        team_id: teamId,
+        billing_key: billingKey,
+        card_name: cardName,
+        card_number_masked: cardNumberMasked,
+        created_by: createdBy,
+        deleted_at: null,
+      },
+      { onConflict: "billing_key" },
+    );
+    if (error) throw error;
+  } catch (err: any) {
+    console.error("recordTeamPaymentCard failed (non-fatal):", err?.message ?? err);
+  }
 }
 
 export function getCardlogueSupabase() {

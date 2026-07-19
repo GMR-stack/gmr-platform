@@ -4,6 +4,7 @@ import { initializePaddle, type Paddle } from "@paddle/paddle-js";
 import { useLang } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { PageGlow } from "@/components/page-glow";
+import { getCardlogueToken, isInAppWebView, loginUrlFor } from "@/lib/cardlogue-auth";
 
 const NAVY = "#03045E";
 const GOLD = "#D4AF37";
@@ -64,12 +65,8 @@ function notifyApp(payload: Record<string, unknown>) {
   (window as any).ReactNativeWebView?.postMessage(JSON.stringify(payload));
 }
 
-// The RN app injects its Cardlogue Supabase session token via
-// injectedJavaScriptBeforeContentLoaded (never via the URL, so it can't leak
-// through server logs or the Referer header) — see app/team/payment.tsx.
-function getCardlogueToken(): string | undefined {
-  return (window as any).__CARDLOGUE_TOKEN;
-}
+// Token comes either from the RN app's WebView injection or, in the browser
+// flow, from the /team/login web session — see lib/cardlogue-auth.ts.
 
 // On mobile, requestIssueBillingKey uses windowType.mobile: "REDIRECTION" —
 // no popup, the page navigates to KCP's auth flow and back to redirectUrl
@@ -106,6 +103,16 @@ export default function TeamPaymentPage() {
 
   useEffect(() => {
     setParams(getParams());
+  }, []);
+
+  // Browser flow (PG/card-issuer review): no app to inject the token, so an
+  // unauthenticated visitor goes through /team/login first and comes back
+  // here with the full query string intact. Inside the app WebView this never
+  // fires — the injected token is present before this page's code runs.
+  useEffect(() => {
+    if (!getCardlogueToken() && !isInAppWebView()) {
+      window.location.href = loginUrlFor(window.location.pathname + window.location.search);
+    }
   }, []);
 
   // Returning from a mobile REDIRECTION-mode billing-key flow (see
@@ -188,12 +195,17 @@ export default function TeamPaymentPage() {
     cancel: lang === "ko" ? "취소" : "Cancel",
     processing: lang === "ko" ? "결제 처리 중..." : "Processing...",
     success: lang === "ko" ? "결제가 완료되었습니다. 앱으로 돌아가세요." : "Payment complete. You can return to the app.",
+    successWeb: lang === "ko" ? "결제가 완료되었습니다." : "Payment complete.",
+    backToManage: lang === "ko" ? "팀 관리로 돌아가기" : "Back to team management",
     error: lang === "ko" ? "결제에 실패했습니다" : "Payment failed",
     missing: lang === "ko" ? "잘못된 접근입니다 (필수 정보 누락)" : "Invalid request (missing required parameters)",
   };
 
   function handleCancel() {
     notifyApp({ type: "team-payment-cancelled", teamId: params.teamId });
+    // In the browser there's no app listening for the postMessage — go back
+    // to the team-management page instead.
+    if (!isInAppWebView()) window.location.href = "/team/manage";
   }
 
   async function finishPortoneSubscribe(billingKey: string, target: typeof params = params) {
@@ -361,9 +373,21 @@ export default function TeamPaymentPage() {
             )}
 
             {status === "success" ? (
-              <p className="text-sm text-white/80" data-testid="text-payment-success">
-                {t.success}
-              </p>
+              <>
+                <p className="text-sm text-white/80" data-testid="text-payment-success">
+                  {isInAppWebView() ? t.success : t.successWeb}
+                </p>
+                {!isInAppWebView() && (
+                  <Button
+                    className="w-full font-brand font-semibold"
+                    style={{ background: GOLD, color: NAVY }}
+                    onClick={() => (window.location.href = "/team/manage")}
+                    data-testid="button-back-to-manage"
+                  >
+                    {t.backToManage}
+                  </Button>
+                )}
+              </>
             ) : (
               <>
                 <Button
