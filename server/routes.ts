@@ -577,11 +577,8 @@ ${freeReportUrls}
   app.post("/api/portone/team-subscribe", async (req, res) => {
     try {
       const { billingKey, cardId, teamId, slotCount, customerName, customerEmail, draftTeamName, draftTeamDescription, draftTeamIsPublic } = req.body;
-      // A brand-new team has no cards registered yet, so it can only pay by
-      // freshly issuing a billing key — cardId only makes sense for a team
-      // that already exists and already has a card on file.
       const isNewTeam = !teamId;
-      if (!slotCount || (isNewTeam ? !billingKey : !billingKey && !cardId)) {
+      if (!slotCount || (!billingKey && !cardId)) {
         return res.status(400).json({ message: "Missing billingKey/cardId or slotCount" });
       }
       if (isNewTeam && !draftTeamName) {
@@ -600,6 +597,27 @@ ${freeReportUrls}
       }
       const userId = cardlogueUser.sub;
 
+      const supabase = getCardlogueSupabase();
+
+      // Resolve which billing key to charge: either one freshly issued by
+      // the client (billingKey) or one already on file that the user picked
+      // from their registered cards (cardId) — never both. Cards are scoped
+      // by account (created_by), not by team, so this works the same way
+      // whether teamId refers to an existing team or a not-yet-created one.
+      let payBillingKey = billingKey as string | undefined;
+      if (!payBillingKey && cardId) {
+        const { data: card, error: cardErr } = await supabase
+          .from("team_payment_cards")
+          .select("billing_key")
+          .eq("id", cardId)
+          .eq("created_by", userId)
+          .is("deleted_at", null)
+          .maybeSingle();
+        if (cardErr) throw cardErr;
+        if (!card) return res.status(404).json({ message: "Card not found" });
+        payBillingKey = card.billing_key as string;
+      }
+
       // A brand-new team has no existing membership to check ownership
       // against — the caller becomes the owner by definition of creating it.
       // Team creation itself is deferred until after a successful charge
@@ -610,9 +628,8 @@ ${freeReportUrls}
           return res.status(400).json({ message: `slotCount can't be below ${minSlots}` });
         }
 
-        await getBillingKeyInfo(billingKey);
+        await getBillingKeyInfo(payBillingKey!);
 
-        const supabase = getCardlogueSupabase();
         // Idempotency guard: if the client retries this whole request after a
         // successful charge+team-creation but a lost response (network drop
         // before it saw the reply), this billing key was already used to
@@ -620,7 +637,7 @@ ${freeReportUrls}
         const { data: alreadyCreated } = await supabase
           .from("subscriptions")
           .select("team_id, next_billing_at, slot_count")
-          .eq("portone_billing_key", billingKey)
+          .eq("portone_billing_key", payBillingKey!)
           .eq("type", "team")
           .maybeSingle();
         if (alreadyCreated) {
@@ -637,11 +654,11 @@ ${freeReportUrls}
         const now = new Date();
         // Scoped to this billing key so a client retry after a lost response
         // dedupes against PortOne's own duplicate-payment guard.
-        const paymentId = `team-new-${billingKey}`;
+        const paymentId = `team-new-${payBillingKey}`;
         try {
           await chargeBillingKey({
             paymentId,
-            billingKey,
+            billingKey: payBillingKey!,
             orderName: `Cardlogue 팀 플랜 (${slots}인)`,
             amount,
             customerName: customerName || "Cardlogue User",
@@ -674,7 +691,7 @@ ${freeReportUrls}
             slot_count: slots,
             payment_method: "web",
             next_billing_at: calcNextBillingAt(now).toISOString(),
-            portone_billing_key: billingKey,
+            portone_billing_key: payBillingKey,
           });
           if (subErr) throw subErr;
         } catch (postChargeErr: any) {
@@ -688,7 +705,7 @@ ${freeReportUrls}
           throw postChargeErr;
         }
 
-        await recordTeamPaymentCard(newTeamId, billingKey, userId);
+        await recordTeamPaymentCard(newTeamId, payBillingKey!, userId);
 
         return res.json({
           message: "Team created",
@@ -708,27 +725,6 @@ ${freeReportUrls}
       const minSlots = Math.max(2, memberCount);
       if (slots < minSlots) {
         return res.status(400).json({ message: `slotCount can't be below the current member count (${minSlots})` });
-      }
-
-      const supabase = getCardlogueSupabase();
-
-      // Resolve which billing key to charge: either one freshly issued by
-      // the client (billingKey) or one already on file that the user picked
-      // from their registered cards (cardId) — never both.
-      let payBillingKey = billingKey as string | undefined;
-      if (!payBillingKey && cardId) {
-        // Scoped by account (created_by), not this team — reusable across
-        // every team the caller administers.
-        const { data: card, error: cardErr } = await supabase
-          .from("team_payment_cards")
-          .select("billing_key")
-          .eq("id", cardId)
-          .eq("created_by", userId)
-          .is("deleted_at", null)
-          .maybeSingle();
-        if (cardErr) throw cardErr;
-        if (!card) return res.status(404).json({ message: "Card not found" });
-        payBillingKey = card.billing_key as string;
       }
 
       // Confirm PortOne actually issued this billing key before charging it.
@@ -975,38 +971,48 @@ ${freeReportUrls}
   // the batch itself needs no changes.
   app.get("/api/portone/team-cards", async (req, res) => {
     try {
+      // teamId is optional — a not-yet-created team (see team-subscribe's
+      // isNewTeam path) has nothing to check admin-of yet, but the caller's
+      // own card list is still meaningful to show before they've picked a
+      // team name at all.
       const teamId = String(req.query.teamId || "");
-      if (!teamId) return res.status(400).json({ message: "Missing teamId" });
 
       const cardlogueUser = getCardlogueUserFromToken(req);
       if (!cardlogueUser) {
         return res.status(401).json({ message: "Missing or invalid Cardlogue session" });
       }
-      if (!(await isTeamBillingAdmin(teamId, cardlogueUser.sub))) {
-        return res.status(403).json({ message: "Not an owner/admin of this team" });
-      }
 
       const supabase = getCardlogueSupabase();
-      const { data: sub, error: subErr } = await supabase
-        .from("subscriptions")
-        .select("status, portone_billing_key")
-        .eq("team_id", teamId)
-        .eq("type", "team")
-        .maybeSingle();
-      if (subErr) throw subErr;
-      const activeBillingKey = sub?.portone_billing_key ?? null;
+      let subscriptionStatus: string | null = null;
+      let activeBillingKey: string | null = null;
 
-      // The subscription's current key can be missing from the list (card
-      // registered before this feature shipped and not caught by the
-      // migration backfill) — recover it so the active card always shows.
-      if (activeBillingKey) {
-        const { data: activeRow } = await supabase
-          .from("team_payment_cards")
-          .select("id")
-          .eq("billing_key", activeBillingKey)
+      if (teamId) {
+        if (!(await isTeamBillingAdmin(teamId, cardlogueUser.sub))) {
+          return res.status(403).json({ message: "Not an owner/admin of this team" });
+        }
+
+        const { data: sub, error: subErr } = await supabase
+          .from("subscriptions")
+          .select("status, portone_billing_key")
+          .eq("team_id", teamId)
+          .eq("type", "team")
           .maybeSingle();
-        if (!activeRow) {
-          await recordTeamPaymentCard(teamId, activeBillingKey, cardlogueUser.sub);
+        if (subErr) throw subErr;
+        subscriptionStatus = sub?.status ?? null;
+        activeBillingKey = sub?.portone_billing_key ?? null;
+
+        // The subscription's current key can be missing from the list (card
+        // registered before this feature shipped and not caught by the
+        // migration backfill) — recover it so the active card always shows.
+        if (activeBillingKey) {
+          const { data: activeRow } = await supabase
+            .from("team_payment_cards")
+            .select("id")
+            .eq("billing_key", activeBillingKey)
+            .maybeSingle();
+          if (!activeRow) {
+            await recordTeamPaymentCard(teamId, activeBillingKey, cardlogueUser.sub);
+          }
         }
       }
 
@@ -1042,7 +1048,7 @@ ${freeReportUrls}
       }
 
       return res.json({
-        subscriptionStatus: sub?.status ?? null,
+        subscriptionStatus,
         cards: (cards ?? []).map((c) => ({
           id: c.id,
           cardName: c.card_name,

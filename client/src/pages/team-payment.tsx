@@ -104,8 +104,11 @@ export default function TeamPaymentPage() {
   const [paddle, setPaddle] = useState<Paddle | null>(null);
   // Cards already registered for this team (PortOne only, existing team
   // only) — null until loaded, [] once loaded with none. Existing cards
-  // mean the user picks one instead of registering a new one; a new team or
-  // a team with zero cards on file goes straight to registration, unchanged.
+  // mean the user picks one instead of registering a new one; a team with
+  // zero cards on file — including every brand-new team, until its owner
+  // has registered at least one — goes straight to registration, unchanged.
+  // Cards are scoped by account, not by team, so this applies the same way
+  // whether params.teamId is an existing team or empty (new-team flow).
   const [cards, setCards] = useState<TeamCard[] | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
@@ -114,7 +117,7 @@ export default function TeamPaymentPage() {
   }, []);
 
   useEffect(() => {
-    if (params.provider !== "portone" || !params.teamId) return;
+    if (params.provider !== "portone") return;
     const token = getCardlogueToken();
     if (!token) return;
     fetch(`/api/portone/team-cards?teamId=${encodeURIComponent(params.teamId)}`, {
@@ -392,12 +395,13 @@ export default function TeamPaymentPage() {
     }
   }
 
-  // Existing team + PortOne: once cards are loaded, a non-empty list means
-  // "pick one and pay" instead of the registration flow. A new team, a
-  // Paddle-billed team, or a team with zero cards on file all skip straight
-  // to registration as before.
-  const cardsLoading = params.provider === "portone" && !!params.teamId && cards === null;
-  const hasExistingCards = params.provider === "portone" && !!params.teamId && !!cards && cards.length > 0;
+  // PortOne only: once cards are loaded, a non-empty list means "pick one
+  // and pay" instead of the registration flow — for an existing team or a
+  // brand-new one alike, since cards belong to the account, not the team.
+  // A Paddle-billed team or an account with zero cards on file (including
+  // every account's first-ever team) skips straight to registration.
+  const cardsLoading = params.provider === "portone" && cards === null;
+  const hasExistingCards = params.provider === "portone" && !!cards && cards.length > 0;
   const handlePay = params.provider === "paddle" ? handlePayPaddle : hasExistingCards ? handlePayWithCard : handlePayPortOne;
 
   function cardLabel(card: TeamCard) {
