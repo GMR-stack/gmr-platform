@@ -151,6 +151,7 @@ export const translations = {
         linkTerms: "Terms of Service",
         linkRefund: "Refund Policy",
         linkTeamPayment: "Team Plan Payment",
+        linkAccountDeletion: "Delete Account",
         linkContact: "Contact",
         businessInfo:
           "The Navy · Representative: Juhyung Lee · Business Registration No. 155-26-01968 · 166 Uchang-ro, Buk-gu, Pohang-si, Gyeongsangbuk-do, Republic of Korea (37627) · 070-7954-1968",
@@ -676,6 +677,53 @@ export const translations = {
       ] as LegalBlock[],
       closingNote: "This Policy takes effect on July 12, 2026.",
     },
+    accountDeletion: {
+      title: "Account Deletion — Cardlogue",
+      intro:
+        "This page explains how to delete your Cardlogue account and what happens to your data, for users of Cardlogue, the business card management app operated by The Navy.",
+      blocks: [
+        { type: "heading", text: "1. Delete From Within the App" },
+        {
+          type: "paragraph",
+          text: "Open Cardlogue, go to Settings, and select \"Delete Account.\" Your account is deleted immediately once you confirm.",
+        },
+
+        { type: "heading", text: "2. Request Deletion From the Web (No App Required)" },
+        {
+          type: "paragraph",
+          text: "If you no longer have the app installed, submit the form below with the email address associated with your Cardlogue account. We process deletion requests within 7 business days of receipt and confirm by email once complete.",
+        },
+
+        { type: "heading", text: "3. What Gets Deleted" },
+        {
+          type: "list",
+          items: [
+            "Your account and profile information",
+            "Business cards you scanned and your digital business card",
+            "Team membership (your cards in a team's shared card book remain with the team, as a shared organizational record — see our Privacy Policy)",
+          ],
+        },
+
+        { type: "heading", text: "4. What We Retain, and For How Long" },
+        {
+          type: "paragraph",
+          text: "In principle, your information is destroyed without delay once your account is deleted. Where Korean law requires longer retention, we keep only the following, then destroy it:",
+        },
+        {
+          type: "table",
+          headers: ["Data", "Retention Period", "Legal Basis"],
+          rows: [
+            ["Contract / payment records", "5 years", "Act on Consumer Protection in Electronic Commerce"],
+            ["Consumer complaint or dispute records", "3 years", "Act on Consumer Protection in Electronic Commerce"],
+            ["Access logs", "3 months", "Protection of Communications Secrets Act"],
+          ],
+        },
+        {
+          type: "paragraph",
+          text: "Deleting your account is separate from canceling a subscription: a subscription expiring or a payment failing never deletes your data on its own — only restricts paid features. See our Refund Policy, Section 5.",
+        },
+      ] as LegalBlock[],
+    },
   },
   ko: {
     meta: {
@@ -820,6 +868,7 @@ export const translations = {
         linkTerms: "이용약관",
         linkRefund: "환불정책",
         linkTeamPayment: "팀 플랜 결제",
+        linkAccountDeletion: "계정 삭제",
         linkContact: "문의하기",
         businessInfo:
           "더네이비(The Navy) · 대표: 이주형 · 사업자등록번호: 155-26-01968 · 경북 포항시 북구 우창로 166 (37627) · 070-7954-1968",
@@ -1332,6 +1381,52 @@ export const translations = {
         },
       ] as LegalBlock[],
       closingNote: "본 정책은 2026년 7월 12일부터 시행합니다.",
+    },
+    accountDeletion: {
+      title: "계정 삭제 — 카드로그",
+      intro: "더네이비가 운영하는 명함 관리 앱 카드로그(Cardlogue) 이용자를 위한, 계정 삭제 방법과 그에 따른 데이터 처리 안내입니다.",
+      blocks: [
+        { type: "heading", text: "1. 앱 내에서 삭제하기" },
+        {
+          type: "paragraph",
+          text: "카드로그 앱을 열고 설정 메뉴에서 \"계정 삭제\"를 선택해주세요. 확인을 누르면 즉시 계정이 삭제됩니다.",
+        },
+
+        { type: "heading", text: "2. 앱 없이 웹에서 삭제 요청하기" },
+        {
+          type: "paragraph",
+          text: "앱을 더 이상 설치하고 있지 않으시다면, 아래 양식에 카드로그 계정에 등록된 이메일 주소를 입력해서 제출해주세요. 접수 후 영업일 기준 7일 이내에 처리하고, 완료되면 이메일로 안내드립니다.",
+        },
+
+        { type: "heading", text: "3. 삭제되는 항목" },
+        {
+          type: "list",
+          items: [
+            "계정 및 프로필 정보",
+            "스캔한 명함과 나의 디지털 명함",
+            "팀 소속 정보 (단, 팀명함첩에 등록된 명함은 팀 자산으로 유지되며 팀원 탈퇴와 별개로 보존됩니다 — 개인정보처리방침 참고)",
+          ],
+        },
+
+        { type: "heading", text: "4. 보관되는 항목과 보관 기간" },
+        {
+          type: "paragraph",
+          text: "계정 삭제 시 원칙적으로 지체 없이 정보를 파기합니다. 다만 관계 법령에 따라 아래 항목은 일정 기간 보관 후 파기합니다.",
+        },
+        {
+          type: "table",
+          headers: ["항목", "보관 기간", "근거 법령"],
+          rows: [
+            ["계약 또는 결제 기록", "5년", "전자상거래 등에서의 소비자보호에 관한 법률"],
+            ["소비자 불만 또는 분쟁처리에 관한 기록", "3년", "전자상거래 등에서의 소비자보호에 관한 법률"],
+            ["접속 로그 기록", "3개월", "통신비밀보호법"],
+          ],
+        },
+        {
+          type: "paragraph",
+          text: "계정 삭제는 구독 해지와 별개입니다 — 구독 만료나 결제 실패만으로는 데이터가 삭제되지 않고 유료 기능 이용만 제한됩니다. 환불정책 5항을 참고해주세요.",
+        },
+      ] as LegalBlock[],
     },
   },
 } as const;

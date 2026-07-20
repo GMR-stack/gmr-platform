@@ -862,6 +862,28 @@ ${freeReportUrls}
     }
   });
 
+  // Public account-deletion request form (see client/src/pages/account-deletion.tsx)
+  // — required by Google Play's account-deletion policy: a web page reachable
+  // without the app installed or a live Cardlogue session. Deliberately just
+  // emails the request for manual handling rather than deleting anything
+  // automatically — same "request, then we process it" pattern as refunds.
+  app.post("/api/cardlogue/account-deletion-request", async (req, res) => {
+    try {
+      const { email, note } = req.body;
+      if (!email || typeof email !== "string" || !email.includes("@")) {
+        return res.status(400).json({ message: "Missing or invalid email" });
+      }
+      await sendAdminEmail(
+        "Cardlogue account deletion request",
+        `A Cardlogue account deletion request was submitted via the web form.\n\nAccount email: ${email}\nNote: ${note || "(none)"}\nDate: ${new Date().toUTCString()}`,
+      );
+      return res.json({ message: "Request received" });
+    } catch (err: any) {
+      console.error("Cardlogue account-deletion-request error:", err.message);
+      return res.status(500).json({ message: "Failed to submit request" });
+    }
+  });
+
   // Teams the logged-in Cardlogue user belongs to, with each team's
   // subscription state — feeds the browser team-management page.
   app.get("/api/cardlogue/my-teams", async (req, res) => {

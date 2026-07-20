@@ -24,6 +24,7 @@ import TeamCardsPage from "@/pages/team-cards";
 import PrivacyPage from "@/pages/privacy";
 import TermsPage from "@/pages/terms";
 import RefundPage from "@/pages/refund";
+import AccountDeletionPage from "@/pages/account-deletion";
 import ResetPasswordPage from "@/pages/reset-password";
 import ReportPage from "@/pages/report";
 
@@ -47,6 +48,7 @@ function Router() {
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/terms" component={TermsPage} />
       <Route path="/refund" component={RefundPage} />
+      <Route path="/account-deletion" component={AccountDeletionPage} />
       <Route path="/login" component={LoginPage} />
       <Route path="/auth" component={LoginPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
