@@ -92,7 +92,13 @@ export default function TeamCardsPage() {
       body: JSON.stringify({ teamId: id, billingKey }),
     });
     await refreshCards(id);
-    notifyApp({ type: "team-card-registered", teamId: id, cardId: data.card?.id });
+    notifyApp({
+      type: "team-card-registered",
+      teamId: id,
+      cardId: data.card?.id,
+      cardName: data.card?.cardName ?? null,
+      cardNumberMasked: data.card?.cardNumberMasked ?? null,
+    });
   }
 
   useEffect(() => {
@@ -176,7 +182,13 @@ export default function TeamCardsPage() {
         body: JSON.stringify({ teamId, cardId: card.id }),
       });
       await refreshCards();
-      notifyApp({ type: "team-card-selected", teamId, cardId: card.id });
+      notifyApp({
+        type: "team-card-selected",
+        teamId,
+        cardId: card.id,
+        cardName: card.cardName,
+        cardNumberMasked: card.cardNumberMasked,
+      });
     } catch (err: any) {
       const message = err?.message || "unknown error";
       setErrorMessage(message);
@@ -196,7 +208,13 @@ export default function TeamCardsPage() {
         body: JSON.stringify({ teamId, cardId: card.id }),
       });
       await refreshCards();
-      notifyApp({ type: "team-card-deleted", teamId, cardId: card.id });
+      notifyApp({
+        type: "team-card-deleted",
+        teamId,
+        cardId: card.id,
+        cardName: card.cardName,
+        cardNumberMasked: card.cardNumberMasked,
+      });
     } catch (err: any) {
       const message = err?.message || "unknown error";
       setErrorMessage(message);
