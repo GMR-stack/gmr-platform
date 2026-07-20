@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { useLang } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageGlow } from "@/components/page-glow";
+import { NavyLogo } from "@/components/navy-logo";
 import { setWebSession } from "@/lib/cardlogue-auth";
 
 const NAVY = "#03045E";
@@ -33,6 +35,7 @@ export default function TeamLoginPage() {
     submit: lang === "ko" ? "로그인" : "Sign in",
     submitting: lang === "ko" ? "로그인 중..." : "Signing in...",
     failed: lang === "ko" ? "로그인에 실패했습니다" : "Sign in failed",
+    linkCardlogue: lang === "ko" ? "카드로그 소개" : "About Cardlogue",
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -67,10 +70,14 @@ export default function TeamLoginPage() {
       style={{ background: `linear-gradient(180deg, #0077B6 0%, ${NAVY} 100%)` }}
     >
       <PageGlow />
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm border border-white/15 bg-white/[0.04] backdrop-blur-sm rounded-2xl p-7 space-y-5 text-center"
-      >
+      <div className="w-full max-w-sm space-y-4">
+        <div className="flex justify-center">
+          <NavyLogo linkTo="/" size="sm" variant="light" />
+        </div>
+        <form
+          onSubmit={handleSubmit}
+          className="border border-white/15 bg-white/[0.04] backdrop-blur-sm rounded-2xl p-7 space-y-5 text-center"
+        >
         <h1 className="font-brand text-2xl font-bold">{t.title}</h1>
         <p className="text-white/60 text-sm">{t.subtitle}</p>
 
@@ -110,7 +117,13 @@ export default function TeamLoginPage() {
             {t.failed}: {errorMessage}
           </p>
         )}
-      </form>
+        </form>
+        <div className="text-center">
+          <Link href="/cardlogue" className="text-sm text-white/60 hover:text-white" data-testid="link-team-login-cardlogue">
+            {t.linkCardlogue}
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
