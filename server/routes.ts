@@ -576,11 +576,14 @@ ${freeReportUrls}
   // ── Cardlogue team payment (PortOne, Korea) ─────────────────────────────
   app.post("/api/portone/team-subscribe", async (req, res) => {
     try {
-      const { billingKey, teamId, slotCount, customerName, customerEmail, draftTeamName, draftTeamDescription, draftTeamIsPublic } = req.body;
-      if (!billingKey || !slotCount) {
-        return res.status(400).json({ message: "Missing billingKey or slotCount" });
-      }
+      const { billingKey, cardId, teamId, slotCount, customerName, customerEmail, draftTeamName, draftTeamDescription, draftTeamIsPublic } = req.body;
+      // A brand-new team has no cards registered yet, so it can only pay by
+      // freshly issuing a billing key — cardId only makes sense for a team
+      // that already exists and already has a card on file.
       const isNewTeam = !teamId;
+      if (!slotCount || (isNewTeam ? !billingKey : !billingKey && !cardId)) {
+        return res.status(400).json({ message: "Missing billingKey/cardId or slotCount" });
+      }
       if (isNewTeam && !draftTeamName) {
         return res.status(400).json({ message: "Missing teamId or draftTeamName" });
       }
@@ -707,10 +710,28 @@ ${freeReportUrls}
         return res.status(400).json({ message: `slotCount can't be below the current member count (${minSlots})` });
       }
 
-      // Confirm PortOne actually issued this billing key before charging it.
-      await getBillingKeyInfo(billingKey);
-
       const supabase = getCardlogueSupabase();
+
+      // Resolve which billing key to charge: either one freshly issued by
+      // the client (billingKey) or one already on file that the user picked
+      // from their registered cards (cardId) — never both.
+      let payBillingKey = billingKey as string | undefined;
+      if (!payBillingKey && cardId) {
+        const { data: card, error: cardErr } = await supabase
+          .from("team_payment_cards")
+          .select("billing_key")
+          .eq("id", cardId)
+          .eq("team_id", teamId)
+          .is("deleted_at", null)
+          .maybeSingle();
+        if (cardErr) throw cardErr;
+        if (!card) return res.status(404).json({ message: "Card not found" });
+        payBillingKey = card.billing_key as string;
+      }
+
+      // Confirm PortOne actually issued this billing key before charging it.
+      await getBillingKeyInfo(payBillingKey!);
+
       const { data: existing, error: findErr } = await supabase
         .from("subscriptions")
         .select("id, status, slot_count, next_billing_at")
@@ -735,20 +756,20 @@ ${freeReportUrls}
           slot_count: slots,
           payment_method: "web",
           next_billing_at: calcNextBillingAt(now).toISOString(),
-          portone_billing_key: billingKey,
+          portone_billing_key: payBillingKey,
         };
       } else if (slots === existing!.slot_count) {
         // Same seat count — refreshing the card/billing key (and, if a
         // different person is doing it — e.g. after a team ownership
         // transfer — reassigning who's responsible for billing). No charge.
-        subscriptionFields = { user_id: userId, portone_billing_key: billingKey };
+        subscriptionFields = { user_id: userId, portone_billing_key: payBillingKey };
       } else if (slots > existing!.slot_count) {
         // Seat increase: bill only the added seats, prorated for the rest of this cycle.
         amount = calcProratedSeatAmount(now, slots - existing!.slot_count, TEAM_SEAT_PRICE_KRW);
         subscriptionFields = {
           user_id: userId,
           slot_count: slots,
-          portone_billing_key: billingKey,
+          portone_billing_key: payBillingKey,
         };
       } else {
         // Seat decrease: capacity (slot_count) drops immediately; the billed
@@ -759,18 +780,18 @@ ${freeReportUrls}
         subscriptionFields = {
           user_id: userId,
           slot_count: slots,
-          portone_billing_key: billingKey,
+          portone_billing_key: payBillingKey,
         };
       }
 
       if (amount > 0) {
         // Deterministic (not random) so a client retry with the same billing key
         // hits PortOne's own duplicate-payment guard instead of charging twice.
-        const paymentId = `team-${teamId}-${billingKey}`;
+        const paymentId = `team-${teamId}-${payBillingKey}`;
         try {
           await chargeBillingKey({
             paymentId,
-            billingKey,
+            billingKey: payBillingKey!,
             orderName: `Cardlogue 팀 플랜 (${slots}인)`,
             amount,
             customerName: customerName || "Cardlogue User",
@@ -790,7 +811,7 @@ ${freeReportUrls}
         : await supabase.from("subscriptions").insert(subscriptionFields);
       if (writeErr) throw writeErr;
 
-      await recordTeamPaymentCard(teamId, billingKey, userId);
+      await recordTeamPaymentCard(teamId, payBillingKey!, userId);
 
       return res.json({
         message: "Team subscription updated",

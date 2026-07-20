@@ -17,6 +17,14 @@ const PADDLE_ENVIRONMENT = (import.meta.env.VITE_PADDLE_ENVIRONMENT as string) |
 type Provider = "portone" | "paddle";
 type Status = "confirm" | "processing" | "success" | "error";
 
+type TeamCard = {
+  id: string;
+  cardName: string | null;
+  cardNumberMasked: string | null;
+  createdAt: string;
+  isActive: boolean;
+};
+
 function getParams() {
   const params = new URLSearchParams(window.location.search);
   const pg = params.get("pg");
@@ -94,10 +102,37 @@ export default function TeamPaymentPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [params, setParams] = useState(getParams);
   const [paddle, setPaddle] = useState<Paddle | null>(null);
+  // Cards already registered for this team (PortOne only, existing team
+  // only) — null until loaded, [] once loaded with none. Existing cards
+  // mean the user picks one instead of registering a new one; a new team or
+  // a team with zero cards on file goes straight to registration, unchanged.
+  const [cards, setCards] = useState<TeamCard[] | null>(null);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
   useEffect(() => {
     setParams(getParams());
   }, []);
+
+  useEffect(() => {
+    if (params.provider !== "portone" || !params.teamId) return;
+    const token = getCardlogueToken();
+    if (!token) return;
+    fetch(`/api/portone/team-cards?teamId=${encodeURIComponent(params.teamId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || "failed to load cards");
+        const loaded: TeamCard[] = data.cards ?? [];
+        setCards(loaded);
+        const active = loaded.find((c) => c.isActive);
+        setSelectedCardId(active?.id ?? loaded[0]?.id ?? null);
+      })
+      // Falls back to the registration flow (treated as "no cards") rather
+      // than blocking the page on a card-list fetch failure.
+      .catch(() => setCards([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.provider, params.teamId]);
 
   // Browser flow (PG/card-issuer review): no app to inject the token, so an
   // unauthenticated visitor goes through /team/login first and comes back
@@ -135,7 +170,7 @@ export default function TeamPaymentPage() {
       notifyApp({ type: "team-payment-error", teamId: restoredParams.teamId, message: result.message });
       return;
     }
-    finishPortoneSubscribe(result.billingKey, restoredParams).catch((err: any) => {
+    finishPortoneSubscribe({ billingKey: result.billingKey }, restoredParams).catch((err: any) => {
       setStatus("error");
       setErrorMessage(err?.message || "unknown error");
       notifyApp({ type: "team-payment-error", teamId: restoredParams.teamId, message: err?.message });
@@ -186,6 +221,14 @@ export default function TeamPaymentPage() {
         : `Increasing from ${params.currentSlotCount} to ${params.slotCount} seats. Only the added ${params.slotCount - (params.currentSlotCount ?? 0)} seats are charged today, prorated.`,
     pay: lang === "ko" ? "확인" : "Confirm",
     payNew: lang === "ko" ? "확인 (카드 등록하고 결제)" : "Confirm & pay",
+    payWithSelectedCard: lang === "ko" ? "선택한 카드로 결제" : "Pay with selected card",
+    cardsLoading: lang === "ko" ? "등록된 카드를 불러오는 중..." : "Loading your cards...",
+    selectCardPrompt: lang === "ko" ? "결제에 사용할 카드를 선택해주세요." : "Choose which card to pay with.",
+    unknownCard: lang === "ko" ? "카드" : "Card",
+    addNewCardHint:
+      lang === "ko"
+        ? "다른 카드로 결제하려면 카드 관리에서 새로 등록해주세요."
+        : "To pay with a different card, register one first in card management.",
     cancel: lang === "ko" ? "취소" : "Cancel",
     processing: lang === "ko" ? "결제 처리 중..." : "Processing...",
     success: lang === "ko" ? "결제가 완료되었습니다. 앱으로 돌아가세요." : "Payment complete. You can return to the app.",
@@ -202,7 +245,7 @@ export default function TeamPaymentPage() {
     if (!isInAppWebView()) window.location.href = "/team/manage";
   }
 
-  async function finishPortoneSubscribe(billingKey: string, target: typeof params = params) {
+  async function finishPortoneSubscribe(payload: { billingKey?: string; cardId?: string }, target: typeof params = params) {
     const token = getCardlogueToken();
     if (!token) throw new Error("missing Cardlogue session token");
 
@@ -212,14 +255,14 @@ export default function TeamPaymentPage() {
       body: JSON.stringify(
         target.teamId
           ? {
-              billingKey,
+              ...payload,
               teamId: target.teamId,
               slotCount: target.slotCount,
               customerName: target.name,
               customerEmail: target.email,
             }
           : {
-              billingKey,
+              ...payload,
               slotCount: target.slotCount,
               customerName: target.name,
               customerEmail: target.email,
@@ -279,7 +322,20 @@ export default function TeamPaymentPage() {
         throw new Error((issueResponse as any).message || "billing key issue failed");
       }
 
-      await finishPortoneSubscribe((issueResponse as any).billingKey);
+      await finishPortoneSubscribe({ billingKey: (issueResponse as any).billingKey });
+    } catch (err: any) {
+      setStatus("error");
+      setErrorMessage(err?.message || "unknown error");
+      notifyApp({ type: "team-payment-error", teamId: params.teamId, message: err?.message });
+    }
+  }
+
+  async function handlePayWithCard() {
+    if (!selectedCardId) return;
+    setStatus("processing");
+    setErrorMessage("");
+    try {
+      await finishPortoneSubscribe({ cardId: selectedCardId });
     } catch (err: any) {
       setStatus("error");
       setErrorMessage(err?.message || "unknown error");
@@ -336,7 +392,18 @@ export default function TeamPaymentPage() {
     }
   }
 
-  const handlePay = params.provider === "paddle" ? handlePayPaddle : handlePayPortOne;
+  // Existing team + PortOne: once cards are loaded, a non-empty list means
+  // "pick one and pay" instead of the registration flow. A new team, a
+  // Paddle-billed team, or a team with zero cards on file all skip straight
+  // to registration as before.
+  const cardsLoading = params.provider === "portone" && !!params.teamId && cards === null;
+  const hasExistingCards = params.provider === "portone" && !!params.teamId && !!cards && cards.length > 0;
+  const handlePay = params.provider === "paddle" ? handlePayPaddle : hasExistingCards ? handlePayWithCard : handlePayPortOne;
+
+  function cardLabel(card: TeamCard) {
+    const name = card.cardName || t.unknownCard;
+    return card.cardNumberMasked ? `${name} · ${card.cardNumberMasked}` : name;
+  }
 
   return (
     <div
@@ -366,6 +433,32 @@ export default function TeamPaymentPage() {
               </p>
             )}
 
+            {cardsLoading && status !== "success" && <p className="text-white/60 text-sm">{t.cardsLoading}</p>}
+
+            {hasExistingCards && status !== "success" && (
+              <div className="space-y-2 text-left">
+                <p className="text-white/60 text-sm text-center">{t.selectCardPrompt}</p>
+                {cards!.map((card) => (
+                  <button
+                    key={card.id}
+                    type="button"
+                    disabled={status === "processing"}
+                    onClick={() => setSelectedCardId(card.id)}
+                    className="w-full text-left border rounded-xl px-4 py-3 transition-colors"
+                    style={
+                      selectedCardId === card.id
+                        ? { borderColor: GOLD, background: "rgba(212,175,55,0.1)" }
+                        : { borderColor: "rgba(255,255,255,0.15)" }
+                    }
+                    data-testid={`button-select-payment-card-${card.id}`}
+                  >
+                    <span className="text-sm">{cardLabel(card)}</span>
+                  </button>
+                ))}
+                <p className="text-white/40 text-xs text-center pt-1">{t.addNewCardHint}</p>
+              </div>
+            )}
+
             {status === "success" ? (
               <>
                 <p className="text-sm text-white/80" data-testid="text-payment-success">
@@ -387,11 +480,22 @@ export default function TeamPaymentPage() {
                 <Button
                   className="w-full font-brand font-semibold"
                   style={{ background: GOLD, color: NAVY }}
-                  disabled={status === "processing" || (params.provider === "paddle" && !paddle)}
+                  disabled={
+                    status === "processing" ||
+                    cardsLoading ||
+                    (params.provider === "paddle" && !paddle) ||
+                    (hasExistingCards && !selectedCardId)
+                  }
                   onClick={handlePay}
                   data-testid="button-team-pay"
                 >
-                  {status === "processing" ? t.processing : params.currentSlotCount == null ? t.payNew : t.pay}
+                  {status === "processing"
+                    ? t.processing
+                    : hasExistingCards
+                      ? t.payWithSelectedCard
+                      : params.currentSlotCount == null
+                        ? t.payNew
+                        : t.pay}
                 </Button>
                 {status !== "processing" && (
                   <Button
