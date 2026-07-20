@@ -158,10 +158,14 @@ export async function getTeamMemberCount(teamId: string): Promise<number> {
   return count ?? 1;
 }
 
-// Records a billing key in the team's card list (team_payment_cards) so it
-// shows up in card management. Best-effort: a failure here must never fail
-// the payment that just succeeded — the batch charges from
-// subscriptions.portone_billing_key, not from this table.
+// Records a billing key in the registering user's card list
+// (team_payment_cards) so it shows up in card management — scoped by
+// created_by (the account), not team_id, so the same card is reusable
+// across every team the user administers. teamId is stored only as a
+// historical "first registered from" reference, not used for lookups.
+// Best-effort: a failure here must never fail the payment that just
+// succeeded — the batch charges from subscriptions.portone_billing_key,
+// not from this table.
 export async function recordTeamPaymentCard(teamId: string, billingKey: string, createdBy: string) {
   try {
     let cardName: string | null = null;

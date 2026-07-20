@@ -717,11 +717,13 @@ ${freeReportUrls}
       // from their registered cards (cardId) — never both.
       let payBillingKey = billingKey as string | undefined;
       if (!payBillingKey && cardId) {
+        // Scoped by account (created_by), not this team — reusable across
+        // every team the caller administers.
         const { data: card, error: cardErr } = await supabase
           .from("team_payment_cards")
           .select("billing_key")
           .eq("id", cardId)
-          .eq("team_id", teamId)
+          .eq("created_by", userId)
           .is("deleted_at", null)
           .maybeSingle();
         if (cardErr) throw cardErr;
@@ -1008,10 +1010,13 @@ ${freeReportUrls}
         }
       }
 
+      // Scoped by the caller's account (created_by), not this team — a card
+      // registered while managing one team is reusable for any other team
+      // the same person administers.
       const { data: cards, error: cardsErr } = await supabase
         .from("team_payment_cards")
         .select("id, billing_key, card_name, card_number_masked, created_at")
-        .eq("team_id", teamId)
+        .eq("created_by", cardlogueUser.sub)
         .is("deleted_at", null)
         .order("created_at", { ascending: true });
       if (cardsErr) throw cardsErr;
@@ -1124,11 +1129,13 @@ ${freeReportUrls}
       }
 
       const supabase = getCardlogueSupabase();
+      // Scoped by account (created_by), not this team — the card just has
+      // to belong to the calling user, not to the team they're managing.
       const { data: card, error: cardErr } = await supabase
         .from("team_payment_cards")
         .select("id, billing_key")
         .eq("id", cardId)
-        .eq("team_id", teamId)
+        .eq("created_by", cardlogueUser.sub)
         .is("deleted_at", null)
         .maybeSingle();
       if (cardErr) throw cardErr;
@@ -1180,24 +1187,27 @@ ${freeReportUrls}
       }
 
       const supabase = getCardlogueSupabase();
+      // Scoped by account (created_by), not this team — see /select above.
       const { data: card, error: cardErr } = await supabase
         .from("team_payment_cards")
         .select("id, billing_key")
         .eq("id", cardId)
-        .eq("team_id", teamId)
+        .eq("created_by", cardlogueUser.sub)
         .is("deleted_at", null)
         .maybeSingle();
       if (cardErr) throw cardErr;
       if (!card) return res.status(404).json({ message: "Card not found" });
 
-      const { data: sub, error: subErr } = await supabase
+      // A card shared across teams can be the active auto-billing key for
+      // any of them, not just the one currently being managed — check all.
+      const { data: activeSubs, error: subErr } = await supabase
         .from("subscriptions")
-        .select("status, portone_billing_key")
-        .eq("team_id", teamId)
+        .select("id")
         .eq("type", "team")
-        .maybeSingle();
+        .eq("status", "active")
+        .eq("portone_billing_key", card.billing_key);
       if (subErr) throw subErr;
-      if (sub?.status === "active" && sub.portone_billing_key === card.billing_key) {
+      if (activeSubs && activeSubs.length > 0) {
         return res.status(400).json({ message: "This card is used for auto-billing — select another card first" });
       }
 
