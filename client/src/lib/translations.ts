@@ -682,19 +682,29 @@ export const translations = {
       intro:
         "This page explains how to delete your Cardlogue account and what happens to your data, for users of Cardlogue, the business card management app operated by The Navy.",
       blocks: [
-        { type: "heading", text: "1. Delete From Within the App" },
+        { type: "heading", text: "1. The 7-Day Grace Period" },
         {
           type: "paragraph",
-          text: "Open Cardlogue, go to Settings, and select \"Delete Account.\" Your account is deleted immediately once you confirm.",
+          text: "Deleting your account does not erase your data immediately. Your account enters a 7-day pending-deletion period, after which it is permanently deleted. This protects against accidental deletion and lets us meet Korean e-commerce recordkeeping requirements.",
         },
-
-        { type: "heading", text: "2. Request Deletion From the Web (No App Required)" },
         {
           type: "paragraph",
-          text: "If you no longer have the app installed, submit the form below with the email address associated with your Cardlogue account. We process deletion requests within 7 business days of receipt and confirm by email once complete.",
+          text: "During the 7-day period, simply logging back in to Cardlogue automatically cancels the deletion and restores your account — you'll see a confirmation that the deletion was canceled, and your data is untouched.",
         },
 
-        { type: "heading", text: "3. What Gets Deleted" },
+        { type: "heading", text: "2. Delete From Within the App" },
+        {
+          type: "paragraph",
+          text: "Open Cardlogue, go to Settings, and select \"Delete Account.\" This starts the 7-day grace period described above.",
+        },
+
+        { type: "heading", text: "3. Request Deletion From the Web (No App Required)" },
+        {
+          type: "paragraph",
+          text: "If you no longer have the app installed, submit the form below with the email address associated with your Cardlogue account. We place your account into the same 7-day pending-deletion state described above and confirm by email once we've done so, and again once deletion is final.",
+        },
+
+        { type: "heading", text: "4. What Gets Deleted" },
         {
           type: "list",
           items: [
@@ -704,7 +714,7 @@ export const translations = {
           ],
         },
 
-        { type: "heading", text: "4. What We Retain, and For How Long" },
+        { type: "heading", text: "5. What We Retain, and For How Long" },
         {
           type: "paragraph",
           text: "In principle, your information is destroyed without delay once your account is deleted. Where Korean law requires longer retention, we keep only the following, then destroy it:",
@@ -1386,19 +1396,29 @@ export const translations = {
       title: "계정 삭제 — 카드로그",
       intro: "더네이비가 운영하는 명함 관리 앱 카드로그(Cardlogue) 이용자를 위한, 계정 삭제 방법과 그에 따른 데이터 처리 안내입니다.",
       blocks: [
-        { type: "heading", text: "1. 앱 내에서 삭제하기" },
+        { type: "heading", text: "1. 7일 유예기간 안내" },
         {
           type: "paragraph",
-          text: "카드로그 앱을 열고 설정 메뉴에서 \"계정 삭제\"를 선택해주세요. 확인을 누르면 즉시 계정이 삭제됩니다.",
+          text: "계정 삭제를 요청해도 데이터가 즉시 삭제되지 않습니다. 계정은 7일간 삭제 대기 상태가 되고, 이 기간이 지나야 영구적으로 삭제됩니다. 실수로 인한 탈퇴를 방지하고, 전자상거래법상 거래기록 보관 의무를 지키기 위한 정책입니다.",
         },
-
-        { type: "heading", text: "2. 앱 없이 웹에서 삭제 요청하기" },
         {
           type: "paragraph",
-          text: "앱을 더 이상 설치하고 있지 않으시다면, 아래 양식에 카드로그 계정에 등록된 이메일 주소를 입력해서 제출해주세요. 접수 후 영업일 기준 7일 이내에 처리하고, 완료되면 이메일로 안내드립니다.",
+          text: "7일 유예기간 중에 카드로그에 다시 로그인하시면 삭제 요청이 자동으로 취소되고 계정이 원래대로 복구됩니다 — \"탈퇴가 취소되었습니다\" 안내가 표시되며, 데이터는 그대로 보존됩니다.",
         },
 
-        { type: "heading", text: "3. 삭제되는 항목" },
+        { type: "heading", text: "2. 앱 내에서 삭제하기" },
+        {
+          type: "paragraph",
+          text: "카드로그 앱을 열고 설정 메뉴에서 \"계정 삭제\"를 선택해주세요. 위에서 설명한 7일 유예기간이 시작됩니다.",
+        },
+
+        { type: "heading", text: "3. 앱 없이 웹에서 삭제 요청하기" },
+        {
+          type: "paragraph",
+          text: "앱을 더 이상 설치하고 있지 않으시다면, 아래 양식에 카드로그 계정에 등록된 이메일 주소를 입력해서 제출해주세요. 앱 내 삭제와 동일하게 계정을 7일 삭제 대기 상태로 전환하며, 전환 시점과 최종 삭제 완료 시점 각각 이메일로 안내드립니다.",
+        },
+
+        { type: "heading", text: "4. 삭제되는 항목" },
         {
           type: "list",
           items: [
@@ -1408,7 +1428,7 @@ export const translations = {
           ],
         },
 
-        { type: "heading", text: "4. 보관되는 항목과 보관 기간" },
+        { type: "heading", text: "5. 보관되는 항목과 보관 기간" },
         {
           type: "paragraph",
           text: "계정 삭제 시 원칙적으로 지체 없이 정보를 파기합니다. 다만 관계 법령에 따라 아래 항목은 일정 기간 보관 후 파기합니다.",
