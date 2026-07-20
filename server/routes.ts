@@ -630,31 +630,19 @@ ${freeReportUrls}
 
         await getBillingKeyInfo(payBillingKey!);
 
-        // Idempotency guard: if the client retries this whole request after a
-        // successful charge+team-creation but a lost response (network drop
-        // before it saw the reply), this billing key was already used to
-        // create a team — return that team instead of charging/creating again.
-        const { data: alreadyCreated } = await supabase
-          .from("subscriptions")
-          .select("team_id, next_billing_at, slot_count")
-          .eq("portone_billing_key", payBillingKey!)
-          .eq("type", "team")
-          .maybeSingle();
-        if (alreadyCreated) {
-          return res.json({
-            message: "Team created",
-            teamId: alreadyCreated.team_id,
-            nextBillingAt: alreadyCreated.next_billing_at,
-            amount: slots * TEAM_SEAT_PRICE_KRW,
-            slotCount: alreadyCreated.slot_count,
-          });
-        }
+        // No "was this billing key already used to create a team" guard here
+        // anymore — now that a card can be reused across many teams by
+        // choice (see cardId above), that would wrongly treat "create a
+        // second team with the same card" as a retry of the first team's
+        // creation, skipping the charge and handing back the wrong team.
 
         const amount = slots * TEAM_SEAT_PRICE_KRW;
         const now = new Date();
-        // Scoped to this billing key so a client retry after a lost response
-        // dedupes against PortOne's own duplicate-payment guard.
-        const paymentId = `team-new-${payBillingKey}`;
+        // Unique per attempt (not deterministic from team/card) — a
+        // deterministic id would collide with an earlier charge that reused
+        // the same billing key for a *different* team, causing PortOne's own
+        // duplicate-payment guard to silently skip charging this one.
+        const paymentId = `team-new-${crypto.randomUUID()}`;
         try {
           await chargeBillingKey({
             paymentId,
@@ -783,9 +771,12 @@ ${freeReportUrls}
       }
 
       if (amount > 0) {
-        // Deterministic (not random) so a client retry with the same billing key
-        // hits PortOne's own duplicate-payment guard instead of charging twice.
-        const paymentId = `team-${teamId}-${payBillingKey}`;
+        // Unique per attempt, not deterministic from team+card — a card can
+        // now be reused across multiple separate charges for the same team
+        // (e.g. two different seat increases), and a deterministic id would
+        // collide with the earlier charge, making PortOne's own
+        // duplicate-payment guard silently skip charging this one.
+        const paymentId = `team-${teamId}-${crypto.randomUUID()}`;
         try {
           await chargeBillingKey({
             paymentId,
