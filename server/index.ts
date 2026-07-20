@@ -97,7 +97,10 @@ app.use((req, res, next) => {
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
+      // SO_REUSEPORT isn't supported on Windows (Node throws ENOTSUP) — only
+      // needed for multi-process port sharing, which this single-process
+      // server doesn't do, so it's safe to drop there.
+      ...(process.platform !== "win32" ? { reusePort: true } : {}),
     },
     () => {
       log(`serving on port ${port}`);
