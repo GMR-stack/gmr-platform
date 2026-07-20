@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLang } from "@/lib/i18n";
 import { translations } from "@/lib/translations";
-import { ScanLine, QrCode, FolderKanban, Target, Users, Wallet, Download, ShieldCheck, Mail } from "lucide-react";
+import { ScanLine, QrCode, FolderKanban, Target, Users, Wallet, Download, ShieldCheck, Mail, CreditCard } from "lucide-react";
 
 const NAVY = "#03045E";
 // Gold/amber accent instead of the home page's cyan — reads as business
@@ -69,6 +69,32 @@ function DownloadButtons({ variant = "large" }: { variant?: "large" | "compact" 
   );
 }
 
+function TeamPaymentCta({ label, variant = "outline", testId }: { label: string; variant?: "outline" | "solid"; testId: string }) {
+  return (
+    <Magnetic>
+      <Link href="/team/login">
+        <Button
+          size="lg"
+          variant={variant === "solid" ? "default" : "outline"}
+          className={
+            variant === "solid"
+              ? "font-brand gap-2 font-semibold"
+              : "font-brand gap-2 font-semibold border-2 hover:bg-white/10"
+          }
+          style={
+            variant === "solid"
+              ? { background: GOLD, color: NAVY }
+              : { borderColor: GOLD, color: GOLD, background: "rgba(212,175,55,0.08)" }
+          }
+          data-testid={testId}
+        >
+          <CreditCard className="w-4 h-4" /> {label}
+        </Button>
+      </Link>
+    </Magnetic>
+  );
+}
+
 function Hero() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
@@ -104,6 +130,9 @@ function Hero() {
           {t.hero.subtitle}
         </motion.p>
         <DownloadButtons />
+        <div className="mt-4">
+          <TeamPaymentCta label={t.hero.ctaTeamPayment} testId="button-hero-team-payment" />
+        </div>
       </div>
     </section>
   );
@@ -232,6 +261,9 @@ function Pricing() {
               </Card>
             </Reveal>
           ))}
+        </div>
+        <div className="flex justify-center mt-6">
+          <TeamPaymentCta label={t.pricing.ctaTeamPayment} variant="solid" testId="button-pricing-team-payment" />
         </div>
         <p className="text-center text-xs text-white/40 mt-4" data-testid="text-pricing-footnote">
           {t.pricing.footnote}

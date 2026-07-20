@@ -65,6 +65,7 @@ export const translations = {
           "One scan organizes your whole team's network of contacts. Make card management part of the job with Cardlogue.",
         ctaAppStore: "Download on the App Store",
         ctaGooglePlay: "Get it on Google Play",
+        ctaTeamPayment: "Pay for the Team Plan",
       },
       screenshots: {
         eyebrow: "See it in action",
@@ -111,7 +112,8 @@ export const translations = {
           { name: "Individual Plan", price: "2,200 KRW / month", audience: "For individual users" },
           { name: "Team Plan", price: "Headcount × 2,200 KRW / month", audience: "For teams and organizations" },
         ],
-        footnote: "With team bulk billing, the team admin pays the total amount.",
+        footnote: "With the Team Plan, the team admin pays the total amount.",
+        ctaTeamPayment: "Pay for the Team Plan",
       },
       security: {
         title: "Security & Trust",
@@ -732,6 +734,7 @@ export const translations = {
         subtitle: "스캔 한 번으로 정리되는 팀 전체의 인맥 자산. 카드로그로 명함 관리를 팀 업무의 일부로 만드세요.",
         ctaAppStore: "App Store에서 다운로드",
         ctaGooglePlay: "Google Play에서 다운로드",
+        ctaTeamPayment: "팀 플랜 결제하기",
       },
       screenshots: {
         eyebrow: "실제 화면",
@@ -778,7 +781,8 @@ export const translations = {
           { name: "개인 플랜", price: "월 2,200원", audience: "개인 이용자" },
           { name: "팀 플랜", price: "인원수 × 2,200원/월", audience: "팀/조직" },
         ],
-        footnote: "팀 일괄결제 선택 시 팀 관리자가 전체 금액을 결제합니다.",
+        footnote: "팀 플랜결제 시 팀 관리자가 전체 금액을 결제합니다.",
+        ctaTeamPayment: "팀 플랜 결제하기",
       },
       security: {
         title: "보안 및 신뢰",
