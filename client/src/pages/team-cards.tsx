@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import * as PortOne from "@portone/browser-sdk/v2";
+import { initializePaddle, type Paddle } from "@paddle/paddle-js";
 import { useLang } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { PageGlow } from "@/components/page-glow";
@@ -9,6 +10,8 @@ const NAVY = "#03045E";
 const GOLD = "#D4AF37";
 const STORE_ID = import.meta.env.VITE_PORTONE_STORE_ID as string;
 const CHANNEL_KEY = import.meta.env.VITE_PORTONE_CHANNEL_KEY as string;
+const PADDLE_CLIENT_TOKEN = import.meta.env.VITE_PADDLE_CLIENT_TOKEN as string;
+const PADDLE_ENVIRONMENT = (import.meta.env.VITE_PADDLE_ENVIRONMENT as string) || "sandbox";
 
 type TeamCard = {
   id: string;
@@ -17,6 +20,16 @@ type TeamCard = {
   createdAt: string;
   isActive: boolean;
 };
+
+// Card management entry point — branches on ?pg=, same convention as
+// team-payment.tsx. PortOne supports multiple registered cards (its own
+// billing-key model); Paddle keeps exactly one saved payment method per
+// subscription, so that flow is a single "change card" action instead of a
+// list.
+export default function TeamCardsPage() {
+  const provider = new URLSearchParams(window.location.search).get("pg") === "paddle" ? "paddle" : "portone";
+  return provider === "paddle" ? <TeamCardsPaddle /> : <TeamCardsPortOne />;
+}
 
 // Same reasoning as team-payment.tsx: on mobile, requestIssueBillingKey runs
 // in REDIRECTION mode (KCP's popup doesn't survive the app WebView), so the
@@ -41,7 +54,7 @@ function getPortoneRedirectResult() {
 // is its own billing key, the subscription points at one of them, and the
 // user can register more, switch which one is charged monthly, or delete
 // unused ones. Registration alone never charges anything.
-export default function TeamCardsPage() {
+function TeamCardsPortOne() {
   const { lang } = useLang();
   const [teamId, setTeamId] = useState(() => new URLSearchParams(window.location.search).get("teamId") || "");
   const [cards, setCards] = useState<TeamCard[] | null>(null);
@@ -298,6 +311,145 @@ export default function TeamCardsPage() {
               data-testid="button-add-card"
             >
               {busy ? t.processing : t.addCard}
+            </Button>
+
+            {errorMessage && (
+              <p className="text-sm text-red-300" data-testid="text-team-cards-error">
+                {t.failed}: {errorMessage}
+              </p>
+            )}
+
+            {!isInAppWebView() && (
+              <button
+                onClick={() => (window.location.href = "/team/manage")}
+                className="w-full text-sm text-white/60 hover:text-white"
+                data-testid="button-back-to-manage"
+              >
+                {t.back}
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Paddle keeps exactly one saved payment method per subscription — there's
+// no list to manage, just a single "change card" action that opens Paddle's
+// own checkout overlay scoped to a $0 payment-method-update transaction
+// (server: POST /api/paddle/change-card-transaction). Card details
+// (issuer/last4) come back in the checkout.completed event itself, since
+// Paddle's API doesn't expose a "get current card" lookup the way PortOne's
+// billing-key lookup does.
+function TeamCardsPaddle() {
+  const { lang } = useLang();
+  const teamId = new URLSearchParams(window.location.search).get("teamId") || "";
+  const [paddle, setPaddle] = useState<Paddle | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [changedCard, setChangedCard] = useState<{ type: string; last4: string } | null>(null);
+
+  const t = {
+    title: lang === "ko" ? "결제 카드 변경" : "Change Payment Card",
+    subtitle:
+      lang === "ko"
+        ? "이 팀의 자동결제에 사용되는 카드를 변경합니다. 변경만으로는 결제되지 않습니다."
+        : "Change the card used for this team's auto-billing. Changing it never charges anything.",
+    changeCard: lang === "ko" ? "카드 변경" : "Change card",
+    processing: lang === "ko" ? "처리 중..." : "Processing...",
+    changed: (type: string, last4: string) =>
+      lang === "ko" ? `카드가 변경되었습니다: ${type} ****${last4}` : `Card changed: ${type} ****${last4}`,
+    back: lang === "ko" ? "팀 관리로 돌아가기" : "Back to team management",
+    missing: lang === "ko" ? "잘못된 접근입니다 (teamId 누락)" : "Invalid request (missing teamId)",
+    failed: lang === "ko" ? "실패했습니다" : "Something went wrong",
+  };
+
+  useEffect(() => {
+    if (!getCardlogueToken() && !isInAppWebView()) {
+      window.location.href = loginUrlFor(window.location.pathname + window.location.search);
+      return;
+    }
+    if (!PADDLE_CLIENT_TOKEN) {
+      setErrorMessage("missing Paddle client token");
+      return;
+    }
+    initializePaddle({
+      token: PADDLE_CLIENT_TOKEN,
+      environment: PADDLE_ENVIRONMENT === "production" ? "production" : "sandbox",
+      eventCallback(event) {
+        if (event.name === "checkout.completed") {
+          const card = (event.data as any)?.payment?.method_details?.card;
+          const type = card?.type || "";
+          const last4 = card?.last4 || "";
+          setChangedCard({ type, last4 });
+          setBusy(false);
+          notifyApp({
+            type: "team-card-selected",
+            teamId,
+            cardId: null,
+            cardName: type || null,
+            cardNumberMasked: last4 ? `****${last4}` : null,
+          });
+        } else if (event.name === "checkout.closed" && busy) {
+          setBusy(false);
+        }
+      },
+    }).then((instance) => setPaddle(instance ?? null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleChangeCard() {
+    if (!paddle) return;
+    setBusy(true);
+    setErrorMessage("");
+    try {
+      const token = getCardlogueToken();
+      if (!token) throw new Error("missing Cardlogue session token");
+      const res = await fetch("/api/paddle/change-card-transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ teamId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "failed to prepare card update");
+      paddle.Checkout.open({ transactionId: data.transactionId });
+    } catch (err: any) {
+      const message = err?.message || "unknown error";
+      setErrorMessage(message);
+      notifyApp({ type: "team-card-error", teamId, message });
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="min-h-screen text-white flex items-center justify-center px-4 py-10"
+      style={{ background: `linear-gradient(180deg, #0077B6 0%, ${NAVY} 100%)` }}
+    >
+      <PageGlow />
+      <div className="w-full max-w-md space-y-4">
+        <h1 className="font-brand text-2xl font-bold">{t.title}</h1>
+        <p className="text-white/60 text-sm">{t.subtitle}</p>
+
+        {!teamId ? (
+          <p className="text-white/60 text-sm">{t.missing}</p>
+        ) : (
+          <>
+            {changedCard && (
+              <p className="text-sm text-white/80" data-testid="text-paddle-card-changed">
+                {t.changed(changedCard.type, changedCard.last4)}
+              </p>
+            )}
+
+            <Button
+              className="w-full font-brand font-semibold"
+              style={{ background: GOLD, color: NAVY }}
+              disabled={busy || !paddle}
+              onClick={handleChangeCard}
+              data-testid="button-change-card-paddle"
+            >
+              {busy ? t.processing : t.changeCard}
             </Button>
 
             {errorMessage && (

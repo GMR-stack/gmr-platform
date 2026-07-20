@@ -1318,6 +1318,45 @@ ${freeReportUrls}
     }
   });
 
+  // Paddle keeps exactly one saved payment method per subscription (unlike
+  // PortOne's multiple-billing-keys model) — this generates a $0 checkout
+  // scoped to just replacing it. Same underlying Paddle call as the
+  // ownership-transfer handoff in checkout-context above, but without
+  // touching user_id: Paddle swaps the card on its side on completion, and
+  // there's nothing else in our DB that needs updating.
+  app.post("/api/paddle/change-card-transaction", async (req, res) => {
+    try {
+      const { teamId } = req.body;
+      if (!teamId) return res.status(400).json({ message: "Missing teamId" });
+
+      const cardlogueUser = getCardlogueUserFromToken(req);
+      if (!cardlogueUser) {
+        return res.status(401).json({ message: "Missing or invalid Cardlogue session" });
+      }
+      if (!(await isTeamBillingAdmin(teamId, cardlogueUser.sub))) {
+        return res.status(403).json({ message: "Not an owner/admin of this team" });
+      }
+
+      const supabase = getCardlogueSupabase();
+      const { data: existing, error: findErr } = await supabase
+        .from("subscriptions")
+        .select("status, paddle_subscription_id")
+        .eq("team_id", teamId)
+        .eq("type", "team")
+        .maybeSingle();
+      if (findErr) throw findErr;
+      if (!existing?.paddle_subscription_id) {
+        return res.status(400).json({ message: "This team is not billed through Paddle" });
+      }
+
+      const transaction = await createPaymentMethodUpdateTransaction(existing.paddle_subscription_id);
+      return res.json({ transactionId: transaction.data.id, environment: getPaddleEnvironment() });
+    } catch (err: any) {
+      console.error("Paddle change-card-transaction error:", err.message);
+      return res.status(500).json({ message: "Failed to prepare card update" });
+    }
+  });
+
   // ── Cardlogue team subscription cancellation (both PGs) ─────────────────
   // Cancel takes effect at the end of the already-paid period — full access
   // continues until then, no refund. Paddle has its own recurring

@@ -56,6 +56,7 @@ export default function TeamManagePage() {
     subscribe: lang === "ko" ? "결제하기" : "Subscribe",
     changeSlots: lang === "ko" ? "슬롯 변경" : "Change seats",
     manageCards: lang === "ko" ? "카드 관리" : "Manage cards",
+    changeCard: lang === "ko" ? "카드 변경" : "Change card",
     adminOnly: lang === "ko" ? "결제 관리는 소유자/관리자만 할 수 있어요." : "Only owners/admins can manage billing.",
     logout: lang === "ko" ? "로그아웃" : "Sign out",
     error: lang === "ko" ? "팀 정보를 불러오지 못했습니다" : "Failed to load teams",
@@ -94,7 +95,10 @@ export default function TeamManagePage() {
     const params = new URLSearchParams({
       teamId: team.teamId,
       slotCount: String(draftSlots(team)),
-      pg: "portone",
+      // An active subscription's own provider decides which PG the payment
+      // page shows (an active team can't switch PGs mid-subscription); a new
+      // team defaults to PortOne.
+      pg: team.subscription?.provider || "portone",
       name: session?.user?.name || "",
       email: session?.user?.email || "",
     });
@@ -216,6 +220,16 @@ export default function TeamManagePage() {
                           data-testid={`button-team-cards-${team.teamId}`}
                         >
                           {t.manageCards}
+                        </Button>
+                      )}
+                      {isActive && sub!.provider === "paddle" && (
+                        <Button
+                          variant="outline"
+                          className="flex-1 text-white border-white/20 hover:bg-white/10"
+                          onClick={() => (window.location.href = `/team/cards?teamId=${team.teamId}&pg=paddle`)}
+                          data-testid={`button-team-cards-${team.teamId}`}
+                        >
+                          {t.changeCard}
                         </Button>
                       )}
                     </div>
