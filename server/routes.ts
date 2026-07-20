@@ -17,6 +17,7 @@ import {
   getCardlogueUserFromToken,
   isTeamBillingAdmin,
   getTeamMemberCount,
+  verifyPortoneWebhookSignature,
   TEAM_SEAT_PRICE_KRW,
 } from "./portone";
 import {
@@ -805,8 +806,17 @@ ${freeReportUrls}
   });
 
   app.post("/api/portone/webhook", async (req, res) => {
-    // TODO: verify the PortOne webhook signature once the webhook secret is
-    // registered in the PortOne console (결제알림(Webhook) 관리).
+    try {
+      const isValid = verifyPortoneWebhookSignature(req.rawBody as Buffer, {
+        id: req.headers["webhook-id"] as string | undefined,
+        timestamp: req.headers["webhook-timestamp"] as string | undefined,
+        signature: req.headers["webhook-signature"] as string | undefined,
+      });
+      if (!isValid) return res.status(401).json({ message: "Invalid signature" });
+    } catch (err: any) {
+      console.error("PortOne webhook signature check error:", err.message);
+      return res.status(500).json({ message: "Signature verification not configured" });
+    }
     console.log("[portone webhook]", JSON.stringify(req.body));
     return res.status(200).json({ received: true });
   });

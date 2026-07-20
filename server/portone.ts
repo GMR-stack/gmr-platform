@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import type { Request } from "express";
 
@@ -189,6 +190,44 @@ export async function recordTeamPaymentCard(teamId: string, billingKey: string, 
   } catch (err: any) {
     console.error("recordTeamPaymentCard failed (non-fatal):", err?.message ?? err);
   }
+}
+
+// Verifies a PortOne webhook per the Standard Webhooks spec PortOne V2
+// follows (https://www.standardwebhooks.com/): the message's id, timestamp,
+// and raw body are concatenated with "." and HMAC-SHA256'd using the
+// base64-decoded secret (after stripping its "whsec_" prefix); the result is
+// compared against each base64 signature in the "v1,<sig>" space-separated
+// webhook-signature header (multiple entries support secret rotation).
+export function verifyPortoneWebhookSignature(
+  rawBody: Buffer | string,
+  headers: { id?: string; timestamp?: string; signature?: string },
+): boolean {
+  const secret = process.env.PORTONE_WEBHOOK_SECRET;
+  if (!secret) throw new Error("PORTONE_WEBHOOK_SECRET not configured");
+  const { id, timestamp, signature } = headers;
+  if (!id || !timestamp || !signature) return false;
+
+  // Rejects stale/replayed deliveries. The spec recommends *a* tolerance
+  // without mandating a value; 5 minutes matches common webhook-signing
+  // practice (e.g. Svix's own default).
+  const tsSeconds = Number(timestamp);
+  if (!Number.isFinite(tsSeconds) || Math.abs(Date.now() / 1000 - tsSeconds) > 300) return false;
+
+  const secretBytes = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
+  const body = typeof rawBody === "string" ? rawBody : rawBody.toString("utf8");
+  const expected = crypto
+    .createHmac("sha256", secretBytes)
+    .update(`${id}.${timestamp}.${body}`)
+    .digest("base64");
+  const expectedBuf = Buffer.from(expected, "base64");
+
+  return signature.split(" ").some((entry) => {
+    const [version, sig] = entry.split(",");
+    if (version !== "v1" || !sig) return false;
+    const sigBuf = Buffer.from(sig, "base64");
+    if (sigBuf.length !== expectedBuf.length) return false;
+    return crypto.timingSafeEqual(expectedBuf, sigBuf);
+  });
 }
 
 export function getCardlogueSupabase() {
