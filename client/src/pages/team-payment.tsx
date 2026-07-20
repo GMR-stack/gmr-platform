@@ -85,6 +85,11 @@ function calcNextBillingAt(paymentDate: Date): Date {
 // alongside its own result params on the return trip, so those are stashed
 // here before leaving and restored on return instead of trusting the URL.
 const REDIRECT_PARAMS_KEY = "team-payment-redirect-params";
+// Distinguishes what a returning mobile REDIRECTION round-trip is for:
+// "pay" (register-then-charge, the original flow) vs "addCard" (register
+// only, triggered from the card list — see handleAddNewCard). Defaults to
+// "pay" for old stashes so nothing breaks mid-flight across a deploy.
+const REDIRECT_INTENT_KEY = "team-payment-redirect-intent";
 
 function getPortoneRedirectResult() {
   const params = new URLSearchParams(window.location.search);
@@ -119,6 +124,30 @@ export default function TeamPaymentPage() {
   // the payload finishPortoneSubscribe will actually charge once the user
   // hits the final "결제하기" confirm.
   const [pendingCharge, setPendingCharge] = useState<{ billingKey?: string; cardId?: string } | null>(null);
+  // True while a "새 카드 등록" (register-only, from the card list) attempt
+  // is in flight — separate from `status`, which tracks the payment itself.
+  const [addingCard, setAddingCard] = useState(false);
+
+  async function refreshCards(target: typeof params = params) {
+    const token = getCardlogueToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/portone/team-cards?teamId=${encodeURIComponent(target.teamId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "failed to load cards");
+      const loaded: TeamCard[] = data.cards ?? [];
+      setCards(loaded);
+      const active = loaded.find((c) => c.isActive);
+      setSelectedCardId((prev) => prev ?? active?.id ?? loaded[0]?.id ?? null);
+      return loaded;
+    } catch {
+      // Falls back to the registration flow (treated as "no cards") rather
+      // than blocking the page on a card-list fetch failure.
+      setCards((prev) => prev ?? []);
+    }
+  }
 
   useEffect(() => {
     setParams(getParams());
@@ -126,22 +155,7 @@ export default function TeamPaymentPage() {
 
   useEffect(() => {
     if (params.provider !== "portone") return;
-    const token = getCardlogueToken();
-    if (!token) return;
-    fetch(`/api/portone/team-cards?teamId=${encodeURIComponent(params.teamId)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.message || "failed to load cards");
-        const loaded: TeamCard[] = data.cards ?? [];
-        setCards(loaded);
-        const active = loaded.find((c) => c.isActive);
-        setSelectedCardId(active?.id ?? loaded[0]?.id ?? null);
-      })
-      // Falls back to the registration flow (treated as "no cards") rather
-      // than blocking the page on a card-list fetch failure.
-      .catch(() => setCards([]));
+    refreshCards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.provider, params.teamId]);
 
@@ -171,12 +185,27 @@ export default function TeamPaymentPage() {
     const stashed = sessionStorage.getItem(REDIRECT_PARAMS_KEY);
     const restoredParams: typeof params = stashed ? JSON.parse(stashed) : getParams();
     sessionStorage.removeItem(REDIRECT_PARAMS_KEY);
+    const intent = sessionStorage.getItem(REDIRECT_INTENT_KEY) || "pay";
+    sessionStorage.removeItem(REDIRECT_INTENT_KEY);
     setParams(restoredParams);
 
     if (result.code || !result.billingKey) {
+      if (intent === "addCard") {
+        setAddingCard(false);
+        setErrorMessage(result.message || result.pgMessage || "billing key issue failed");
+        return;
+      }
       setStatus("error");
       setErrorMessage(result.message || result.pgMessage || "billing key issue failed");
       notifyApp({ type: "team-payment-error", teamId: restoredParams.teamId, message: result.message });
+      return;
+    }
+
+    if (intent === "addCard") {
+      setAddingCard(true);
+      registerNewCard(result.billingKey, restoredParams)
+        .catch((err: any) => setErrorMessage(err?.message || "unknown error"))
+        .finally(() => setAddingCard(false));
       return;
     }
     // Card registration succeeded — hold for the user's explicit final
@@ -233,10 +262,8 @@ export default function TeamPaymentPage() {
     cardsLoading: lang === "ko" ? "등록된 카드를 불러오는 중..." : "Loading your cards...",
     selectCardPrompt: lang === "ko" ? "결제에 사용할 카드를 선택해주세요." : "Choose which card to pay with.",
     unknownCard: lang === "ko" ? "카드" : "Card",
-    addNewCardHint:
-      lang === "ko"
-        ? "다른 카드로 결제하려면 카드 관리에서 새로 등록해주세요."
-        : "To pay with a different card, register one first in card management.",
+    addNewCard: lang === "ko" ? "+ 새 카드 등록" : "+ Register a new card",
+    addingCard: lang === "ko" ? "카드 등록 중..." : "Registering card...",
     cancel: lang === "ko" ? "취소" : "Cancel",
     reviewPrompt: lang === "ko" ? "아래 카드로 결제를 진행할까요?" : "Proceed with payment using this card?",
     newCardLabel: lang === "ko" ? "새로 등록한 카드" : "Newly registered card",
@@ -310,6 +337,7 @@ export default function TeamPaymentPage() {
       // teamId/slotCount/etc. without depending on whether PortOne preserves
       // our own query params alongside its own result params on return.
       sessionStorage.setItem(REDIRECT_PARAMS_KEY, JSON.stringify(params));
+      sessionStorage.setItem(REDIRECT_INTENT_KEY, "pay");
 
       const issueResponse = await PortOne.requestIssueBillingKey({
         storeId: STORE_ID,
@@ -341,6 +369,65 @@ export default function TeamPaymentPage() {
       setStatus("error");
       setErrorMessage(err?.message || "unknown error");
       notifyApp({ type: "team-payment-error", teamId: params.teamId, message: err?.message });
+    }
+  }
+
+  // Registers a billing key into the account's card list (no charge) and
+  // selects it — used by handleAddNewCard, both for the desktop path and
+  // the mobile REDIRECTION return (see the redirect-handling effect above).
+  async function registerNewCard(billingKey: string, target: typeof params = params) {
+    const token = getCardlogueToken();
+    if (!token) throw new Error("missing Cardlogue session token");
+    const res = await fetch("/api/portone/team-cards", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ teamId: target.teamId, billingKey }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "register failed");
+    await refreshCards(target);
+    if (data.card?.id) setSelectedCardId(data.card.id);
+  }
+
+  // "새 카드 등록" from within the card-selection screen — registers a card
+  // without paying, then drops the user back on the (now updated) card
+  // list to pick it and continue through the normal confirm/review flow.
+  async function handleAddNewCard() {
+    setAddingCard(true);
+    setErrorMessage("");
+    try {
+      const token = getCardlogueToken();
+      if (!token) throw new Error("missing Cardlogue session token");
+
+      sessionStorage.setItem(REDIRECT_PARAMS_KEY, JSON.stringify(params));
+      sessionStorage.setItem(REDIRECT_INTENT_KEY, "addCard");
+
+      const issueResponse = await PortOne.requestIssueBillingKey({
+        storeId: STORE_ID,
+        channelKey: CHANNEL_KEY,
+        billingKeyMethod: "CARD",
+        issueId: `issue-card-${params.teamId || "new"}-${Date.now()}`,
+        issueName: lang === "ko" ? "Cardlogue 팀 플랜 결제 카드 등록" : "Cardlogue Team Plan Card Registration",
+        customer: {
+          fullName: params.name || undefined,
+          email: params.email || undefined,
+        },
+        windowType: { mobile: "REDIRECTION" },
+        redirectUrl: window.location.href,
+      } as any);
+
+      if ((issueResponse as any)?.code != null) {
+        throw new Error((issueResponse as any).message || "billing key issue failed");
+      }
+
+      // Desktop/popup path resolves here directly; the mobile REDIRECTION
+      // path instead completes in the redirect-handling effect above and
+      // never reaches this line (the page navigated away).
+      await registerNewCard((issueResponse as any).billingKey);
+    } catch (err: any) {
+      setErrorMessage(err?.message || "unknown error");
+    } finally {
+      setAddingCard(false);
     }
   }
 
@@ -480,7 +567,16 @@ export default function TeamPaymentPage() {
                     <span className="text-sm">{cardLabel(card)}</span>
                   </button>
                 ))}
-                <p className="text-white/40 text-xs text-center pt-1">{t.addNewCardHint}</p>
+                <button
+                  type="button"
+                  disabled={addingCard}
+                  onClick={handleAddNewCard}
+                  className="w-full text-center border border-dashed rounded-xl px-4 py-3 text-sm text-white/60 hover:text-white hover:border-white/40 transition-colors disabled:opacity-50"
+                  style={{ borderColor: "rgba(255,255,255,0.2)" }}
+                  data-testid="button-add-new-card"
+                >
+                  {addingCard ? t.addingCard : t.addNewCard}
+                </button>
               </div>
             )}
 
@@ -533,6 +629,7 @@ export default function TeamPaymentPage() {
                   disabled={
                     status === "processing" ||
                     cardsLoading ||
+                    addingCard ||
                     (params.provider === "paddle" && !paddle) ||
                     (hasExistingCards && !selectedCardId)
                   }

@@ -1060,14 +1060,17 @@ ${freeReportUrls}
   app.post("/api/portone/team-cards", async (req, res) => {
     try {
       const { teamId, billingKey } = req.body;
-      if (!teamId || !billingKey) {
-        return res.status(400).json({ message: "Missing teamId or billingKey" });
+      if (!billingKey) {
+        return res.status(400).json({ message: "Missing billingKey" });
       }
       const cardlogueUser = getCardlogueUserFromToken(req);
       if (!cardlogueUser) {
         return res.status(401).json({ message: "Missing or invalid Cardlogue session" });
       }
-      if (!(await isTeamBillingAdmin(teamId, cardlogueUser.sub))) {
+      // teamId is optional — registering a card while setting up a
+      // not-yet-created team (empty teamId) has no team to check admin-of
+      // yet; the card still gets recorded under the caller's account.
+      if (teamId && !(await isTeamBillingAdmin(teamId, cardlogueUser.sub))) {
         return res.status(403).json({ message: "Not an owner/admin of this team" });
       }
 
@@ -1081,7 +1084,7 @@ ${freeReportUrls}
         .from("team_payment_cards")
         .upsert(
           {
-            team_id: teamId,
+            team_id: teamId || null,
             billing_key: billingKey,
             card_name: summary.cardName,
             card_number_masked: summary.cardNumberMasked,
