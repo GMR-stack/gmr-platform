@@ -23,6 +23,13 @@ export function isInAppWebView(): boolean {
   return !!(window as any).ReactNativeWebView;
 }
 
+// The Cardlogue RN app listens for postMessage on every WebView page built
+// here (team-payment, team-cards) to know when a flow is done. No-op in the
+// browser flow — there's no app to receive it.
+export function notifyApp(payload: Record<string, unknown>) {
+  (window as any).ReactNativeWebView?.postMessage(JSON.stringify(payload));
+}
+
 export function getWebSession(): CardlogueWebSession | null {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);

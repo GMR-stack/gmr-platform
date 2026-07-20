@@ -4,7 +4,7 @@ import { initializePaddle, type Paddle } from "@paddle/paddle-js";
 import { useLang } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { PageGlow } from "@/components/page-glow";
-import { getCardlogueToken, isInAppWebView, loginUrlFor } from "@/lib/cardlogue-auth";
+import { getCardlogueToken, isInAppWebView, loginUrlFor, notifyApp } from "@/lib/cardlogue-auth";
 
 const NAVY = "#03045E";
 const GOLD = "#D4AF37";
@@ -57,12 +57,6 @@ function calcNextBillingAt(paymentDate: Date): Date {
     return new Date(year, month + 2, 1);
   }
   return new Date(year, month + 1, 1);
-}
-
-function notifyApp(payload: Record<string, unknown>) {
-  // The Cardlogue RN app loads this page inside a WebView and listens for
-  // postMessage to know when the payment flow is done (see app/team/payment.tsx).
-  (window as any).ReactNativeWebView?.postMessage(JSON.stringify(payload));
 }
 
 // Token comes either from the RN app's WebView injection or, in the browser

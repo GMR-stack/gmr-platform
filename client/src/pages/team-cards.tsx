@@ -3,7 +3,7 @@ import * as PortOne from "@portone/browser-sdk/v2";
 import { useLang } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { PageGlow } from "@/components/page-glow";
-import { getCardlogueToken, getWebSession, loginUrlFor, isInAppWebView } from "@/lib/cardlogue-auth";
+import { getCardlogueToken, getWebSession, loginUrlFor, isInAppWebView, notifyApp } from "@/lib/cardlogue-auth";
 
 const NAVY = "#03045E";
 const GOLD = "#D4AF37";
@@ -87,11 +87,12 @@ export default function TeamCardsPage() {
   }
 
   async function registerBillingKey(billingKey: string, id: string) {
-    await api("/api/portone/team-cards", {
+    const data = await api("/api/portone/team-cards", {
       method: "POST",
       body: JSON.stringify({ teamId: id, billingKey }),
     });
     await refreshCards(id);
+    notifyApp({ type: "team-card-registered", teamId: id, cardId: data.card?.id });
   }
 
   useEffect(() => {
@@ -110,13 +111,19 @@ export default function TeamCardsPage() {
       history.replaceState(null, "", `${window.location.pathname}?teamId=${encodeURIComponent(stashedTeamId)}`);
 
       if (redirectResult.code || !redirectResult.billingKey) {
-        setErrorMessage(redirectResult.message || "billing key issue failed");
+        const message = redirectResult.message || "billing key issue failed";
+        setErrorMessage(message);
+        notifyApp({ type: "team-card-error", teamId: stashedTeamId, message });
         refreshCards(stashedTeamId).catch((err: any) => setErrorMessage(err?.message || "unknown error"));
         return;
       }
       setBusy(true);
       registerBillingKey(redirectResult.billingKey, stashedTeamId)
-        .catch((err: any) => setErrorMessage(err?.message || "unknown error"))
+        .catch((err: any) => {
+          const message = err?.message || "unknown error";
+          setErrorMessage(message);
+          notifyApp({ type: "team-card-error", teamId: stashedTeamId, message });
+        })
         .finally(() => setBusy(false));
       return;
     }
@@ -152,7 +159,9 @@ export default function TeamCardsPage() {
       }
       await registerBillingKey((issueResponse as any).billingKey, teamId);
     } catch (err: any) {
-      setErrorMessage(err?.message || "unknown error");
+      const message = err?.message || "unknown error";
+      setErrorMessage(message);
+      notifyApp({ type: "team-card-error", teamId, message });
     } finally {
       setBusy(false);
     }
@@ -167,8 +176,11 @@ export default function TeamCardsPage() {
         body: JSON.stringify({ teamId, cardId: card.id }),
       });
       await refreshCards();
+      notifyApp({ type: "team-card-selected", teamId, cardId: card.id });
     } catch (err: any) {
-      setErrorMessage(err?.message || "unknown error");
+      const message = err?.message || "unknown error";
+      setErrorMessage(message);
+      notifyApp({ type: "team-card-error", teamId, message });
     } finally {
       setBusy(false);
     }
@@ -184,8 +196,11 @@ export default function TeamCardsPage() {
         body: JSON.stringify({ teamId, cardId: card.id }),
       });
       await refreshCards();
+      notifyApp({ type: "team-card-deleted", teamId, cardId: card.id });
     } catch (err: any) {
-      setErrorMessage(err?.message || "unknown error");
+      const message = err?.message || "unknown error";
+      setErrorMessage(message);
+      notifyApp({ type: "team-card-error", teamId, message });
     } finally {
       setBusy(false);
     }

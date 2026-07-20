@@ -314,6 +314,10 @@ function BottomCta() {
             {t.bottomCta.linkRefund}
           </Link>
           <span>·</span>
+          <Link href="/team/login" className="hover:text-white/70" data-testid="link-bottom-team-payment">
+            {t.bottomCta.linkTeamPayment}
+          </Link>
+          <span>·</span>
           <a href="mailto:globalmarketradar@gmail.com" className="hover:text-white/70 inline-flex items-center gap-1" data-testid="link-bottom-contact">
             <Mail className="w-3 h-3" /> {t.bottomCta.linkContact}
           </a>
