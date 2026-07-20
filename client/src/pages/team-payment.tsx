@@ -15,7 +15,11 @@ const PADDLE_CLIENT_TOKEN = import.meta.env.VITE_PADDLE_CLIENT_TOKEN as string;
 const PADDLE_ENVIRONMENT = (import.meta.env.VITE_PADDLE_ENVIRONMENT as string) || "sandbox";
 
 type Provider = "portone" | "paddle";
-type Status = "confirm" | "processing" | "success" | "error";
+// "reviewing": card is registered/selected but not yet charged — a distinct
+// final "결제하기" click is required before the actual charge fires, so
+// registering a card (or picking one already on file) is never itself the
+// action that spends money.
+type Status = "confirm" | "reviewing" | "processing" | "success" | "error";
 
 type TeamCard = {
   id: string;
@@ -111,6 +115,10 @@ export default function TeamPaymentPage() {
   // whether params.teamId is an existing team or empty (new-team flow).
   const [cards, setCards] = useState<TeamCard[] | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  // Set once a card is registered or picked, cleared on cancel/success —
+  // the payload finishPortoneSubscribe will actually charge once the user
+  // hits the final "결제하기" confirm.
+  const [pendingCharge, setPendingCharge] = useState<{ billingKey?: string; cardId?: string } | null>(null);
 
   useEffect(() => {
     setParams(getParams());
@@ -158,8 +166,6 @@ export default function TeamPaymentPage() {
     const cleanedQuery = cleanedSearch.toString();
     history.replaceState(null, "", window.location.pathname + (cleanedQuery ? `?${cleanedQuery}` : ""));
 
-    setStatus("processing");
-
     // Restore the params saved right before leaving for the redirect — don't
     // trust window.location.search to still have them after the round-trip.
     const stashed = sessionStorage.getItem(REDIRECT_PARAMS_KEY);
@@ -173,11 +179,10 @@ export default function TeamPaymentPage() {
       notifyApp({ type: "team-payment-error", teamId: restoredParams.teamId, message: result.message });
       return;
     }
-    finishPortoneSubscribe({ billingKey: result.billingKey }, restoredParams).catch((err: any) => {
-      setStatus("error");
-      setErrorMessage(err?.message || "unknown error");
-      notifyApp({ type: "team-payment-error", teamId: restoredParams.teamId, message: err?.message });
-    });
+    // Card registration succeeded — hold for the user's explicit final
+    // confirm rather than charging immediately (see handleFinalConfirm).
+    setPendingCharge({ billingKey: result.billingKey });
+    setStatus("reviewing");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -233,6 +238,9 @@ export default function TeamPaymentPage() {
         ? "다른 카드로 결제하려면 카드 관리에서 새로 등록해주세요."
         : "To pay with a different card, register one first in card management.",
     cancel: lang === "ko" ? "취소" : "Cancel",
+    reviewPrompt: lang === "ko" ? "아래 카드로 결제를 진행할까요?" : "Proceed with payment using this card?",
+    newCardLabel: lang === "ko" ? "새로 등록한 카드" : "Newly registered card",
+    finalConfirm: lang === "ko" ? "결제하기" : "Pay now",
     processing: lang === "ko" ? "결제 처리 중..." : "Processing...",
     success: lang === "ko" ? "결제가 완료되었습니다. 앱으로 돌아가세요." : "Payment complete. You can return to the app.",
     successWeb: lang === "ko" ? "결제가 완료되었습니다." : "Payment complete.",
@@ -325,7 +333,10 @@ export default function TeamPaymentPage() {
         throw new Error((issueResponse as any).message || "billing key issue failed");
       }
 
-      await finishPortoneSubscribe({ billingKey: (issueResponse as any).billingKey });
+      // Card registration succeeded — hold for the user's explicit final
+      // confirm rather than charging immediately (see handleFinalConfirm).
+      setPendingCharge({ billingKey: (issueResponse as any).billingKey });
+      setStatus("reviewing");
     } catch (err: any) {
       setStatus("error");
       setErrorMessage(err?.message || "unknown error");
@@ -333,12 +344,23 @@ export default function TeamPaymentPage() {
     }
   }
 
-  async function handlePayWithCard() {
+  function handleReviewSelectedCard() {
     if (!selectedCardId) return;
+    setPendingCharge({ cardId: selectedCardId });
+    setStatus("reviewing");
+  }
+
+  function handleCancelReview() {
+    setPendingCharge(null);
+    setStatus("confirm");
+  }
+
+  async function handleFinalConfirm() {
+    if (!pendingCharge) return;
     setStatus("processing");
     setErrorMessage("");
     try {
-      await finishPortoneSubscribe({ cardId: selectedCardId });
+      await finishPortoneSubscribe(pendingCharge);
     } catch (err: any) {
       setStatus("error");
       setErrorMessage(err?.message || "unknown error");
@@ -402,7 +424,7 @@ export default function TeamPaymentPage() {
   // every account's first-ever team) skips straight to registration.
   const cardsLoading = params.provider === "portone" && cards === null;
   const hasExistingCards = params.provider === "portone" && !!cards && cards.length > 0;
-  const handlePay = params.provider === "paddle" ? handlePayPaddle : hasExistingCards ? handlePayWithCard : handlePayPortOne;
+  const handlePay = params.provider === "paddle" ? handlePayPaddle : hasExistingCards ? handleReviewSelectedCard : handlePayPortOne;
 
   function cardLabel(card: TeamCard) {
     const name = card.cardName || t.unknownCard;
@@ -437,16 +459,15 @@ export default function TeamPaymentPage() {
               </p>
             )}
 
-            {cardsLoading && status !== "success" && <p className="text-white/60 text-sm">{t.cardsLoading}</p>}
+            {cardsLoading && status === "confirm" && <p className="text-white/60 text-sm">{t.cardsLoading}</p>}
 
-            {hasExistingCards && status !== "success" && (
+            {hasExistingCards && status === "confirm" && (
               <div className="space-y-2 text-left">
                 <p className="text-white/60 text-sm text-center">{t.selectCardPrompt}</p>
                 {cards!.map((card) => (
                   <button
                     key={card.id}
                     type="button"
-                    disabled={status === "processing"}
                     onClick={() => setSelectedCardId(card.id)}
                     className="w-full text-left border rounded-xl px-4 py-3 transition-colors"
                     style={
@@ -478,6 +499,31 @@ export default function TeamPaymentPage() {
                     {t.backToManage}
                   </Button>
                 )}
+              </>
+            ) : status === "reviewing" ? (
+              <>
+                <p className="text-white/60 text-sm">{t.reviewPrompt}</p>
+                <p className="text-sm font-semibold" style={{ color: GOLD }} data-testid="text-review-card">
+                  {pendingCharge?.cardId
+                    ? cardLabel(cards?.find((c) => c.id === pendingCharge.cardId) ?? { id: "", cardName: null, cardNumberMasked: null, createdAt: "", isActive: false })
+                    : t.newCardLabel}
+                </p>
+                <Button
+                  className="w-full font-brand font-semibold"
+                  style={{ background: GOLD, color: NAVY }}
+                  onClick={handleFinalConfirm}
+                  data-testid="button-team-pay-final-confirm"
+                >
+                  {t.finalConfirm}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full text-white border-white/20 hover:bg-white/10"
+                  onClick={handleCancelReview}
+                  data-testid="button-team-pay-review-cancel"
+                >
+                  {t.cancel}
+                </Button>
               </>
             ) : (
               <>
