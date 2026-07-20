@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLang } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { PageGlow } from "@/components/page-glow";
 import { getCardlogueToken, getWebSession, clearWebSession, loginUrlFor, isInAppWebView } from "@/lib/cardlogue-auth";
 
@@ -33,6 +34,12 @@ export default function TeamManagePage() {
   const [errorMessage, setErrorMessage] = useState("");
   // Seat count the user is dialing in per team, before going to payment.
   const [slotDrafts, setSlotDrafts] = useState<Record<string, number>>({});
+  // New-team draft: name typed in, seat count dialed in, before going to
+  // payment. Team creation itself happens server-side only on a successful
+  // charge (see team-payment.tsx) — this page never calls a "create team"
+  // endpoint directly.
+  const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamSlots, setNewTeamSlots] = useState(2);
 
   const session = getWebSession();
 
@@ -60,6 +67,9 @@ export default function TeamManagePage() {
     adminOnly: lang === "ko" ? "결제 관리는 소유자/관리자만 할 수 있어요." : "Only owners/admins can manage billing.",
     logout: lang === "ko" ? "로그아웃" : "Sign out",
     error: lang === "ko" ? "팀 정보를 불러오지 못했습니다" : "Failed to load teams",
+    newTeamTitle: lang === "ko" ? "새 팀 만들기" : "Create a new team",
+    newTeamNamePlaceholder: lang === "ko" ? "팀 이름" : "Team name",
+    newTeamSubmit: lang === "ko" ? "결제로 계속하기" : "Continue to payment",
   };
 
   useEffect(() => {
@@ -108,6 +118,20 @@ export default function TeamManagePage() {
     window.location.href = `/team/payment?${params.toString()}`;
   }
 
+  function goToNewTeamPayment() {
+    const params = new URLSearchParams({
+      teamId: "",
+      slotCount: String(newTeamSlots),
+      pg: "portone",
+      name: session?.user?.name || "",
+      email: session?.user?.email || "",
+      draftTeamName: newTeamName.trim(),
+      draftTeamDescription: "",
+      draftTeamIsPublic: "false",
+    });
+    window.location.href = `/team/payment?${params.toString()}`;
+  }
+
   function handleLogout() {
     clearWebSession();
     window.location.href = loginUrlFor("/team/manage");
@@ -131,6 +155,48 @@ export default function TeamManagePage() {
           )}
         </div>
         {session?.user?.email && <p className="text-white/50 text-sm">{session.user.email}</p>}
+
+        <div className="border border-white/15 bg-white/[0.04] backdrop-blur-sm rounded-2xl p-5 space-y-3">
+          <p className="font-brand font-semibold">{t.newTeamTitle}</p>
+          <Input
+            value={newTeamName}
+            onChange={(e) => setNewTeamName(e.target.value)}
+            placeholder={t.newTeamNamePlaceholder}
+            className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+            data-testid="input-new-team-name"
+          />
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-white border-white/20 hover:bg-white/10 px-3"
+              onClick={() => setNewTeamSlots((n) => Math.max(2, n - 1))}
+              data-testid="button-new-team-slots-minus"
+            >
+              −
+            </Button>
+            <span className="font-brand font-semibold min-w-[5rem] text-center">{t.slots(newTeamSlots)}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-white border-white/20 hover:bg-white/10 px-3"
+              onClick={() => setNewTeamSlots((n) => n + 1)}
+              data-testid="button-new-team-slots-plus"
+            >
+              +
+            </Button>
+            <span className="text-white/50 text-sm ml-auto">{t.monthly(newTeamSlots)}</span>
+          </div>
+          <Button
+            className="w-full font-brand font-semibold"
+            style={{ background: GOLD, color: NAVY }}
+            disabled={!newTeamName.trim()}
+            onClick={goToNewTeamPayment}
+            data-testid="button-new-team-submit"
+          >
+            {t.newTeamSubmit}
+          </Button>
+        </div>
 
         {errorMessage ? (
           <p className="text-sm text-red-300" data-testid="text-team-manage-error">
