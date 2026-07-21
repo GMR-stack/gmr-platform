@@ -75,10 +75,6 @@ function TeamCardsPortOne() {
     remove: lang === "ko" ? "삭제" : "Delete",
     removeConfirm:
       lang === "ko" ? "이 카드를 삭제할까요? 카드사에 등록된 자동결제 정보도 함께 해지됩니다." : "Delete this card? Its billing mandate is revoked with the card issuer too.",
-    removeActiveConfirm:
-      lang === "ko"
-        ? "이 카드는 현재 자동결제 카드예요. 삭제하면 다음 결제 전에 새 카드를 등록해야 해요 — 새 카드를 등록하기 전까지는 자동결제가 되지 않습니다. 그래도 삭제할까요?"
-        : "This is the current auto-billing card. Deleting it means no auto-charge will happen until you register a new one. Delete anyway?",
     addCard: lang === "ko" ? "새 카드 등록" : "Register a new card",
     processing: lang === "ko" ? "처리 중..." : "Processing...",
     back: lang === "ko" ? "팀 관리로 돌아가기" : "Back to team management",
@@ -216,7 +212,7 @@ function TeamCardsPortOne() {
   }
 
   async function handleDelete(card: TeamCard) {
-    if (!window.confirm(card.isActive ? t.removeActiveConfirm : t.removeConfirm)) return;
+    if (!window.confirm(t.removeConfirm)) return;
     setBusy(true);
     setErrorMessage("");
     try {
@@ -279,8 +275,8 @@ function TeamCardsPortOne() {
                       </span>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    {!card.isActive && (
+                  {!card.isActive && (
+                    <div className="flex gap-2">
                       <Button
                         size="sm"
                         className="flex-1 font-brand font-semibold"
@@ -291,18 +287,18 @@ function TeamCardsPortOne() {
                       >
                         {t.select}
                       </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className={`text-white border-white/20 hover:bg-white/10 ${card.isActive ? "w-full" : ""}`}
-                      disabled={busy}
-                      onClick={() => handleDelete(card)}
-                      data-testid={`button-delete-card-${card.id}`}
-                    >
-                      {t.remove}
-                    </Button>
-                  </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-white border-white/20 hover:bg-white/10"
+                        disabled={busy}
+                        onClick={() => handleDelete(card)}
+                        data-testid={`button-delete-card-${card.id}`}
+                      >
+                        {t.remove}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))
             )}

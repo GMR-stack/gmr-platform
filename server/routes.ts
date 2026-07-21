@@ -1220,28 +1220,22 @@ ${freeReportUrls}
       if (cardErr) throw cardErr;
       if (!card) return res.status(404).json({ message: "Card not found" });
 
-      // Deleting a card in active use (including a team's only card) is
-      // allowed — the user may just want it gone. Any team currently
-      // auto-billing from this card has its billing_key cleared instead of
-      // left pointing at a now-revoked key, so the recurring batch quietly
-      // skips it (see team-billing-batch.ts) rather than failing charges,
-      // until the team picks a new card.
-      const { data: affectedSubs, error: subErr } = await supabase
+      // A card shared across teams can be the active auto-billing key for
+      // any of them, not just the one currently being managed — check all.
+      // Blocked rather than clearing portone_billing_key on delete: leaving
+      // a team "active" with no billing key would silently skip it from the
+      // recurring batch forever (never charged, never expired) instead of
+      // either staying billed or being cancelled — an unintended free-access
+      // state. Select a different card first instead.
+      const { data: activeSubs, error: subErr } = await supabase
         .from("subscriptions")
         .select("id")
         .eq("type", "team")
         .eq("status", "active")
         .eq("portone_billing_key", card.billing_key);
       if (subErr) throw subErr;
-      if (affectedSubs && affectedSubs.length > 0) {
-        const { error: clearErr } = await supabase
-          .from("subscriptions")
-          .update({ portone_billing_key: null })
-          .in(
-            "id",
-            affectedSubs.map((s) => s.id),
-          );
-        if (clearErr) throw clearErr;
+      if (activeSubs && activeSubs.length > 0) {
+        return res.status(400).json({ message: "This card is used for auto-billing — select another card first" });
       }
 
       try {
