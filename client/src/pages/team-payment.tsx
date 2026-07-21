@@ -269,23 +269,38 @@ export default function TeamPaymentPage() {
   // for the rest of this cycle, full-price billing starts at the next 1st.
   const proratedNewAmount = isNewSubscribe ? calcProratedSeatAmount(new Date(), params.slotCount, SEAT_PRICE_KRW) : 0;
 
+  // Highlights a KRW amount inline within the confirm-screen copy below, so
+  // the number that matters doesn't get lost in the surrounding sentence.
+  const amt = (n: number) => (
+    <span style={{ color: GOLD, fontWeight: 700 }}>
+      {n.toLocaleString()}
+      {lang === "ko" ? "원" : " KRW"}
+    </span>
+  );
+
   const t = {
     title: lang === "ko" ? "팀 플랜 결제" : "Team Plan Payment",
     seats: lang === "ko" ? `인원 ${params.slotCount}명` : `${params.slotCount} seats`,
     amount: lang === "ko" ? `월 ${amount.toLocaleString()}원` : `${amount.toLocaleString()} KRW / month`,
     confirm: lang === "ko" ? "이 내용으로 결제할까요?" : "Proceed with this payment?",
     confirmNew:
-      lang === "ko"
-        ? `오늘은 남은 기간만큼 일할 계산되어 ${proratedNewAmount.toLocaleString()}원이 결제되고, ${nextBillingLabel}부터 정상 요금인 월 ${amount.toLocaleString()}원이 매달 자동으로 청구돼요.`
-        : `${proratedNewAmount.toLocaleString()} KRW (prorated for the rest of this cycle) will be charged today, then ${amount.toLocaleString()} KRW/month automatically starting ${nextBillingLabel}.`,
+      lang === "ko" ? (
+        <>오늘은 남은 기간만큼 일할 계산되어 {amt(proratedNewAmount)}이 결제되고, {nextBillingLabel}부터 정상 요금인 월 {amt(amount)}이 매달 자동으로 청구돼요.</>
+      ) : (
+        <>{amt(proratedNewAmount)} (prorated for the rest of this cycle) will be charged today, then {amt(amount)}/month automatically starting {nextBillingLabel}.</>
+      ),
     confirmDecrease:
-      lang === "ko"
-        ? `${params.currentSlotCount}슬롯에서 ${params.slotCount}슬롯으로 줄입니다. 지금 결제하신 금액은 환불되지 않고, ${nextBillingLabel}부터 ${params.slotCount}슬롯 요금(월 ${amount.toLocaleString()}원)으로 청구돼요.`
-        : `Reducing from ${params.currentSlotCount} to ${params.slotCount} seats. No refund for the amount already paid this period — starting ${nextBillingLabel}, you'll be billed ${amount.toLocaleString()} KRW/month for ${params.slotCount} seats.`,
+      lang === "ko" ? (
+        <>{params.currentSlotCount}슬롯에서 {params.slotCount}슬롯으로 줄입니다. 지금 결제하신 금액은 환불되지 않고, {nextBillingLabel}부터 {params.slotCount}슬롯 요금(월 {amt(amount)})으로 청구돼요.</>
+      ) : (
+        <>Reducing from {params.currentSlotCount} to {params.slotCount} seats. No refund for the amount already paid this period — starting {nextBillingLabel}, you'll be billed {amt(amount)}/month for {params.slotCount} seats.</>
+      ),
     confirmIncrease:
-      lang === "ko"
-        ? `${params.currentSlotCount}슬롯에서 ${params.slotCount}슬롯으로 늘립니다. 늘어난 ${params.slotCount - (params.currentSlotCount ?? 0)}슬롯분을 오늘 일할 계산하여 ${proratedIncreaseAmount.toLocaleString()}원이 즉시 청구돼요.`
-        : `Increasing from ${params.currentSlotCount} to ${params.slotCount} seats. The added ${params.slotCount - (params.currentSlotCount ?? 0)} seats are prorated — ${proratedIncreaseAmount.toLocaleString()} KRW charged today.`,
+      lang === "ko" ? (
+        <>{params.currentSlotCount}슬롯에서 {params.slotCount}슬롯으로 늘립니다. 늘어난 {params.slotCount - (params.currentSlotCount ?? 0)}슬롯분을 오늘 일할 계산하여 {amt(proratedIncreaseAmount)}이 즉시 청구돼요.</>
+      ) : (
+        <>Increasing from {params.currentSlotCount} to {params.slotCount} seats. The added {params.slotCount - (params.currentSlotCount ?? 0)} seats are prorated — {amt(proratedIncreaseAmount)} charged today.</>
+      ),
     pay: lang === "ko" ? "확인" : "Confirm",
     payNew: lang === "ko" ? "확인 (카드 등록하고 결제)" : "Confirm & pay",
     payWithSelectedCard: lang === "ko" ? "선택한 카드로 결제" : "Pay with selected card",
