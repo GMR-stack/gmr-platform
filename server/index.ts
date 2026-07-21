@@ -17,6 +17,12 @@ declare module "http" {
 
 app.use(
   express.json({
+    // Default 100kb is too small for /api/scan/analyze's base64 business-card
+    // JPEGs (resized client-side, but base64 still runs a few hundred KB to
+    // a couple MB) — raised app-wide since every other JSON body here is
+    // small (payment/webhook payloads) and 10mb isn't a meaningful DoS
+    // surface increase for this app.
+    limit: "10mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
