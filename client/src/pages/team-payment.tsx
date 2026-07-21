@@ -294,6 +294,7 @@ export default function TeamPaymentPage() {
     cancel: lang === "ko" ? "취소" : "Cancel",
     reviewPrompt: lang === "ko" ? "아래 카드로 결제를 진행할까요?" : "Proceed with payment using this card?",
     newCardLabel: lang === "ko" ? "새로 등록한 카드" : "Newly registered card",
+    todayCharge: (n: number) => (lang === "ko" ? `오늘 ${n.toLocaleString()}원 결제` : `${n.toLocaleString()} KRW charged today`),
     finalConfirm: lang === "ko" ? "결제하기" : "Pay now",
     processing: lang === "ko" ? "결제 처리 중..." : "Processing...",
     success: lang === "ko" ? "결제가 완료되었습니다. 앱으로 돌아가세요." : "Payment complete. You can return to the app.",
@@ -647,6 +648,9 @@ export default function TeamPaymentPage() {
                   {pendingCharge?.cardId
                     ? cardLabel(cards?.find((c) => c.id === pendingCharge.cardId) ?? { id: "", cardName: null, cardNumberMasked: null, createdAt: "", isActive: false })
                     : t.newCardLabel}
+                </p>
+                <p className="font-brand text-2xl font-black" style={{ color: GOLD }} data-testid="text-review-amount">
+                  {t.todayCharge(isIncrease ? proratedIncreaseAmount : amount)}
                 </p>
                 <Button
                   className="w-full font-brand font-semibold"
