@@ -265,6 +265,9 @@ export default function TeamPaymentPage() {
   const proratedIncreaseAmount = isIncrease
     ? calcProratedSeatAmount(new Date(), params.slotCount - (params.currentSlotCount ?? 0), SEAT_PRICE_KRW)
     : 0;
+  // Same treatment for a brand-new subscription: today's charge is prorated
+  // for the rest of this cycle, full-price billing starts at the next 1st.
+  const proratedNewAmount = isNewSubscribe ? calcProratedSeatAmount(new Date(), params.slotCount, SEAT_PRICE_KRW) : 0;
 
   const t = {
     title: lang === "ko" ? "팀 플랜 결제" : "Team Plan Payment",
@@ -273,8 +276,8 @@ export default function TeamPaymentPage() {
     confirm: lang === "ko" ? "이 내용으로 결제할까요?" : "Proceed with this payment?",
     confirmNew:
       lang === "ko"
-        ? `오늘 ${amount.toLocaleString()}원이 결제되고, 다음 달부터 매달 자동으로 청구돼요.`
-        : `${amount.toLocaleString()} KRW will be charged today, then automatically every month after.`,
+        ? `오늘은 남은 기간만큼 일할 계산되어 ${proratedNewAmount.toLocaleString()}원이 결제되고, ${nextBillingLabel}부터 정상 요금인 월 ${amount.toLocaleString()}원이 매달 자동으로 청구돼요.`
+        : `${proratedNewAmount.toLocaleString()} KRW (prorated for the rest of this cycle) will be charged today, then ${amount.toLocaleString()} KRW/month automatically starting ${nextBillingLabel}.`,
     confirmDecrease:
       lang === "ko"
         ? `${params.currentSlotCount}슬롯에서 ${params.slotCount}슬롯으로 줄입니다. 지금 결제하신 금액은 환불되지 않고, ${nextBillingLabel}부터 ${params.slotCount}슬롯 요금(월 ${amount.toLocaleString()}원)으로 청구돼요.`
@@ -650,7 +653,7 @@ export default function TeamPaymentPage() {
                     : t.newCardLabel}
                 </p>
                 <p className="font-brand text-2xl font-black" style={{ color: GOLD }} data-testid="text-review-amount">
-                  {t.todayCharge(isIncrease ? proratedIncreaseAmount : amount)}
+                  {t.todayCharge(isIncrease ? proratedIncreaseAmount : isNewSubscribe ? proratedNewAmount : amount)}
                 </p>
                 <Button
                   className="w-full font-brand font-semibold"

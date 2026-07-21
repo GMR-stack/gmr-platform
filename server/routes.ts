@@ -645,8 +645,11 @@ ${freeReportUrls}
         // second team with the same card" as a retry of the first team's
         // creation, skipping the charge and handing back the wrong team.
 
-        const amount = slots * TEAM_SEAT_PRICE_KRW;
         const now = new Date();
+        // First charge is prorated for the days left in this billing cycle —
+        // full-price billing starts at the next 1st (calcNextBillingAt below),
+        // same treatment as a mid-cycle seat increase.
+        const amount = calcProratedSeatAmount(now, slots, TEAM_SEAT_PRICE_KRW);
         // Unique per attempt (not deterministic from team/card) — a
         // deterministic id would collide with an earlier charge that reused
         // the same billing key for a *different* team, causing PortOne's own
@@ -750,8 +753,10 @@ ${freeReportUrls}
       let subscriptionFields: Record<string, unknown>;
 
       if (!isExistingActive) {
-        // New team subscription (or reactivating an expired one): charge the full seat count.
-        amount = slots * TEAM_SEAT_PRICE_KRW;
+        // New team subscription (or reactivating an expired one): prorated
+        // for the rest of this cycle, full-price billing starts next 1st —
+        // same as the fresh-team-creation path above.
+        amount = calcProratedSeatAmount(now, slots, TEAM_SEAT_PRICE_KRW);
         subscriptionFields = {
           user_id: userId,
           team_id: teamId,
