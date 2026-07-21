@@ -965,7 +965,14 @@ ${freeReportUrls}
                   slotCount: sub.slot_count,
                   nextBillingAt: sub.next_billing_at,
                   pendingCancellation: !!sub.pending_cancellation,
-                  provider: sub.portone_billing_key ? "portone" : sub.paddle_subscription_id ? "paddle" : null,
+                  // Which PG a team bills through is decided by whether it
+                  // has a Paddle subscription, not by whether a PortOne
+                  // card happens to be on file right now — a PortOne team
+                  // that currently has no billing key (e.g. its only card
+                  // was deleted) is still a PortOne team, and still needs
+                  // its card-management button to reach /team/cards and
+                  // register a new one, not lose it entirely.
+                  provider: sub.paddle_subscription_id ? "paddle" : "portone",
                 }
               : null,
           };
