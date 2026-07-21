@@ -870,6 +870,15 @@ ${freeReportUrls}
       }
       const cardlogueUser = getCardlogueUserFromToken(req);
       if (!cardlogueUser) {
+        // Temporary diagnostic for the "Missing or invalid Cardlogue session"
+        // report on this route — logs shape only, never the token itself.
+        // Remove once resolved.
+        const authHeader = req.headers.authorization;
+        console.log("[scan/analyze auth]", JSON.stringify({
+          hasHeader: !!authHeader,
+          startsWithBearer: authHeader?.startsWith("Bearer ") ?? false,
+          tokenParts: authHeader?.startsWith("Bearer ") ? authHeader.slice(7).split(".").length : null,
+        }));
         return res.status(401).json({ message: "Missing or invalid Cardlogue session" });
       }
       const result = await analyzeBusinessCard({
