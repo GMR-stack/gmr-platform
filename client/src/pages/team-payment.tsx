@@ -71,6 +71,18 @@ function calcNextBillingAt(paymentDate: Date): Date {
   return new Date(year, month + 1, 1);
 }
 
+// Mirrors server/portone.ts calcProratedSeatAmount — used only to show the
+// user the actual amount they're about to be charged today for a seat
+// increase, before they confirm; the server computes and charges this
+// independently, this is display-only.
+function calcProratedSeatAmount(chargeDate: Date, addedSeats: number, seatPriceKrw: number): number {
+  const year = chargeDate.getFullYear();
+  const month = chargeDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const remainingDays = daysInMonth - chargeDate.getDate() + 1;
+  return Math.round((addedSeats * seatPriceKrw * remainingDays) / daysInMonth);
+}
+
 // Token comes either from the RN app's WebView injection or, in the browser
 // flow, from the /team/login web session — see lib/cardlogue-auth.ts.
 
@@ -154,10 +166,13 @@ export default function TeamPaymentPage() {
   }, []);
 
   useEffect(() => {
-    if (params.provider !== "portone") return;
+    // A seat decrease never charges or touches the card on file (see
+    // handleDecreaseConfirm) — no need to fetch the card list for it at all.
+    const isDecreaseAttempt = params.currentSlotCount != null && params.slotCount < params.currentSlotCount;
+    if (params.provider !== "portone" || isDecreaseAttempt) return;
     refreshCards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.provider, params.teamId]);
+  }, [params.provider, params.teamId, params.currentSlotCount, params.slotCount]);
 
   // Browser flow (PG/card-issuer review): no app to inject the token, so an
   // unauthenticated visitor goes through /team/login first and comes back
@@ -241,21 +256,33 @@ export default function TeamPaymentPage() {
   const missingParams = (!params.teamId && !params.draftTeamName) || !params.slotCount;
   const isDecrease = params.currentSlotCount != null && params.slotCount < params.currentSlotCount;
   const isIncrease = params.currentSlotCount != null && params.slotCount > params.currentSlotCount;
+  const isNewSubscribe = params.currentSlotCount == null;
   const nextBillingLabel = calcNextBillingAt(new Date()).toLocaleDateString(lang === "ko" ? "ko-KR" : "en-US");
+  // Actual amount charged today for an increase — prorated for the days
+  // left in the current billing cycle, distinct from the full monthly
+  // total shown above it. Display-only; the server computes and charges
+  // this independently (see calcProratedSeatAmount above).
+  const proratedIncreaseAmount = isIncrease
+    ? calcProratedSeatAmount(new Date(), params.slotCount - (params.currentSlotCount ?? 0), SEAT_PRICE_KRW)
+    : 0;
 
   const t = {
     title: lang === "ko" ? "팀 플랜 결제" : "Team Plan Payment",
     seats: lang === "ko" ? `인원 ${params.slotCount}명` : `${params.slotCount} seats`,
     amount: lang === "ko" ? `월 ${amount.toLocaleString()}원` : `${amount.toLocaleString()} KRW / month`,
     confirm: lang === "ko" ? "이 내용으로 결제할까요?" : "Proceed with this payment?",
+    confirmNew:
+      lang === "ko"
+        ? `오늘 ${amount.toLocaleString()}원이 결제되고, 다음 달부터 매달 자동으로 청구돼요.`
+        : `${amount.toLocaleString()} KRW will be charged today, then automatically every month after.`,
     confirmDecrease:
       lang === "ko"
-        ? `${params.currentSlotCount}슬롯에서 ${params.slotCount}슬롯으로 줄입니다. 지금은 청구되지 않고, ${nextBillingLabel}부터 ${params.slotCount}슬롯 요금만 청구돼요.`
-        : `Reducing from ${params.currentSlotCount} to ${params.slotCount} seats. Nothing is charged now — starting ${nextBillingLabel}, you'll only be billed for ${params.slotCount} seats.`,
+        ? `${params.currentSlotCount}슬롯에서 ${params.slotCount}슬롯으로 줄입니다. 지금 결제하신 금액은 환불되지 않고, ${nextBillingLabel}부터 ${params.slotCount}슬롯 요금(월 ${amount.toLocaleString()}원)으로 청구돼요.`
+        : `Reducing from ${params.currentSlotCount} to ${params.slotCount} seats. No refund for the amount already paid this period — starting ${nextBillingLabel}, you'll be billed ${amount.toLocaleString()} KRW/month for ${params.slotCount} seats.`,
     confirmIncrease:
       lang === "ko"
-        ? `${params.currentSlotCount}슬롯에서 ${params.slotCount}슬롯으로 늘립니다. 늘어난 ${params.slotCount - (params.currentSlotCount ?? 0)}슬롯분만 오늘 일할 계산되어 즉시 청구돼요.`
-        : `Increasing from ${params.currentSlotCount} to ${params.slotCount} seats. Only the added ${params.slotCount - (params.currentSlotCount ?? 0)} seats are charged today, prorated.`,
+        ? `${params.currentSlotCount}슬롯에서 ${params.slotCount}슬롯으로 늘립니다. 늘어난 ${params.slotCount - (params.currentSlotCount ?? 0)}슬롯분을 오늘 일할 계산하여 ${proratedIncreaseAmount.toLocaleString()}원이 즉시 청구돼요.`
+        : `Increasing from ${params.currentSlotCount} to ${params.slotCount} seats. The added ${params.slotCount - (params.currentSlotCount ?? 0)} seats are prorated — ${proratedIncreaseAmount.toLocaleString()} KRW charged today.`,
     pay: lang === "ko" ? "확인" : "Confirm",
     payNew: lang === "ko" ? "확인 (카드 등록하고 결제)" : "Confirm & pay",
     payWithSelectedCard: lang === "ko" ? "선택한 카드로 결제" : "Pay with selected card",
@@ -504,14 +531,31 @@ export default function TeamPaymentPage() {
     }
   }
 
+  // A seat decrease charges nothing and never touches the card on file, so
+  // it skips card selection/registration entirely — submits directly with
+  // no billingKey/cardId (the server leaves portone_billing_key untouched).
+  async function handleDecreaseConfirm() {
+    setStatus("processing");
+    setErrorMessage("");
+    try {
+      await finishPortoneSubscribe({});
+    } catch (err: any) {
+      setStatus("error");
+      setErrorMessage(err?.message || "unknown error");
+      notifyApp({ type: "team-payment-error", teamId: params.teamId, message: err?.message });
+    }
+  }
+
   // PortOne only: once cards are loaded, a non-empty list means "pick one
   // and pay" instead of the registration flow — for an existing team or a
   // brand-new one alike, since cards belong to the account, not the team.
-  // A Paddle-billed team or an account with zero cards on file (including
-  // every account's first-ever team) skips straight to registration.
-  const cardsLoading = params.provider === "portone" && cards === null;
-  const hasExistingCards = params.provider === "portone" && !!cards && cards.length > 0;
-  const handlePay = params.provider === "paddle" ? handlePayPaddle : hasExistingCards ? handleReviewSelectedCard : handlePayPortOne;
+  // A Paddle-billed team, a seat decrease (see handleDecreaseConfirm above),
+  // or an account with zero cards on file all skip straight to registration
+  // (decrease skips even that — nothing to register or select for it).
+  const cardsLoading = params.provider === "portone" && !isDecrease && cards === null;
+  const hasExistingCards = params.provider === "portone" && !isDecrease && !!cards && cards.length > 0;
+  const handlePay =
+    params.provider === "paddle" ? handlePayPaddle : isDecrease ? handleDecreaseConfirm : hasExistingCards ? handleReviewSelectedCard : handlePayPortOne;
 
   function cardLabel(card: TeamCard) {
     const name = card.cardName || t.unknownCard;
@@ -542,7 +586,7 @@ export default function TeamPaymentPage() {
 
             {status === "confirm" && (
               <p className="text-white/60 text-sm">
-                {isDecrease ? t.confirmDecrease : isIncrease ? t.confirmIncrease : t.confirm}
+                {isDecrease ? t.confirmDecrease : isIncrease ? t.confirmIncrease : isNewSubscribe ? t.confirmNew : t.confirm}
               </p>
             )}
 

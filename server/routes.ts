@@ -579,8 +579,14 @@ ${freeReportUrls}
     try {
       const { billingKey, cardId, teamId, slotCount, customerName, customerEmail, draftTeamName, draftTeamDescription, draftTeamIsPublic } = req.body;
       const isNewTeam = !teamId;
-      if (!slotCount || (!billingKey && !cardId)) {
-        return res.status(400).json({ message: "Missing billingKey/cardId or slotCount" });
+      if (!slotCount) {
+        return res.status(400).json({ message: "Missing slotCount" });
+      }
+      // A brand-new team always needs a card — there's nothing to decrease
+      // from. An existing team's decrease is checked further below, once we
+      // know the current slot_count to compare against.
+      if (isNewTeam && !billingKey && !cardId) {
+        return res.status(400).json({ message: "Missing billingKey/cardId" });
       }
       if (isNewTeam && !draftTeamName) {
         return res.status(400).json({ message: "Missing teamId or draftTeamName" });
@@ -605,6 +611,8 @@ ${freeReportUrls}
       // from their registered cards (cardId) — never both. Cards are scoped
       // by account (created_by), not by team, so this works the same way
       // whether teamId refers to an existing team or a not-yet-created one.
+      // Neither may be present at all for an existing team's seat decrease
+      // (checked below) — that path never touches a card.
       let payBillingKey = billingKey as string | undefined;
       if (!payBillingKey && cardId) {
         const { data: card, error: cardErr } = await supabase
@@ -716,9 +724,6 @@ ${freeReportUrls}
         return res.status(400).json({ message: `slotCount can't be below the current member count (${minSlots})` });
       }
 
-      // Confirm PortOne actually issued this billing key before charging it.
-      await getBillingKeyInfo(payBillingKey!);
-
       const { data: existing, error: findErr } = await supabase
         .from("subscriptions")
         .select("id, status, slot_count, next_billing_at")
@@ -728,6 +733,18 @@ ${freeReportUrls}
       if (findErr) throw findErr;
 
       const isExistingActive = existing?.status === "active";
+      // A pure decrease never charges and never needs a card — everything
+      // else (new/reactivated subscription, same-count card refresh,
+      // increase) does.
+      const isDecreaseRequest = isExistingActive && slots < existing!.slot_count;
+      if (!isDecreaseRequest) {
+        if (!payBillingKey) {
+          return res.status(400).json({ message: "Missing billingKey/cardId" });
+        }
+        // Confirm PortOne actually issued this billing key before charging it.
+        await getBillingKeyInfo(payBillingKey);
+      }
+
       const now = new Date();
       let amount = 0;
       let subscriptionFields: Record<string, unknown>;
@@ -760,14 +777,15 @@ ${freeReportUrls}
         };
       } else {
         // Seat decrease: capacity (slot_count) drops immediately; the billed
-        // amount doesn't change (no refund) until the next renewal, so
-        // there's nothing else to update here. pending_slot_count is no
-        // longer used — whatever syncs the recurring charge to slot_count
-        // at each renewal (not built yet) reads slot_count directly.
+        // amount doesn't change (no refund) until the next renewal.
+        // portone_billing_key is deliberately left untouched — a decrease
+        // never involves a card at all (see isDecreaseRequest above).
+        // pending_slot_count is no longer used — whatever syncs the
+        // recurring charge to slot_count at each renewal (not built yet)
+        // reads slot_count directly.
         subscriptionFields = {
           user_id: userId,
           slot_count: slots,
-          portone_billing_key: payBillingKey,
         };
       }
 
@@ -801,7 +819,10 @@ ${freeReportUrls}
         : await supabase.from("subscriptions").insert(subscriptionFields);
       if (writeErr) throw writeErr;
 
-      await recordTeamPaymentCard(teamId, payBillingKey!, userId);
+      // Nothing to record for a decrease — no card was involved.
+      if (payBillingKey) {
+        await recordTeamPaymentCard(teamId, payBillingKey, userId);
+      }
 
       return res.json({
         message: "Team subscription updated",
@@ -1199,17 +1220,28 @@ ${freeReportUrls}
       if (cardErr) throw cardErr;
       if (!card) return res.status(404).json({ message: "Card not found" });
 
-      // A card shared across teams can be the active auto-billing key for
-      // any of them, not just the one currently being managed — check all.
-      const { data: activeSubs, error: subErr } = await supabase
+      // Deleting a card in active use (including a team's only card) is
+      // allowed — the user may just want it gone. Any team currently
+      // auto-billing from this card has its billing_key cleared instead of
+      // left pointing at a now-revoked key, so the recurring batch quietly
+      // skips it (see team-billing-batch.ts) rather than failing charges,
+      // until the team picks a new card.
+      const { data: affectedSubs, error: subErr } = await supabase
         .from("subscriptions")
         .select("id")
         .eq("type", "team")
         .eq("status", "active")
         .eq("portone_billing_key", card.billing_key);
       if (subErr) throw subErr;
-      if (activeSubs && activeSubs.length > 0) {
-        return res.status(400).json({ message: "This card is used for auto-billing — select another card first" });
+      if (affectedSubs && affectedSubs.length > 0) {
+        const { error: clearErr } = await supabase
+          .from("subscriptions")
+          .update({ portone_billing_key: null })
+          .in(
+            "id",
+            affectedSubs.map((s) => s.id),
+          );
+        if (clearErr) throw clearErr;
       }
 
       try {
