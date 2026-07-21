@@ -32,6 +32,7 @@ import {
   createPaymentMethodUpdateTransaction,
   verifyPaddleWebhookSignature,
 } from "./paddle";
+import { analyzeBusinessCard } from "./scan";
 
 async function sendAdminEmail(subject: string, body: string) {
   const gmailUser = process.env.GMAIL_USER;
@@ -856,6 +857,31 @@ ${freeReportUrls}
     }
     console.log("[portone webhook]", JSON.stringify(req.body));
     return res.status(200).json({ received: true });
+  });
+
+  // Business-card OCR/AI proxy for the Cardlogue app — CLOVA OCR + Claude
+  // Haiku analysis run here instead of on-device so the CLOVA secret and
+  // Claude API key never ship inside the app bundle (see server/scan.ts).
+  app.post("/api/scan/analyze", async (req, res) => {
+    try {
+      const { image, lang, existingFields } = req.body;
+      if (!image || typeof image !== "string") {
+        return res.status(400).json({ message: "Missing image" });
+      }
+      const cardlogueUser = getCardlogueUserFromToken(req);
+      if (!cardlogueUser) {
+        return res.status(401).json({ message: "Missing or invalid Cardlogue session" });
+      }
+      const result = await analyzeBusinessCard({
+        imageBase64: image,
+        lang: lang === "en" ? "en" : "ko",
+        existingFields: existingFields && typeof existingFields === "object" ? existingFields : undefined,
+      });
+      return res.json(result);
+    } catch (err: any) {
+      console.error("Scan analyze error:", err.message);
+      return res.status(500).json({ message: "Failed to analyze card" });
+    }
   });
 
   // ── Cardlogue web account (browser flow for PG/card-issuer review) ──────
