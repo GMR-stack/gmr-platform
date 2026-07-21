@@ -56,18 +56,12 @@ function getParams() {
   };
 }
 
-// Team billing is anchored to the 1st of the month (CLAUDE.md 11-2) — used
-// here only to tell the user when a seat decrease actually takes effect.
+// Team billing is anchored to the 1st of the next month, no matter how few
+// days remain — the gap is covered by the prorated first-cycle charge.
 // Mirrors server/portone.ts calcNextBillingAt; keep both in sync.
-const TEAM_BILLING_GRACE_DAYS = 3;
 function calcNextBillingAt(paymentDate: Date): Date {
   const year = paymentDate.getFullYear();
   const month = paymentDate.getMonth();
-  const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
-  const remainingDays = lastDayOfMonth - paymentDate.getDate();
-  if (remainingDays <= TEAM_BILLING_GRACE_DAYS) {
-    return new Date(year, month + 2, 1);
-  }
   return new Date(year, month + 1, 1);
 }
 

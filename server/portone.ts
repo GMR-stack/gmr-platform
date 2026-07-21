@@ -75,19 +75,13 @@ export async function chargeBillingKey(params: {
   });
 }
 
-// Team billing anchors every team's monthly charge to the 1st of the month.
-// Mirrors Cardlogue app's lib/payment.ts calcNextBillingAt (CLAUDE.md section 11-2).
-const TEAM_BILLING_GRACE_DAYS = 3;
-
+// Team billing anchors every team's monthly charge to the 1st of the next
+// month, no matter how few days remain in the current one — the gap gets
+// covered by the prorated first-cycle charge (calcProratedSeatAmount), so
+// there's no grace period to skip a month for.
 export function calcNextBillingAt(paymentDate: Date): Date {
   const year = paymentDate.getFullYear();
   const month = paymentDate.getMonth();
-  const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
-  const remainingDays = lastDayOfMonth - paymentDate.getDate();
-
-  if (remainingDays <= TEAM_BILLING_GRACE_DAYS) {
-    return new Date(year, month + 2, 1);
-  }
   return new Date(year, month + 1, 1);
 }
 
