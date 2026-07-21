@@ -326,6 +326,7 @@ export default function TeamManagePage() {
                       <Button
                         className="flex-1 font-brand font-semibold"
                         style={{ background: GOLD, color: NAVY }}
+                        disabled={isActive && draftSlots(team) === sub!.slotCount}
                         onClick={() => goToPayment(team)}
                         data-testid={`button-team-subscribe-${team.teamId}`}
                       >
