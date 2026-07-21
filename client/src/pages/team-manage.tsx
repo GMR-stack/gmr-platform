@@ -40,6 +40,7 @@ export default function TeamManagePage() {
   // endpoint directly.
   const [newTeamName, setNewTeamName] = useState("");
   const [newTeamSlots, setNewTeamSlots] = useState(2);
+  const [subActionBusy, setSubActionBusy] = useState<Record<string, boolean>>({});
 
   const session = getWebSession();
 
@@ -64,6 +65,12 @@ export default function TeamManagePage() {
     changeSlots: lang === "ko" ? "슬롯 변경" : "Change seats",
     manageCards: lang === "ko" ? "카드 관리" : "Manage cards",
     changeCard: lang === "ko" ? "카드 변경" : "Change card",
+    cancelSub: lang === "ko" ? "구독 해지" : "Cancel subscription",
+    cancelConfirm:
+      lang === "ko"
+        ? "구독을 해지할까요? 이번 결제 주기가 끝날 때까지는 그대로 이용할 수 있고, 환불은 없습니다."
+        : "Cancel this subscription? You'll keep access until the current billing period ends — no refund.",
+    resumeSub: lang === "ko" ? "해지 취소" : "Resume subscription",
     adminOnly: lang === "ko" ? "결제 관리는 소유자/관리자만 할 수 있어요." : "Only owners/admins can manage billing.",
     logout: lang === "ko" ? "로그아웃" : "Sign out",
     error: lang === "ko" ? "팀 정보를 불러오지 못했습니다" : "Failed to load teams",
@@ -72,20 +79,66 @@ export default function TeamManagePage() {
     newTeamSubmit: lang === "ko" ? "결제로 계속하기" : "Continue to payment",
   };
 
+  async function refreshTeams() {
+    const token = getCardlogueToken();
+    if (!token) return;
+    const res = await fetch("/api/cardlogue/my-teams", { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "failed");
+    setTeams(data.teams);
+  }
+
   useEffect(() => {
     const token = getCardlogueToken();
     if (!token) {
       if (!isInAppWebView()) window.location.href = loginUrlFor("/team/manage");
       return;
     }
-    fetch("/api/cardlogue/my-teams", { headers: { Authorization: `Bearer ${token}` } })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.message || "failed");
-        setTeams(data.teams);
-      })
-      .catch((err: any) => setErrorMessage(err?.message || "unknown error"));
+    refreshTeams().catch((err: any) => setErrorMessage(err?.message || "unknown error"));
   }, []);
+
+  async function handleCancelSubscription(team: Team) {
+    if (!window.confirm(t.cancelConfirm)) return;
+    setSubActionBusy((prev) => ({ ...prev, [team.teamId]: true }));
+    setErrorMessage("");
+    try {
+      const token = getCardlogueToken();
+      if (!token) throw new Error("missing Cardlogue session token");
+      const res = await fetch("/api/team-subscription/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ teamId: team.teamId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "cancel failed");
+      await refreshTeams();
+    } catch (err: any) {
+      setErrorMessage(err?.message || "unknown error");
+    } finally {
+      setSubActionBusy((prev) => ({ ...prev, [team.teamId]: false }));
+    }
+  }
+
+  async function handleResumeSubscription(team: Team) {
+    setSubActionBusy((prev) => ({ ...prev, [team.teamId]: true }));
+    setErrorMessage("");
+    try {
+      const token = getCardlogueToken();
+      if (!token) throw new Error("missing Cardlogue session token");
+      const res = await fetch("/api/team-subscription/resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ teamId: team.teamId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || "resume failed");
+      await refreshTeams();
+    } catch (err: any) {
+      setErrorMessage(err?.message || "unknown error");
+    } finally {
+      setSubActionBusy((prev) => ({ ...prev, [team.teamId]: false }));
+    }
+  }
 
   function draftSlots(team: Team): number {
     return (
@@ -299,6 +352,19 @@ export default function TeamManagePage() {
                         </Button>
                       )}
                     </div>
+
+                    {isActive && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-white/60 border-white/10 hover:bg-white/10 hover:text-white"
+                        disabled={!!subActionBusy[team.teamId]}
+                        onClick={() => (sub!.pendingCancellation ? handleResumeSubscription(team) : handleCancelSubscription(team))}
+                        data-testid={sub!.pendingCancellation ? `button-team-resume-${team.teamId}` : `button-team-cancel-${team.teamId}`}
+                      >
+                        {sub!.pendingCancellation ? t.resumeSub : t.cancelSub}
+                      </Button>
+                    )}
                   </>
                 ) : (
                   <p className="text-white/40 text-sm">{t.adminOnly}</p>

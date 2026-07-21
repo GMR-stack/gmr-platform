@@ -181,6 +181,16 @@ export async function cancelSubscriptionAtPeriodEnd(subscriptionId: string) {
   });
 }
 
+// Clears a scheduled cancellation (or pause), reverting the subscription to
+// normal recurring billing. Per Paddle's API, scheduled_change can only be
+// set to null to remove it — there's no dedicated "resume" endpoint.
+export async function resumeSubscription(subscriptionId: string) {
+  return paddleFetch(`/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ scheduled_change: null }),
+  });
+}
+
 // Generates a $0 transaction scoped to just replacing this subscription's
 // saved payment method — used when a team's ownership transfers to someone
 // else and they need to register their own card, without re-charging them

@@ -28,6 +28,7 @@ import {
   updateSubscriptionRecurringPrice,
   rescheduleNextBilling,
   cancelSubscriptionAtPeriodEnd,
+  resumeSubscription,
   createPaymentMethodUpdateTransaction,
   verifyPaddleWebhookSignature,
 } from "./paddle";
@@ -1468,6 +1469,61 @@ ${freeReportUrls}
     } catch (err: any) {
       console.error("Team subscription cancel error:", err.message);
       return res.status(500).json({ message: "Failed to cancel subscription" });
+    }
+  });
+
+  // Reverses a pending cancellation from /cancel above — Cardlogue's "해지
+  // 취소" button. Paddle: clears the scheduled cancellation so recurring
+  // billing continues. PortOne: has no live subscription object to un-cancel
+  // on their side — pending_cancellation is purely our own flag the
+  // recurring batch checks before charging, so flipping it back is enough.
+  app.post("/api/team-subscription/resume", async (req, res) => {
+    try {
+      const { teamId } = req.body;
+      if (!teamId) return res.status(400).json({ message: "Missing teamId" });
+
+      const cardlogueUser = getCardlogueUserFromToken(req);
+      if (!cardlogueUser) {
+        return res.status(401).json({ message: "Missing or invalid Cardlogue session" });
+      }
+      if (!(await isTeamBillingAdmin(teamId, cardlogueUser.sub))) {
+        return res.status(403).json({ message: "Not an owner/admin of this team" });
+      }
+
+      const supabase = getCardlogueSupabase();
+      const { data: existing, error: findErr } = await supabase
+        .from("subscriptions")
+        .select("id, status, pending_cancellation, paddle_subscription_id")
+        .eq("team_id", teamId)
+        .eq("type", "team")
+        .maybeSingle();
+      if (findErr) throw findErr;
+
+      if (!existing || existing.status !== "active") {
+        return res.status(400).json({ message: "No active subscription to resume" });
+      }
+      // Idempotent: nothing pending just confirms the already-normal state
+      // instead of erroring — Cardlogue only shows this button when
+      // pending_cancellation is true, so this is a safety net, not the
+      // expected path.
+      if (!existing.pending_cancellation) {
+        return res.json({ message: "Subscription is already active" });
+      }
+
+      if (existing.paddle_subscription_id) {
+        await resumeSubscription(existing.paddle_subscription_id);
+      }
+
+      const { error: writeErr } = await supabase
+        .from("subscriptions")
+        .update({ pending_cancellation: false })
+        .eq("id", existing.id);
+      if (writeErr) throw writeErr;
+
+      return res.json({ message: "Cancellation reversed" });
+    } catch (err: any) {
+      console.error("Team subscription resume error:", err.message);
+      return res.status(500).json({ message: "Failed to resume subscription" });
     }
   });
 
