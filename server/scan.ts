@@ -93,6 +93,24 @@ function stripJsonFence(raw: string): string {
   return raw.replace(/```json?\s*/g, "").replace(/```\s*/g, "").trim();
 }
 
+// Regex-extracted before ever asking Claude — these two patterns are
+// unambiguous once matched, so pulling them out first means Haiku only has
+// to reason about the genuinely ambiguous fields (name/company/address),
+// which keeps its response (and therefore latency) shorter.
+function preExtractPhone(text: string): string | null {
+  const match = text.match(/01[016789]-?\d{3,4}-?\d{4}/);
+  if (!match) return null;
+  const digits = match[0].replace(/\D/g, "");
+  return digits.length === 11
+    ? `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
+    : `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+function preExtractEmail(text: string): string | null {
+  const match = text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+  return match ? match[0] : null;
+}
+
 // CLOVA General OCR: extracts raw text from a base64 JPEG. Throws on both
 // transport failure and CLOVA's own inferResult !== "SUCCESS" (quota
 // exceeded, bad format, etc.) — the caller treats either as "fall back to
@@ -126,7 +144,7 @@ async function extractTextWithClova(imageBase64: string, lang: "ko" | "en"): Pro
   return fields.map((f: any) => f.inferText).filter(Boolean).join("\n");
 }
 
-async function callClaudeMessages(system: string, content: unknown): Promise<CardOCRResult | null> {
+async function callClaudeMessages(system: string, content: unknown, maxTokens: number): Promise<CardOCRResult | null> {
   try {
     const res = await fetch(CLAUDE_API_URL, {
       method: "POST",
@@ -137,7 +155,7 @@ async function callClaudeMessages(system: string, content: unknown): Promise<Car
       },
       body: JSON.stringify({
         model: HAIKU_MODEL,
-        max_tokens: 1000,
+        max_tokens: maxTokens,
         system,
         messages: [{ role: "user", content }],
       }),
@@ -152,17 +170,38 @@ async function callClaudeMessages(system: string, content: unknown): Promise<Car
   }
 }
 
+// Image analysis only runs as a fallback (CLOVA failure, or no text on the
+// card) and still has to locate every field itself, so it keeps more
+// headroom than the text path below.
 function callClaudeImage(imageBase64: string, prompt: string): Promise<CardOCRResult | null> {
-  return callClaudeMessages(IMAGE_SYSTEM_PROMPT, [
-    { type: "image", source: { type: "base64", media_type: "image/jpeg", data: imageBase64 } },
-    { type: "text", text: prompt },
-  ]);
+  return callClaudeMessages(
+    IMAGE_SYSTEM_PROMPT,
+    [
+      { type: "image", source: { type: "base64", media_type: "image/jpeg", data: imageBase64 } },
+      { type: "text", text: prompt },
+    ],
+    600,
+  );
 }
 
-function structureTextWithHaiku(rawText: string): Promise<CardOCRResult | null> {
+// Phone/email are pre-extracted by regex (see above) and handed to Haiku as
+// already-known facts — it only has to reason about name/company/title/
+// address, which keeps the response (and generation time) shorter. 300
+// tokens comfortably covers the full JSON even with a long address field.
+function structureTextWithHaiku(rawText: string, known: { phone: string | null; email: string | null }): Promise<CardOCRResult | null> {
+  const knownHint =
+    known.phone || known.email
+      ? `\n\n이미 확인된 값(그대로 사용, 재추출 불필요): ${[
+          known.phone ? `phone=${known.phone}` : null,
+          known.email ? `email=${known.email}` : null,
+        ]
+          .filter(Boolean)
+          .join(", ")}`
+      : "";
   return callClaudeMessages(
     TEXT_SYSTEM_PROMPT,
-    `아래는 명함에서 추출한 텍스트야. 이 텍스트를 분석해서 JSON으로 구조화해줘.\n\n${rawText}`,
+    `아래는 명함에서 추출한 텍스트야. 이 텍스트를 분석해서 JSON으로 구조화해줘.${knownHint}\n\n${rawText}`,
+    300,
   );
 }
 
@@ -190,8 +229,13 @@ async function scanFront(imageBase64: string, lang: "ko" | "en"): Promise<CardOC
   try {
     const rawText = await extractTextWithClova(imageBase64, lang);
     if (rawText.trim()) {
-      const result = await structureTextWithHaiku(rawText);
-      if (result) return result;
+      const known = { phone: preExtractPhone(rawText), email: preExtractEmail(rawText) };
+      const result = await structureTextWithHaiku(rawText, known);
+      if (result) {
+        if (known.phone) result.phone = known.phone;
+        if (known.email) result.email = known.email;
+        return result;
+      }
     }
   } catch (err) {
     console.error("Clova OCR failed, falling back to Haiku image:", err);
@@ -216,11 +260,17 @@ async function scanBack(imageBase64: string, lang: "ko" | "en", existing: CardOC
   try {
     const rawText = await extractTextWithClova(imageBase64, lang);
     if (rawText.trim()) {
+      const known = { phone: preExtractPhone(rawText), email: preExtractEmail(rawText) };
       const result = await callClaudeMessages(
         TEXT_SYSTEM_PROMPT,
         `아래는 명함 뒷면에서 추출한 텍스트야. 앞면에서 이미 채워진 필드: ${JSON.stringify(existing)}. 비어있는 필드(${emptyFields || "없음"})를 채우는 데 집중해서 JSON으로 구조화해줘.\n\n${rawText}`,
+        300,
       );
-      if (result) return mergeResults(existing, result);
+      if (result) {
+        if (known.phone) result.phone = known.phone;
+        if (known.email) result.email = known.email;
+        return mergeResults(existing, result);
+      }
     }
   } catch (err) {
     console.error("Back-of-card Clova OCR failed, falling back to Haiku image:", err);
