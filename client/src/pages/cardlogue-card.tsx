@@ -9,40 +9,6 @@ import type { MyCard } from "@shared/mycard";
 const NAVY = "#03045E";
 const GOLD = "#D4AF37";
 
-function buildVCard(card: MyCard): string {
-  const lines = [
-    "BEGIN:VCARD",
-    "VERSION:3.0",
-    `FN:${card.name}`,
-    card.company ? `ORG:${card.company}` : "",
-    card.title ? `TITLE:${card.title}` : "",
-    card.phone ? `TEL;TYPE=CELL:${card.phone}` : "",
-    card.company_phone ? `TEL;TYPE=WORK:${card.company_phone}` : "",
-    card.fax ? `TEL;TYPE=FAX:${card.fax}` : "",
-    card.email ? `EMAIL:${card.email}` : "",
-    card.address ? `ADR;TYPE=WORK:;;${card.address};;;;` : "",
-    "END:VCARD",
-  ].filter(Boolean);
-  return lines.join("\n");
-}
-
-// Chrome (desktop and Android) blocks top-level navigation to a data: URI
-// outright — location.href/window.open to one is silently no-op — so the
-// blob: URL + <a download> approach is actually the correct one here. The
-// mobile screenshot's non-working button was most likely the layout
-// overflow bug below making the button unreachable, not this.
-function downloadVCard(card: MyCard) {
-  const blob = new Blob([buildVCard(card)], { type: "text/vcard;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${card.name || "card"}.vcf`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
 // Base template size (client/src/components/mycard/CardPreview.tsx) is
 // 340x192 landscape / 200x340 portrait — fixed px, so without this a fixed
 // `scale` overflows narrow phone viewports (see the cut-off screenshot).
@@ -141,13 +107,10 @@ export default function CardloguerCardPage() {
               </div>
             )}
 
-            <Button
-              className="font-brand font-semibold"
-              style={{ background: GOLD, color: NAVY }}
-              onClick={() => downloadVCard(card)}
-              data-testid="button-download-vcard"
-            >
-              연락처 저장
+            <Button asChild className="font-brand font-semibold" style={{ background: GOLD, color: NAVY }}>
+              <a href={`/api/cardlogue/card/${card.id}/vcard`} data-testid="button-download-vcard">
+                연락처 저장
+              </a>
             </Button>
           </>
         )}

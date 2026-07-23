@@ -72,3 +72,25 @@ export async function getPublicMyCard(id: string): Promise<PublicMyCard | null> 
   if (error) throw error;
   return (data as unknown as PublicMyCard) ?? null;
 }
+
+// Served as a real file over HTTP (not a client-side blob: URL) so "save
+// contact" works the same everywhere — iOS Safari opens its native
+// add-contact sheet straight off a text/vcard response, and Android/other
+// browsers download it as a normal file instead of silently no-op'ing the
+// way blob: downloads do inside some in-app browsers.
+export function buildVCard(card: PublicMyCard): string {
+  const lines = [
+    "BEGIN:VCARD",
+    "VERSION:3.0",
+    `FN:${card.name}`,
+    card.company ? `ORG:${card.company}` : "",
+    card.title ? `TITLE:${card.title}` : "",
+    card.phone ? `TEL;TYPE=CELL:${card.phone}` : "",
+    card.company_phone ? `TEL;TYPE=WORK:${card.company_phone}` : "",
+    card.fax ? `TEL;TYPE=FAX:${card.fax}` : "",
+    card.email ? `EMAIL:${card.email}` : "",
+    card.address ? `ADR;TYPE=WORK:;;${card.address};;;;` : "",
+    "END:VCARD",
+  ].filter(Boolean);
+  return lines.join("\r\n");
+}

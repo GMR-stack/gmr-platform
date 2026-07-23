@@ -33,7 +33,7 @@ import {
   verifyPaddleWebhookSignature,
 } from "./paddle";
 import { analyzeBusinessCard } from "./scan";
-import { getPublicMyCard } from "./mycard";
+import { getPublicMyCard, buildVCard } from "./mycard";
 
 async function sendAdminEmail(subject: string, body: string) {
   const gmailUser = process.env.GMAIL_USER;
@@ -907,6 +907,24 @@ ${freeReportUrls}
     } catch (err: any) {
       console.error("Public card lookup error:", err.message);
       return res.status(500).json({ message: "Failed to load card" });
+    }
+  });
+
+  // Real, navigable vCard download — see buildVCard's comment in
+  // server/mycard.ts for why this isn't a client-side blob: URL.
+  app.get("/api/cardlogue/card/:id/vcard", async (req, res) => {
+    try {
+      const { id } = req.params;
+      if (!id) return res.status(400).json({ message: "Missing id" });
+      const card = await getPublicMyCard(id);
+      if (!card) return res.status(404).json({ message: "Card not found" });
+      const filename = (card.name || "card").replace(/["/\\<>:*?|\r\n]/g, "").trim() || "card";
+      res.setHeader("Content-Type", "text/vcard; charset=utf-8");
+      res.setHeader("Content-Disposition", `inline; filename="${filename}.vcf"`);
+      return res.send(buildVCard(card));
+    } catch (err: any) {
+      console.error("vCard download error:", err.message);
+      return res.status(500).json({ message: "Failed to generate vCard" });
     }
   });
 
