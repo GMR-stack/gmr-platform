@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
 import { CardPreview } from "@/components/mycard/CardPreview";
-import { PageGlow } from "@/components/page-glow";
 import { Button } from "@/components/ui/button";
 import type { MyCard } from "@shared/mycard";
 
@@ -27,6 +26,11 @@ function buildVCard(card: MyCard): string {
   return lines.join("\n");
 }
 
+// Chrome (desktop and Android) blocks top-level navigation to a data: URI
+// outright — location.href/window.open to one is silently no-op — so the
+// blob: URL + <a download> approach is actually the correct one here. The
+// mobile screenshot's non-working button was most likely the layout
+// overflow bug below making the button unreachable, not this.
 function downloadVCard(card: MyCard) {
   const blob = new Blob([buildVCard(card)], { type: "text/vcard;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -37,6 +41,24 @@ function downloadVCard(card: MyCard) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+// Base template size (client/src/components/mycard/CardPreview.tsx) is
+// 340x192 landscape / 200x340 portrait — fixed px, so without this a fixed
+// `scale` overflows narrow phone viewports (see the cut-off screenshot).
+// Recomputes on resize so rotating the phone doesn't leave it oversized.
+function useFitScale(baseWidth: number, maxScale = 1.4) {
+  const [scale, setScale] = useState(maxScale);
+  useEffect(() => {
+    function recalc() {
+      const available = Math.min(window.innerWidth - 32, 480);
+      setScale(Math.min(maxScale, available / baseWidth));
+    }
+    recalc();
+    window.addEventListener("resize", recalc);
+    return () => window.removeEventListener("resize", recalc);
+  }, [baseWidth, maxScale]);
+  return scale;
 }
 
 export default function CardloguerCardPage() {
@@ -63,13 +85,14 @@ export default function CardloguerCardPage() {
   const pageUrl = card ? `https://www.globalmarketradar.com/cardlogue/card/${card.id}` : "";
   const pageTitle = card ? [card.name, card.company].filter(Boolean).join(" · ") || "디지털 명함" : "디지털 명함";
 
+  const isPortrait = card ? (side === "front" ? card.orientation === "portrait" : card.back_orientation === "portrait") : false;
+  const scale = useFitScale(isPortrait ? 200 : 340);
+
   return (
     <div
-      className="min-h-screen text-white flex items-center justify-center px-4 py-10"
-      style={{ background: `linear-gradient(180deg, #0077B6 0%, ${NAVY} 100%)` }}
+      className="min-h-screen flex items-center justify-center px-4 py-10"
+      style={{ background: "linear-gradient(180deg, #F8FAFC 0%, #E9EDF3 100%)" }}
     >
-      <PageGlow />
-
       {card && (
         <Helmet>
           <title>{pageTitle}</title>
@@ -83,14 +106,14 @@ export default function CardloguerCardPage() {
       )}
 
       <div className="w-full max-w-md flex flex-col items-center gap-6">
-        {isLoading && <p className="text-white/60 text-sm">불러오는 중...</p>}
+        {isLoading && <p className="text-slate-500 text-sm">불러오는 중...</p>}
 
-        {isError && <p className="text-white/60 text-sm">명함을 찾을 수 없습니다.</p>}
+        {isError && <p className="text-slate-500 text-sm">명함을 찾을 수 없습니다.</p>}
 
         {card && (
           <>
             <div className="flex justify-center">
-              <CardPreview card={card} scale={1.4} side={side} />
+              <CardPreview card={card} scale={scale} side={side} />
             </div>
 
             {hasBack && (
@@ -99,7 +122,7 @@ export default function CardloguerCardPage() {
                   size="sm"
                   variant={side === "front" ? "default" : "outline"}
                   className="font-brand"
-                  style={side === "front" ? { background: GOLD, color: NAVY } : { borderColor: "rgba(255,255,255,0.3)", color: "#fff" }}
+                  style={side === "front" ? { background: GOLD, color: NAVY } : { borderColor: "#CBD5E1", color: "#475569", background: "#fff" }}
                   onClick={() => setSide("front")}
                   data-testid="button-card-front"
                 >
@@ -109,7 +132,7 @@ export default function CardloguerCardPage() {
                   size="sm"
                   variant={side === "back" ? "default" : "outline"}
                   className="font-brand"
-                  style={side === "back" ? { background: GOLD, color: NAVY } : { borderColor: "rgba(255,255,255,0.3)", color: "#fff" }}
+                  style={side === "back" ? { background: GOLD, color: NAVY } : { borderColor: "#CBD5E1", color: "#475569", background: "#fff" }}
                   onClick={() => setSide("back")}
                   data-testid="button-card-back"
                 >
