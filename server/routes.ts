@@ -33,6 +33,7 @@ import {
   verifyPaddleWebhookSignature,
 } from "./paddle";
 import { analyzeBusinessCard } from "./scan";
+import { getPublicMyCard } from "./mycard";
 
 async function sendAdminEmail(subject: string, body: string) {
   const gmailUser = process.env.GMAIL_USER;
@@ -890,6 +891,22 @@ ${freeReportUrls}
     } catch (err: any) {
       console.error("Scan analyze error:", err.message);
       return res.status(500).json({ message: "Failed to analyze card" });
+    }
+  });
+
+  // Public digital-card lookup for /cardlogue/card/:id (share-by-link, no
+  // app/login required). The id is an unguessable UUID and the response
+  // never includes user_id — see server/mycard.ts.
+  app.get("/api/cardlogue/card/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      if (!id) return res.status(400).json({ message: "Missing id" });
+      const card = await getPublicMyCard(id);
+      if (!card) return res.status(404).json({ message: "Card not found" });
+      return res.json(card);
+    } catch (err: any) {
+      console.error("Public card lookup error:", err.message);
+      return res.status(500).json({ message: "Failed to load card" });
     }
   });
 

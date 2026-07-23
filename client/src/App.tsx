@@ -17,6 +17,7 @@ import AdminPage from "@/pages/admin";
 import OAuthConsentPage from "@/pages/oauth-consent";
 import LandingPage from "@/pages/landing";
 import CardloguePage from "@/pages/cardlogue";
+import CardlogueCardPage from "@/pages/cardlogue-card";
 import TeamPaymentPage from "@/pages/team-payment";
 import TeamLoginPage from "@/pages/team-login";
 import TeamManagePage from "@/pages/team-manage";
@@ -41,6 +42,7 @@ function Router() {
     <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/cardlogue" component={CardloguePage} />
+      <Route path="/cardlogue/card/:id" component={CardlogueCardPage} />
       <Route path="/team/payment" component={TeamPaymentPage} />
       <Route path="/team/login" component={TeamLoginPage} />
       <Route path="/team/manage" component={TeamManagePage} />
