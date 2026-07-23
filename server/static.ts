@@ -25,8 +25,14 @@ export function serveStatic(app: Express) {
       const card = await getPublicMyCard(req.params.id);
       if (!card) return next();
       let html = fs.readFileSync(path.resolve(distPath, "index.html"), "utf-8");
-      const title = escapeHtml([card.name, card.company].filter(Boolean).join(" · ") || "디지털 명함");
-      const description = escapeHtml([card.company, card.title].filter(Boolean).join(" · ") || "카드로그 디지털 명함");
+      // Same "ko unless the client says otherwise" default as the client's
+      // own detectLang (client/src/lib/i18n.tsx) — most crawlers/browsers
+      // do send Accept-Language, though some (Telegram's bot, etc.) don't.
+      const isKo = (req.headers["accept-language"] || "").toLowerCase().startsWith("ko");
+      const defaultTitle = isKo ? "디지털 명함" : "Digital Business Card";
+      const defaultDescription = isKo ? "카드로그 디지털 명함" : "A digital business card, made with Cardlogue";
+      const title = escapeHtml([card.name, card.company].filter(Boolean).join(" · ") || defaultTitle);
+      const description = escapeHtml([card.company, card.title].filter(Boolean).join(" · ") || defaultDescription);
       const image = card.profile_image_url ? escapeHtml(card.profile_image_url) : "https://www.globalmarketradar.com/cardlogue-icon.png";
       html = html
         .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)

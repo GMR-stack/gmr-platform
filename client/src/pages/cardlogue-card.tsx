@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
 import { CardPreview } from "@/components/mycard/CardPreview";
 import { Button } from "@/components/ui/button";
+import { useLang } from "@/lib/i18n";
 import type { MyCard } from "@shared/mycard";
 
 const NAVY = "#03045E";
@@ -30,6 +31,17 @@ function useFitScale(baseWidth: number, maxScale = 1.4) {
 export default function CardloguerCardPage() {
   const params = useParams<{ id: string }>();
   const [side, setSide] = useState<"front" | "back">("front");
+  const { lang } = useLang();
+
+  const t = {
+    loading: lang === "ko" ? "불러오는 중..." : "Loading...",
+    notFound: lang === "ko" ? "명함을 찾을 수 없습니다." : "Card not found.",
+    front: lang === "ko" ? "앞면" : "Front",
+    back: lang === "ko" ? "뒷면" : "Back",
+    saveContact: lang === "ko" ? "연락처 저장" : "Save Contact",
+    defaultTitle: lang === "ko" ? "디지털 명함" : "Digital Business Card",
+    defaultDescription: lang === "ko" ? "카드로그 디지털 명함" : "A digital business card, made with Cardlogue",
+  };
 
   const { data: card, isLoading, isError } = useQuery<MyCard>({
     queryKey: ["/api/cardlogue/card", params.id],
@@ -49,7 +61,7 @@ export default function CardloguerCardPage() {
     );
 
   const pageUrl = card ? `https://www.globalmarketradar.com/cardlogue/card/${card.id}` : "";
-  const pageTitle = card ? [card.name, card.company].filter(Boolean).join(" · ") || "디지털 명함" : "디지털 명함";
+  const pageTitle = card ? [card.name, card.company].filter(Boolean).join(" · ") || t.defaultTitle : t.defaultTitle;
 
   const isPortrait = card ? (side === "front" ? card.orientation === "portrait" : card.back_orientation === "portrait") : false;
   const scale = useFitScale(isPortrait ? 200 : 340);
@@ -62,9 +74,9 @@ export default function CardloguerCardPage() {
       {card && (
         <Helmet>
           <title>{pageTitle}</title>
-          <meta name="description" content={[card.company, card.title].filter(Boolean).join(" · ") || "카드로그 디지털 명함"} />
+          <meta name="description" content={[card.company, card.title].filter(Boolean).join(" · ") || t.defaultDescription} />
           <meta property="og:title" content={pageTitle} />
-          <meta property="og:description" content={[card.company, card.title].filter(Boolean).join(" · ") || "카드로그 디지털 명함"} />
+          <meta property="og:description" content={[card.company, card.title].filter(Boolean).join(" · ") || t.defaultDescription} />
           <meta property="og:url" content={pageUrl} />
           <meta property="og:type" content="profile" />
           <meta property="og:image" content={card.profile_image_url || "https://www.globalmarketradar.com/cardlogue-icon.png"} />
@@ -72,9 +84,9 @@ export default function CardloguerCardPage() {
       )}
 
       <div className="w-full max-w-md flex flex-col items-center gap-6">
-        {isLoading && <p className="text-slate-500 text-sm">불러오는 중...</p>}
+        {isLoading && <p className="text-slate-500 text-sm">{t.loading}</p>}
 
-        {isError && <p className="text-slate-500 text-sm">명함을 찾을 수 없습니다.</p>}
+        {isError && <p className="text-slate-500 text-sm">{t.notFound}</p>}
 
         {card && (
           <>
@@ -92,7 +104,7 @@ export default function CardloguerCardPage() {
                   onClick={() => setSide("front")}
                   data-testid="button-card-front"
                 >
-                  앞면
+                  {t.front}
                 </Button>
                 <Button
                   size="sm"
@@ -102,14 +114,14 @@ export default function CardloguerCardPage() {
                   onClick={() => setSide("back")}
                   data-testid="button-card-back"
                 >
-                  뒷면
+                  {t.back}
                 </Button>
               </div>
             )}
 
             <Button asChild className="font-brand font-semibold" style={{ background: GOLD, color: NAVY }}>
               <a href={`/api/cardlogue/card/${card.id}/vcard`} data-testid="button-download-vcard">
-                연락처 저장
+                {t.saveContact}
               </a>
             </Button>
           </>
