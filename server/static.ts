@@ -27,7 +27,7 @@ export function serveStatic(app: Express) {
       let html = fs.readFileSync(path.resolve(distPath, "index.html"), "utf-8");
       const title = escapeHtml([card.name, card.company].filter(Boolean).join(" · ") || "디지털 명함");
       const description = escapeHtml([card.company, card.title].filter(Boolean).join(" · ") || "카드로그 디지털 명함");
-      const image = card.profile_image_url ? escapeHtml(card.profile_image_url) : "https://www.globalmarketradar.com/navy-logo.png";
+      const image = card.profile_image_url ? escapeHtml(card.profile_image_url) : "https://www.globalmarketradar.com/cardlogue-icon.png";
       html = html
         .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
         .replace(/<meta name="description" content=".*?"\s*\/>/, `<meta name="description" content="${description}" />`)

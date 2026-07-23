@@ -2925,7 +2925,7 @@ export function CardPreview({ card, scale = 1, side = "front" }: CardPreviewProp
   const fm = isFront ? (card.font_size ?? 1.0) : (card.back_font_size ?? card.font_size ?? 1.0);
   const bgImg = isFront ? card.bg_image_url : card.back_bg_image_url;
 
-  const qrUrl = card.id ? `https://gmr-platform.onrender.com/cardlogue/card/${card.id}` : "https://gmr-platform.onrender.com/cardlogue";
+  const qrUrl = card.id ? `https://www.globalmarketradar.com/cardlogue/card/${card.id}` : "https://www.globalmarketradar.com/cardlogue";
 
   const displayCard = isFront
     ? card

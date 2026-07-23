@@ -67,7 +67,7 @@ export default function CardloguerCardPage() {
           <meta property="og:description" content={[card.company, card.title].filter(Boolean).join(" · ") || "카드로그 디지털 명함"} />
           <meta property="og:url" content={pageUrl} />
           <meta property="og:type" content="profile" />
-          {card.profile_image_url && <meta property="og:image" content={card.profile_image_url} />}
+          <meta property="og:image" content={card.profile_image_url || "https://www.globalmarketradar.com/cardlogue-icon.png"} />
         </Helmet>
       )}
 
