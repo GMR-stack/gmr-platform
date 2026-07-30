@@ -166,6 +166,7 @@ function TeamCardsPortOne() {
         issueId: `issue-card-${teamId}-${Date.now()}`,
         issueName: lang === "ko" ? "Cardlogue 팀 플랜 결제 카드 등록" : "Cardlogue Team Plan Card Registration",
         customer: {
+          customerId: session?.user?.email || undefined,
           fullName: session?.user?.name || undefined,
           email: session?.user?.email || undefined,
         },

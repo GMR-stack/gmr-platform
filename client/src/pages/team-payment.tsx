@@ -386,6 +386,7 @@ export default function TeamPaymentPage() {
         issueId: `issue-${params.teamId}-${Date.now()}`,
         issueName: lang === "ko" ? "Cardlogue 팀 플랜 정기결제" : "Cardlogue Team Plan Subscription",
         customer: {
+          customerId: params.email || undefined,
           fullName: params.name || undefined,
           email: params.email || undefined,
         },
@@ -449,6 +450,7 @@ export default function TeamPaymentPage() {
         issueId: `issue-card-${params.teamId || "new"}-${Date.now()}`,
         issueName: lang === "ko" ? "Cardlogue 팀 플랜 결제 카드 등록" : "Cardlogue Team Plan Card Registration",
         customer: {
+          customerId: params.email || undefined,
           fullName: params.name || undefined,
           email: params.email || undefined,
         },
