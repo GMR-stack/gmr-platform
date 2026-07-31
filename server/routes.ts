@@ -694,6 +694,7 @@ ${freeReportUrls}
             payment_method: "web",
             next_billing_at: calcNextBillingAt(now).toISOString(),
             portone_billing_key: payBillingKey,
+            last_payment_id: amount > 0 ? paymentId : null,
           });
           if (subErr) throw subErr;
         } catch (postChargeErr: any) {
@@ -819,6 +820,7 @@ ${freeReportUrls}
           const existingPayment = await getPaymentStatus(paymentId).catch(() => null);
           if (existingPayment?.status !== "PAID") throw chargeErr;
         }
+        subscriptionFields.last_payment_id = paymentId;
       }
 
       const { error: writeErr } = existing
@@ -857,6 +859,27 @@ ${freeReportUrls}
       return res.status(500).json({ message: "Signature verification not configured" });
     }
     console.log("[portone webhook]", JSON.stringify(req.body));
+
+    // A payment cancelled directly in PortOne's console (refund, chargeback)
+    // doesn't go through our own /cancel API, so this is the only place that
+    // hears about it — without this, the team keeps its subscription active
+    // forever despite the charge that paid for it being reversed.
+    const eventType = req.body?.type;
+    const paymentId = req.body?.data?.paymentId;
+    if (eventType === "Transaction.Cancelled" && paymentId) {
+      try {
+        const supabase = getCardlogueSupabase();
+        const { error: cancelErr } = await supabase
+          .from("subscriptions")
+          .update({ status: "expired", pending_cancellation: false })
+          .eq("last_payment_id", paymentId)
+          .eq("type", "team");
+        if (cancelErr) console.error("PortOne webhook: failed to expire subscription for cancelled payment", { paymentId, cancelErr });
+      } catch (err: any) {
+        console.error("PortOne webhook: error handling Transaction.Cancelled", { paymentId, message: err.message });
+      }
+    }
+
     return res.status(200).json({ received: true });
   });
 

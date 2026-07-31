@@ -63,7 +63,7 @@ async function runPortoneCycle(supabase: ReturnType<typeof getCardlogueSupabase>
       // not drift the monthly cadence forward.
       const { error: writeErr } = await supabase
         .from("subscriptions")
-        .update({ next_billing_at: calcNextBillingAt(scheduledAt).toISOString() })
+        .update({ next_billing_at: calcNextBillingAt(scheduledAt).toISOString(), last_payment_id: paymentId })
         .eq("id", sub.id);
       if (writeErr) throw writeErr;
     } catch (err: any) {
