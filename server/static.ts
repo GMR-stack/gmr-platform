@@ -24,7 +24,6 @@ const CARDLOGUE_ONLY_ALLOWED_PREFIXES = [
   "/refund",
   "/account-deletion",
   "/api",
-  "/assets",
 ];
 
 export function serveStatic(app: Express) {
@@ -37,6 +36,10 @@ export function serveStatic(app: Express) {
 
   app.use((req, res, next) => {
     if (req.hostname !== CARDLOGUE_ONLY_HOST) return next();
+    // A file extension means this is a static asset request (image, font,
+    // icon, robots.txt, etc.), never an SPA route — always let those through,
+    // otherwise every logo/icon on the page 404s into an HTML redirect body.
+    if (path.extname(req.path)) return next();
     if (CARDLOGUE_ONLY_ALLOWED_PREFIXES.some((p) => req.path === p || req.path.startsWith(`${p}/`))) {
       return next();
     }
