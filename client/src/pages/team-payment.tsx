@@ -303,6 +303,7 @@ export default function TeamPaymentPage() {
     unknownCard: lang === "ko" ? "카드" : "Card",
     addNewCard: lang === "ko" ? "+ 새 카드 등록" : "+ Register a new card",
     addingCard: lang === "ko" ? "카드 등록 중..." : "Registering card...",
+    bcCardNotice: lang === "ko" ? "현재 BC카드는 이용하실 수 없어요. 다른 카드로 등록해주세요." : "BC card is currently not supported — please use a different card.",
     cancel: lang === "ko" ? "취소" : "Cancel",
     reviewPrompt: lang === "ko" ? "아래 카드로 결제를 진행할까요?" : "Proceed with payment using this card?",
     newCardLabel: lang === "ko" ? "새로 등록한 카드" : "Newly registered card",
@@ -607,6 +608,10 @@ export default function TeamPaymentPage() {
 
             {cardsLoading && status === "confirm" && <p className="text-white/60 text-sm">{t.cardsLoading}</p>}
 
+            {status === "confirm" && params.provider !== "paddle" && !cardsLoading && !hasExistingCards && (
+              <p className="text-xs text-white/50 text-center">{t.bcCardNotice}</p>
+            )}
+
             {hasExistingCards && status === "confirm" && (
               <div className="space-y-2 text-left">
                 <p className="text-white/60 text-sm text-center">{t.selectCardPrompt}</p>
@@ -636,6 +641,7 @@ export default function TeamPaymentPage() {
                 >
                   {addingCard ? t.addingCard : t.addNewCard}
                 </button>
+                <p className="text-xs text-white/50 text-center">{t.bcCardNotice}</p>
               </div>
             )}
 

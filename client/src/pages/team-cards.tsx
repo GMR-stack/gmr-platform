@@ -76,6 +76,7 @@ function TeamCardsPortOne() {
     removeConfirm:
       lang === "ko" ? "이 카드를 삭제할까요? 카드사에 등록된 자동결제 정보도 함께 해지됩니다." : "Delete this card? Its billing mandate is revoked with the card issuer too.",
     addCard: lang === "ko" ? "새 카드 등록" : "Register a new card",
+    bcCardNotice: lang === "ko" ? "현재 BC카드는 이용하실 수 없어요. 다른 카드로 등록해주세요." : "BC card is currently not supported — please use a different card.",
     processing: lang === "ko" ? "처리 중..." : "Processing...",
     back: lang === "ko" ? "팀 관리로 돌아가기" : "Back to team management",
     missing: lang === "ko" ? "잘못된 접근입니다 (teamId 누락)" : "Invalid request (missing teamId)",
@@ -313,6 +314,7 @@ function TeamCardsPortOne() {
             >
               {busy ? t.processing : t.addCard}
             </Button>
+            <p className="text-xs text-white/50 text-center">{t.bcCardNotice}</p>
 
             {errorMessage && (
               <p className="text-sm text-red-300" data-testid="text-team-cards-error">
