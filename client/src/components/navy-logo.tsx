@@ -3,7 +3,7 @@ import { useLang } from "@/lib/i18n";
 import { translations } from "@/lib/translations";
 
 interface NavyLogoProps {
-  linkTo?: string;
+  linkTo?: string | null;
   showTagline?: boolean;
   size?: "sm" | "md" | "lg";
   variant?: "dark" | "light";
