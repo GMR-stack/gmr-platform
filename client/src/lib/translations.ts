@@ -101,7 +101,7 @@ export const translations = {
         },
         {
           title: "Transparent Pricing",
-          body: "2,200 KRW per person, per month. No hidden costs, no ads.",
+          body: "$1.99 per person, per month. No hidden costs, no ads.",
         },
       ],
       pricing: {
@@ -109,8 +109,8 @@ export const translations = {
         title: "Simple, Transparent Pricing",
         plans: [
           { name: "Free Trial", price: "Free for 7 days", audience: "All features included, for new users" },
-          { name: "Individual Plan", price: "2,200 KRW / month", audience: "For individual users" },
-          { name: "Team Plan", price: "Headcount × 2,200 KRW / month", audience: "For teams and organizations" },
+          { name: "Individual Plan", price: "$1.99 / month", audience: "For individual users" },
+          { name: "Team Plan", price: "Headcount × $1.99 / month", audience: "For teams and organizations" },
         ],
         footnote: "With the Team Plan, the team admin pays the total amount.",
         ctaTeamPayment: "Pay for the Team Plan",
@@ -452,12 +452,12 @@ export const translations = {
         { type: "subheading", text: "Conversion to paid plan" },
         {
           type: "paragraph",
-          text: "When the free trial ends, access to paid features is restricted and no automatic charge occurs. A recurring monthly charge (2,200 KRW per person) is only billed if you actively choose and check out on a paid plan.",
+          text: "When the free trial ends, access to paid features is restricted and no automatic charge occurs. A recurring monthly charge ($1.99 per person) is only billed if you actively choose and check out on a paid plan.",
         },
         { type: "subheading", text: "Team billing" },
         {
           type: "paragraph",
-          text: "Team plans are billed in bulk by the team admin, based on headcount (headcount × 2,200 KRW). The team admin is the party to the payment contract and is responsible for the billed amount and changes in team headcount.",
+          text: "Team plans are billed in bulk by the team admin, based on headcount (headcount × $1.99). The team admin is the party to the payment contract and is responsible for the billed amount and changes in team headcount.",
         },
         { type: "subheading", text: "Automatic renewal and cancellation" },
         {
@@ -631,7 +631,7 @@ export const translations = {
         {
           type: "list",
           items: [
-            "Flat-rate billing: Team subscription fees are charged as a flat amount — team headcount as of the 1st of each month × 2,200 KRW — and are not prorated for headcount changes during that month.",
+            "Flat-rate billing: Team subscription fees are charged as a flat amount — team headcount as of the 1st of each month × $1.99 — and are not prorated for headcount changes during that month.",
             "Refunds for billing errors: If a duplicate charge occurred due to our system error, or the Services were not properly provided, we will refund the applicable amount after review.",
             "Refunds for non-use: A refund solely on the grounds of not using the Services after payment is, in principle, restricted. However, if it is confirmed that the Services were not used at all on the day of payment, you may contact us for individual review.",
             "Cancellation timing: Team subscription cancellation takes effect from the following month; fees already paid for the current month are not refunded.",
