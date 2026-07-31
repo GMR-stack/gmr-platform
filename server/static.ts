@@ -7,6 +7,26 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+// Paddle's domain review rejected globalmarketradar.com because the site's
+// own homepage describes The Navy as an app-development studio ("IT
+// Services/Software Development Services"), a category outside Paddle's
+// Acceptable Use Policy — even though Cardlogue itself (what's actually
+// charged through Paddle) is a plain SaaS subscription. Rather than change
+// what the main site says about itself, a dedicated subdomain is scoped to
+// show only Cardlogue-related content for Paddle's (and any future PG's)
+// review: everything else on this host redirects to /cardlogue.
+const CARDLOGUE_ONLY_HOST = "cardlogue.globalmarketradar.com";
+const CARDLOGUE_ONLY_ALLOWED_PREFIXES = [
+  "/cardlogue",
+  "/team",
+  "/privacy",
+  "/terms",
+  "/refund",
+  "/account-deletion",
+  "/api",
+  "/assets",
+];
+
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
   if (!fs.existsSync(distPath)) {
@@ -14,6 +34,14 @@ export function serveStatic(app: Express) {
       `Could not find the build directory: ${distPath}, make sure to build the client first`,
     );
   }
+
+  app.use((req, res, next) => {
+    if (req.hostname !== CARDLOGUE_ONLY_HOST) return next();
+    if (CARDLOGUE_ONLY_ALLOWED_PREFIXES.some((p) => req.path === p || req.path.startsWith(`${p}/`))) {
+      return next();
+    }
+    return res.redirect(302, "/cardlogue");
+  });
 
   // Link-preview crawlers (KakaoTalk, iMessage, etc.) fetch this URL and
   // parse the raw HTML without running JS, so react-helmet-async's
