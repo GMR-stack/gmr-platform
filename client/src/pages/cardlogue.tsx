@@ -21,14 +21,21 @@ const GOLD = "#D4AF37";
 function Header() {
   const { lang } = useLang();
   const t = translations[lang];
+  // The dedicated cardlogue.globalmarketradar.com subdomain exists so Paddle's
+  // website review only ever sees Cardlogue content (see server/static.ts) —
+  // a "home" link back to The Navy's main site doesn't belong there, even
+  // though it'd harmlessly redirect back to /cardlogue if clicked.
+  const isCardlogueSubdomain = typeof window !== "undefined" && window.location.hostname === "cardlogue.globalmarketradar.com";
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#03045E]/90 backdrop-blur">
       <div className="max-w-5xl mx-auto flex items-center justify-between px-4 h-14">
-        <NavyLogo linkTo="/" size="sm" variant="light" />
+        <NavyLogo linkTo={isCardlogueSubdomain ? undefined : "/"} size="sm" variant="light" />
         <div className="flex items-center gap-4">
-          <Link href="/" className="text-sm text-white/70 hover:text-white font-brand" data-testid="link-cardlogue-home">
-            {t.cardlogue.nav.home}
-          </Link>
+          {!isCardlogueSubdomain && (
+            <Link href="/" className="text-sm text-white/70 hover:text-white font-brand" data-testid="link-cardlogue-home">
+              {t.cardlogue.nav.home}
+            </Link>
+          )}
           <LanguageToggle variant="light" />
         </div>
       </div>
