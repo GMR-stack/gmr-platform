@@ -1373,9 +1373,13 @@ ${freeReportUrls}
   // ever trusts custom_data that passed through here.
   app.post("/api/paddle/checkout-context", async (req, res) => {
     try {
-      const { teamId, slotCount } = req.body;
-      if (!teamId || !slotCount) {
-        return res.status(400).json({ message: "Missing teamId or slotCount" });
+      const { teamId, slotCount, draftTeamName, draftTeamDescription, draftTeamIsPublic } = req.body;
+      const isNewTeam = !teamId;
+      if (!slotCount) {
+        return res.status(400).json({ message: "Missing slotCount" });
+      }
+      if (isNewTeam && !draftTeamName) {
+        return res.status(400).json({ message: "Missing teamId or draftTeamName" });
       }
       const slots = Number(slotCount);
       if (!Number.isInteger(slots) || slots < 1) {
@@ -1387,6 +1391,37 @@ ${freeReportUrls}
         return res.status(401).json({ message: "Missing or invalid Cardlogue session" });
       }
       const userId = cardlogueUser.sub;
+
+      const unitPriceCents = getPaddleSeatUnitPriceCents();
+      const now = new Date();
+
+      // A brand-new team is created only once payment actually succeeds (see
+      // the Paddle webhook handler below) — mirrors the PortOne new-team
+      // path, so a failed/cancelled checkout never leaves a team behind.
+      if (isNewTeam) {
+        const minSlots = 2;
+        if (slots < minSlots) {
+          return res.status(400).json({ message: `slotCount can't be below ${minSlots}` });
+        }
+        const amountCents = calcProratedSeatAmount(now, slots, unitPriceCents);
+        const transaction = await createTransaction({
+          slots,
+          amountCents,
+          customData: {
+            userId,
+            slots,
+            draftTeamName,
+            draftTeamDescription: draftTeamDescription || "",
+            draftTeamIsPublic: !!draftTeamIsPublic,
+          },
+        });
+        return res.json({
+          needsCheckout: true,
+          transactionId: transaction.data.id,
+          environment: getPaddleEnvironment(),
+        });
+      }
+
       if (!(await isTeamBillingAdmin(teamId, userId))) {
         return res.status(403).json({ message: "Not an owner/admin of this team" });
       }
@@ -1407,8 +1442,6 @@ ${freeReportUrls}
       if (findErr) throw findErr;
 
       const isExistingActive = existing?.status === "active" && existing?.paddle_subscription_id;
-      const unitPriceCents = getPaddleSeatUnitPriceCents();
-      const now = new Date();
 
       if (isExistingActive && existing!.user_id !== userId) {
         // Team ownership changed hands — the new owner needs to register
@@ -1434,10 +1467,11 @@ ${freeReportUrls}
       }
 
       if (!isExistingActive) {
-        // New team subscription (or reactivating one with no Paddle
-        // subscription on file yet): needs an actual checkout to collect a
-        // card. First charge is prorated for the days left in this cycle —
-        // the webhook anchors billing to the 1st once this completes.
+        // Existing team with no active Paddle subscription yet (e.g.
+        // reactivating after cancellation): needs an actual checkout to
+        // collect a card. First charge is prorated for the days left in
+        // this cycle — the webhook anchors billing to the 1st once this
+        // completes.
         const amountCents = calcProratedSeatAmount(now, slots, unitPriceCents);
         const transaction = await createTransaction({
           slots,
@@ -1716,6 +1750,7 @@ ${freeReportUrls}
         const customData = data?.custom_data || data?.subscription?.custom_data;
         const teamId = customData?.teamId;
         const userId = customData?.userId;
+        const draftTeamName = customData?.draftTeamName;
         // The transaction's own item quantity is always 1 (the seat count is
         // baked into that item's unit price instead — see createTransaction
         // in server/paddle.ts), so the real seat count comes from custom_data.
@@ -1750,6 +1785,70 @@ ${freeReportUrls}
           // land on. Harmless to repeat if both transaction.completed and
           // subscription.created fire for the same purchase.
           if (subscriptionId) {
+            await rescheduleNextBilling(subscriptionId, calcNextBillingAt(new Date())).catch((err) =>
+              console.error("Paddle reschedule next_billed_at error:", err.message),
+            );
+          }
+        } else if (draftTeamName && userId && subscriptionId) {
+          // Brand-new team via Paddle: mirrors the PortOne new-team path
+          // (server: /api/portone/team-subscribe) — the team is created only
+          // once payment has actually succeeded, never upfront. Unlike
+          // PortOne's synchronous charge, Paddle confirms payment async via
+          // this webhook, and Paddle redelivers events for the same purchase
+          // (transaction.completed, then subscription.created/activated), so
+          // this must check first whether that work already happened.
+          const supabase = getCardlogueSupabase();
+
+          const { data: alreadyCreated } = await supabase
+            .from("subscriptions")
+            .select("id")
+            .eq("paddle_subscription_id", subscriptionId)
+            .eq("type", "team")
+            .maybeSingle();
+
+          if (!alreadyCreated) {
+            const { data: newTeam, error: teamErr } = await supabase
+              .from("teams")
+              .insert({
+                name: draftTeamName,
+                description: customData?.draftTeamDescription || null,
+                is_public: !!customData?.draftTeamIsPublic,
+                owner_id: userId,
+              })
+              .select("id")
+              .single();
+            if (teamErr) throw teamErr;
+            const newTeamId = newTeam.id as string;
+
+            try {
+              const { error: memberErr } = await supabase
+                .from("team_members")
+                .insert({ team_id: newTeamId, user_id: userId, role: "owner" });
+              if (memberErr) throw memberErr;
+
+              const { error: subErr } = await supabase.from("subscriptions").insert({
+                user_id: userId,
+                team_id: newTeamId,
+                type: "team",
+                status: "active",
+                slot_count: slots,
+                payment_method: "web",
+                next_billing_at: calcNextBillingAt(new Date()).toISOString(),
+                paddle_subscription_id: subscriptionId,
+              });
+              if (subErr) throw subErr;
+            } catch (postChargeErr: any) {
+              // Payment already succeeded — don't leave a broken half-created
+              // team behind. Paddle will retry this webhook on the 500 below,
+              // and the alreadyCreated check above will find nothing (since
+              // cleanup just removed it) and try again cleanly.
+              const { error: cleanupErr } = await supabase.from("teams").delete().eq("id", newTeamId);
+              if (cleanupErr) {
+                console.error("Paddle webhook: failed to clean up team after post-charge error", { newTeamId, cleanupErr, postChargeErr });
+              }
+              throw postChargeErr;
+            }
+
             await rescheduleNextBilling(subscriptionId, calcNextBillingAt(new Date())).catch((err) =>
               console.error("Paddle reschedule next_billed_at error:", err.message),
             );

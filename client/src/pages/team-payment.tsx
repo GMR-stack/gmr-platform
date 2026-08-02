@@ -512,7 +512,16 @@ export default function TeamPaymentPage() {
       const res = await fetch("/api/paddle/checkout-context", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ teamId: params.teamId, slotCount: params.slotCount }),
+        body: JSON.stringify(
+          params.teamId
+            ? { teamId: params.teamId, slotCount: params.slotCount }
+            : {
+                slotCount: params.slotCount,
+                draftTeamName: params.draftTeamName,
+                draftTeamDescription: params.draftTeamDescription,
+                draftTeamIsPublic: params.draftTeamIsPublic,
+              },
+        ),
       });
       const ctx = await res.json();
       if (!res.ok) throw new Error(ctx?.message || "failed to prepare checkout");
