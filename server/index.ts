@@ -9,6 +9,12 @@ import { runTeamBillingCycle } from "./team-billing-batch";
 const app = express();
 const httpServer = createServer(app);
 
+// Render sits in front of this app as a reverse proxy, so req.ip would
+// otherwise be Render's own internal address rather than the real client —
+// needed for the Paddle webhook IP allowlist (server/routes.ts) to see the
+// actual sender.
+app.set("trust proxy", true);
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;

@@ -225,3 +225,32 @@ export function verifyPaddleWebhookSignature(rawBody: Buffer | string, signature
   if (expectedBuf.length !== actualBuf.length) return false;
   return crypto.timingSafeEqual(expectedBuf, actualBuf);
 }
+
+// Paddle's webhook-sending IPs, defense-in-depth alongside signature
+// verification — fetched from Paddle's own endpoint rather than hardcoded,
+// since Paddle can rotate them. Cached in-memory; a stale cache (up to 1h)
+// just means a newly-added Paddle IP is briefly rejected, never a security
+// gap, since the list only ever shrinks trust, not grants it.
+let cachedPaddleIps: { ips: Set<string>; fetchedAt: number } | null = null;
+const PADDLE_IPS_CACHE_MS = 60 * 60 * 1000;
+
+async function getPaddleWebhookIps(): Promise<Set<string>> {
+  if (cachedPaddleIps && Date.now() - cachedPaddleIps.fetchedAt < PADDLE_IPS_CACHE_MS) {
+    return cachedPaddleIps.ips;
+  }
+  const res = await fetch("https://api.paddle.com/ips");
+  if (!res.ok) throw new Error(`Failed to fetch Paddle IP list: ${res.status}`);
+  const body = (await res.json()) as { data: { ipv4_cidrs: string[] } };
+  // Every entry Paddle publishes is a /32 (single host), so a plain string
+  // match is exact — no CIDR range math needed.
+  const ips = new Set(body.data.ipv4_cidrs.map((cidr) => cidr.replace(/\/32$/, "")));
+  cachedPaddleIps = { ips, fetchedAt: Date.now() };
+  return ips;
+}
+
+export async function isPaddleWebhookIp(ip: string | undefined): Promise<boolean> {
+  if (!ip) return false;
+  const normalized = ip.replace(/^::ffff:/, ""); // IPv4-mapped IPv6 form
+  const ips = await getPaddleWebhookIps();
+  return ips.has(normalized);
+}

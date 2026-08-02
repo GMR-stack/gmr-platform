@@ -31,6 +31,7 @@ import {
   resumeSubscription,
   createPaymentMethodUpdateTransaction,
   verifyPaddleWebhookSignature,
+  isPaddleWebhookIp,
 } from "./paddle";
 import { analyzeBusinessCard } from "./scan";
 import { getPublicMyCard, buildVCard } from "./mycard";
@@ -1660,6 +1661,21 @@ ${freeReportUrls}
 
   app.post("/api/paddle/webhook", async (req, res) => {
     try {
+      // Defense-in-depth alongside the signature check below — reject
+      // anything not from Paddle's own published sending IPs. Fails open on
+      // a fetch error (Paddle's /ips endpoint being briefly unreachable
+      // shouldn't itself take down real webhook delivery); the signature
+      // check is still the actual security boundary.
+      const clientIp = ((req.headers["cf-connecting-ip"] as string) || req.ip || "").trim();
+      try {
+        if (!(await isPaddleWebhookIp(clientIp))) {
+          console.error("Paddle webhook: rejected non-Paddle source IP", { clientIp });
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      } catch (ipErr: any) {
+        console.error("Paddle webhook: IP allowlist check failed, allowing through on signature alone", ipErr.message);
+      }
+
       const signatureHeader = req.headers["paddle-signature"] as string | undefined;
       if (!verifyPaddleWebhookSignature(req.rawBody as Buffer, signatureHeader)) {
         return res.status(401).json({ message: "Invalid signature" });
