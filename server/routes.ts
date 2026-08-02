@@ -1877,13 +1877,20 @@ ${freeReportUrls}
             .eq("type", "team");
         }
       } else if (eventType === "subscription.canceled") {
-        const teamId = event.data?.custom_data?.teamId;
-        if (teamId) {
+        // Looked up by paddle_subscription_id, not custom_data.teamId — a
+        // subscription that started as a new-team signup never has teamId in
+        // its custom_data (it only ever holds draftTeamName/userId/slots,
+        // even after the team exists, since that's fixed at transaction
+        // creation time), so the old custom_data.teamId lookup silently did
+        // nothing for those and left them "active" forever after a real
+        // cancellation.
+        const canceledSubscriptionId = event.data?.id;
+        if (canceledSubscriptionId) {
           const supabase = getCardlogueSupabase();
           await supabase
             .from("subscriptions")
             .update({ status: "expired", pending_cancellation: false })
-            .eq("team_id", teamId)
+            .eq("paddle_subscription_id", canceledSubscriptionId)
             .eq("type", "team");
         }
       }
