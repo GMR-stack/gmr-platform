@@ -1799,14 +1799,21 @@ ${freeReportUrls}
           // this must check first whether that work already happened.
           const supabase = getCardlogueSupabase();
 
-          const { data: alreadyCreated } = await supabase
-            .from("subscriptions")
-            .select("id")
-            .eq("paddle_subscription_id", subscriptionId)
-            .eq("type", "team")
-            .maybeSingle();
+          // Atomic claim, not a select-then-insert check — Paddle can
+          // deliver transaction.completed/subscription.created/
+          // subscription.activated for the same purchase concurrently, and
+          // a plain "does a row exist yet" check races: multiple deliveries
+          // can all see nothing before any of them has inserted. Postgres's
+          // unique constraint guarantees only one insert here ever succeeds;
+          // whichever request gets a row back is the sole owner of creating
+          // this team, every other delivery sees an empty result and skips.
+          const { data: claimed, error: claimErr } = await supabase
+            .from("paddle_new_team_webhook_locks")
+            .upsert({ paddle_subscription_id: subscriptionId }, { onConflict: "paddle_subscription_id", ignoreDuplicates: true })
+            .select();
+          if (claimErr) throw claimErr;
 
-          if (!alreadyCreated) {
+          if (claimed && claimed.length > 0) {
             const { data: newTeam, error: teamErr } = await supabase
               .from("teams")
               .insert({
@@ -1839,13 +1846,14 @@ ${freeReportUrls}
               if (subErr) throw subErr;
             } catch (postChargeErr: any) {
               // Payment already succeeded — don't leave a broken half-created
-              // team behind. Paddle will retry this webhook on the 500 below,
-              // and the alreadyCreated check above will find nothing (since
-              // cleanup just removed it) and try again cleanly.
+              // team behind. Also release the claim so Paddle's retry (on the
+              // 500 below) can win it again instead of seeing it as already
+              // handled and silently skipping forever.
               const { error: cleanupErr } = await supabase.from("teams").delete().eq("id", newTeamId);
               if (cleanupErr) {
                 console.error("Paddle webhook: failed to clean up team after post-charge error", { newTeamId, cleanupErr, postChargeErr });
               }
+              await supabase.from("paddle_new_team_webhook_locks").delete().eq("paddle_subscription_id", subscriptionId);
               throw postChargeErr;
             }
 
