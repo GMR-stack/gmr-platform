@@ -37,10 +37,20 @@ function ScrollToTop() {
   return null;
 }
 
+// cardlogue.globalmarketradar.com exists so external reviewers (Paddle,
+// Google OAuth branding) only ever see Cardlogue content — server/static.ts
+// serves Cardlogue-tagged HTML for "/" on this host, but that only covers
+// the initial (pre-JS) response. Once the client hydrates, wouter's router
+// matches path "/" same as any other host and would render The Navy's own
+// LandingPage, silently reverting everything the server-side fix did. This
+// keeps the client route in sync with what the server actually sent.
+const CARDLOGUE_ONLY_HOST = "cardlogue.globalmarketradar.com";
+const isCardlogueOnlyHost = typeof window !== "undefined" && window.location.hostname === CARDLOGUE_ONLY_HOST;
+
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={LandingPage} />
+      <Route path="/" component={isCardlogueOnlyHost ? CardloguePage : LandingPage} />
       <Route path="/cardlogue" component={CardloguePage} />
       <Route path="/cardlogue/card/:id" component={CardlogueCardPage} />
       <Route path="/team/payment" component={TeamPaymentPage} />
