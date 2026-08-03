@@ -26,6 +26,34 @@ const CARDLOGUE_ONLY_ALLOWED_PREFIXES = [
   "/api",
 ];
 
+// Renders index.html with Cardlogue's own title/description/OG tags baked
+// in server-side, for crawlers that never run client JS (react-helmet-async
+// is client-side only). Shared by both the registered OAuth/Paddle homepage
+// URL ("/") and "/cardlogue" itself, so neither ever falls back to The
+// Navy's own copy — a verifier that doesn't follow redirects (Google's OAuth
+// branding check appears not to) must see this directly at "/", a 302
+// isn't enough.
+function renderCardloguePage(distPath: string, req: express.Request, res: express.Response) {
+  let html = fs.readFileSync(path.resolve(distPath, "index.html"), "utf-8");
+  const isKo = (req.headers["accept-language"] || "").toLowerCase().startsWith("ko");
+  const title = isKo ? "카드로그 — 광고 없는 디지털 명함 관리" : "Cardlogue — Ad-free Digital Business Card Management";
+  const description = isKo
+    ? "AI 명함 스캔, 팀 명함첩, 디지털 명함 공유를 제공하는 카드로그."
+    : "Cardlogue offers AI business card scanning, team card books, and digital business card sharing.";
+  const image = "https://www.globalmarketradar.com/cardlogue-icon.png";
+  html = html
+    .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
+    .replace(/<meta name="description" content=".*?"\s*\/>/, `<meta name="description" content="${description}" />`)
+    .replace(/<meta property="og:image" content=".*?"\s*\/>/, `<meta property="og:image" content="${image}" />`)
+    .replace(/<meta name="twitter:image" content=".*?"\s*\/>/, `<meta name="twitter:image" content="${image}" />`)
+    .replace(
+      "</head>",
+      `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /></head>`,
+    );
+  res.setHeader("Content-Type", "text/html");
+  res.send(html);
+}
+
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
   if (!fs.existsSync(distPath)) {
@@ -33,6 +61,15 @@ export function serveStatic(app: Express) {
       `Could not find the build directory: ${distPath}, make sure to build the client first`,
     );
   }
+
+  // The registered OAuth/Paddle "homepage" URL is the bare subdomain root —
+  // serve Cardlogue content directly there (200, no redirect) rather than
+  // bouncing to /cardlogue, since an automated homepage verifier may not
+  // follow redirects at all.
+  app.get("/", (req, res, next) => {
+    if (req.hostname !== CARDLOGUE_ONLY_HOST) return next();
+    return renderCardloguePage(distPath, req, res);
+  });
 
   app.use((req, res, next) => {
     if (req.hostname !== CARDLOGUE_ONLY_HOST) return next();
@@ -90,24 +127,7 @@ export function serveStatic(app: Express) {
   // path). Swap in Cardlogue-specific tags server-side for this one route.
   app.get("/cardlogue", (req, res, next) => {
     try {
-      let html = fs.readFileSync(path.resolve(distPath, "index.html"), "utf-8");
-      const isKo = (req.headers["accept-language"] || "").toLowerCase().startsWith("ko");
-      const title = isKo ? "카드로그 — 광고 없는 디지털 명함 관리" : "Cardlogue — Ad-free Digital Business Card Management";
-      const description = isKo
-        ? "AI 명함 스캔, 팀 명함첩, 디지털 명함 공유를 제공하는 카드로그."
-        : "Cardlogue offers AI business card scanning, team card books, and digital business card sharing.";
-      const image = "https://www.globalmarketradar.com/cardlogue-icon.png";
-      html = html
-        .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
-        .replace(/<meta name="description" content=".*?"\s*\/>/, `<meta name="description" content="${description}" />`)
-        .replace(/<meta property="og:image" content=".*?"\s*\/>/, `<meta property="og:image" content="${image}" />`)
-        .replace(/<meta name="twitter:image" content=".*?"\s*\/>/, `<meta name="twitter:image" content="${image}" />`)
-        .replace(
-          "</head>",
-          `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /></head>`,
-        );
-      res.setHeader("Content-Type", "text/html");
-      return res.send(html);
+      return renderCardloguePage(distPath, req, res);
     } catch (err) {
       return next();
     }
