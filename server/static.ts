@@ -81,6 +81,38 @@ export function serveStatic(app: Express) {
     }
   });
 
+  // Same reasoning as the card-preview route above: crawlers that don't run
+  // JS (including Google's initial fetch, before it queues a render) see
+  // whatever index.html ships with, and that was hardcoded to The Navy's
+  // own title/description — so Google indexed this page as The Navy's
+  // homepage instead of Cardlogue's, even for the Cardlogue-only subdomain
+  // (server/static.ts's redirect above sends everything there to this exact
+  // path). Swap in Cardlogue-specific tags server-side for this one route.
+  app.get("/cardlogue", (req, res, next) => {
+    try {
+      let html = fs.readFileSync(path.resolve(distPath, "index.html"), "utf-8");
+      const isKo = (req.headers["accept-language"] || "").toLowerCase().startsWith("ko");
+      const title = isKo ? "카드로그 — 광고 없는 디지털 명함 관리" : "Cardlogue — Ad-free Digital Business Card Management";
+      const description = isKo
+        ? "AI 명함 스캔, 팀 명함첩, 디지털 명함 공유를 제공하는 카드로그."
+        : "Cardlogue offers AI business card scanning, team card books, and digital business card sharing.";
+      const image = "https://www.globalmarketradar.com/cardlogue-icon.png";
+      html = html
+        .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
+        .replace(/<meta name="description" content=".*?"\s*\/>/, `<meta name="description" content="${description}" />`)
+        .replace(/<meta property="og:image" content=".*?"\s*\/>/, `<meta property="og:image" content="${image}" />`)
+        .replace(/<meta name="twitter:image" content=".*?"\s*\/>/, `<meta name="twitter:image" content="${image}" />`)
+        .replace(
+          "</head>",
+          `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /></head>`,
+        );
+      res.setHeader("Content-Type", "text/html");
+      return res.send(html);
+    } catch (err) {
+      return next();
+    }
+  });
+
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
