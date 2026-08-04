@@ -121,19 +121,14 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
-  app.get("/sitemap.xml", async (_req, res) => {
-    try {
-      const allReports = await storage.getReports();
-      const freeReports = allReports.filter((r) => r.reportType === "free");
-
-      const freeReportUrls = freeReports
-        .map((r) => {
-          const lastmod = new Date(r.publishedAt).toISOString().split("T")[0];
-          return `  <url>\n    <loc>https://www.globalmarketradar.com/report/${r.id}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>never</changefreq>\n    <priority>0.7</priority>\n  </url>`;
-        })
-        .join("\n");
-
-      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+  app.get("/sitemap.xml", (_req, res) => {
+    // Static — no longer pulls report URLs from the DB. That DB (a paused,
+    // no-longer-used Supabase free-tier project) was taking down this whole
+    // route with a 500 whenever it wasn't awake, which is what Search
+    // Console was reporting as "사이트맵을 읽을 수 없음". The reports/archive
+    // feature itself is deprecated and not being revived here — this just
+    // stops the sitemap from depending on it.
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://www.globalmarketradar.com/</loc>
@@ -141,19 +136,29 @@ export async function registerRoutes(
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://www.globalmarketradar.com/archive</loc>
+    <loc>https://www.globalmarketradar.com/cardlogue</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.9</priority>
   </url>
-${freeReportUrls}
+  <url>
+    <loc>https://www.globalmarketradar.com/privacy</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://www.globalmarketradar.com/terms</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://www.globalmarketradar.com/refund</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
 </urlset>`;
 
-      res.setHeader("Content-Type", "application/xml");
-      res.send(xml);
-    } catch (err) {
-      console.error("Sitemap generation error:", err);
-      res.status(500).send("Failed to generate sitemap");
-    }
+    res.setHeader("Content-Type", "application/xml");
+    res.send(xml);
   });
 
   app.post("/api/auth/sync", async (req, res) => {
