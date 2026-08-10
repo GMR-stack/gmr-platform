@@ -46,15 +46,15 @@ function renderCardloguePage(distPath: string, req: express.Request, res: expres
     .replace(/<meta name="description" content=".*?"\s*\/>/, `<meta name="description" content="${description}" />`)
     .replace(/<meta property="og:image" content=".*?"\s*\/>/, `<meta property="og:image" content="${image}" />`)
     .replace(/<meta name="twitter:image" content=".*?"\s*\/>/, `<meta name="twitter:image" content="${image}" />`)
+    // Replace index.html's static default canonical (which points at the
+    // site root) rather than appending a second one — two <link
+    // rel="canonical"> tags on one page is invalid and Google's own
+    // guidance says the outcome is undefined, so this must overwrite, not
+    // add to, the existing tag.
+    .replace(/<link rel="canonical" href=".*?"\s*\/>/, `<link rel="canonical" href="https://www.globalmarketradar.com/cardlogue" />`)
     .replace(
       "</head>",
-      // Same URL cardlogue.tsx's own react-helmet-async canonical tag
-      // declares — matching it here means a crawler that never runs JS
-      // (which is the whole reason this server-side rewrite exists) still
-      // gets the canonical signal, instead of Search Console seeing this,
-      // the subdomain "/", and the main-site "/cardlogue" as duplicate pages
-      // with no declared preference.
-      `<link rel="canonical" href="https://www.globalmarketradar.com/cardlogue" /><meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /></head>`,
+      `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /></head>`,
     );
   res.setHeader("Content-Type", "text/html");
   res.send(html);
