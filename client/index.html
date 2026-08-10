@@ -7,6 +7,10 @@
     <title>The Navy — Software & Mobile Solutions</title>
     <meta name="description" content="The Navy is an independent software and mobile app studio, starting with Cardlogue." />
     <meta name="keywords" content="The Navy, software development, mobile apps, Cardlogue, app studio" />
+    <!-- Static default so non-JS crawlers see a canonical too, not just
+    react-helmet-async's client-side one (landing.tsx) — Search Console
+    flagged pages as duplicates with no declared preference without this. -->
+    <link rel="canonical" href="https://www.globalmarketradar.com" />
     <meta property="og:image" content="https://www.globalmarketradar.com/navy-logo.png" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />

@@ -48,7 +48,13 @@ function renderCardloguePage(distPath: string, req: express.Request, res: expres
     .replace(/<meta name="twitter:image" content=".*?"\s*\/>/, `<meta name="twitter:image" content="${image}" />`)
     .replace(
       "</head>",
-      `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /></head>`,
+      // Same URL cardlogue.tsx's own react-helmet-async canonical tag
+      // declares — matching it here means a crawler that never runs JS
+      // (which is the whole reason this server-side rewrite exists) still
+      // gets the canonical signal, instead of Search Console seeing this,
+      // the subdomain "/", and the main-site "/cardlogue" as duplicate pages
+      // with no declared preference.
+      `<link rel="canonical" href="https://www.globalmarketradar.com/cardlogue" /><meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /></head>`,
     );
   res.setHeader("Content-Type", "text/html");
   res.send(html);
