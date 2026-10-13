@@ -16,8 +16,16 @@ const NAVY = "#03045E";
 // Gold/amber accent instead of the home page's cyan — reads as business
 // cards & networking rather than the Navy brand's digital-ocean theme.
 const GOLD = "#D4AF37";
-const APP_STORE_URL = "https://apps.apple.com/app/id6799007050";
-const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.thenavy.cardlogue";
+// Store links follow the page's language toggle: Apple picks the listing's
+// language from the storefront country in the path, Google Play from `hl`.
+const APP_STORE_URLS = {
+  ko: "https://apps.apple.com/kr/app/id6799007050",
+  en: "https://apps.apple.com/us/app/id6799007050",
+};
+const GOOGLE_PLAY_URLS = {
+  ko: "https://play.google.com/store/apps/details?id=com.thenavy.cardlogue&hl=ko",
+  en: "https://play.google.com/store/apps/details?id=com.thenavy.cardlogue&hl=en",
+};
 
 function Header() {
   const { lang } = useLang();
@@ -56,7 +64,7 @@ function DownloadButtons({ variant = "large" }: { variant?: "large" | "compact" 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
       <Magnetic>
-        <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
+        <a href={APP_STORE_URLS[lang]} target="_blank" rel="noopener noreferrer">
           <Button
             size={variant === "large" ? "lg" : "default"}
             className="font-brand gap-2 font-semibold"
@@ -68,7 +76,7 @@ function DownloadButtons({ variant = "large" }: { variant?: "large" | "compact" 
         </a>
       </Magnetic>
       <Magnetic>
-        <a href={GOOGLE_PLAY_URL} target="_blank" rel="noopener noreferrer">
+        <a href={GOOGLE_PLAY_URLS[lang]} target="_blank" rel="noopener noreferrer">
           <Button
             size={variant === "large" ? "lg" : "default"}
             variant="outline"
