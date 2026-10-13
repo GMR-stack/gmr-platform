@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
 import { getPublicMyCard } from "./mycard";
+import { buildCardlogueSnapshot } from "./cardlogue-snapshot";
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -75,8 +76,12 @@ function renderCardloguePage(distPath: string, req: express.Request, res: expres
     ],
     publisher: { "@type": "Organization", name: "The Navy", url: "https://globalmarketradar.com" },
   }).replace(/</g, "\\u003c");
+  const snapshot = buildCardlogueSnapshot(isKo ? "ko" : "en");
   html = html
     .replace(/<html lang=".*?"/, `<html lang="${isKo ? "ko" : "en"}"`)
+    // Function replacer: the snapshot contains "$" (prices), which a string
+    // replacement would treat as a special pattern.
+    .replace('<div id="root"></div>', () => `<div id="root">${snapshot}</div>`)
     // index.html pins maximum-scale=1 for the payment WebView (stops iOS
     // zooming on input focus); this marketing page has no such inputs, so
     // let people pinch-zoom here (Lighthouse accessibility + Google mobile UX).
@@ -188,7 +193,10 @@ export function serveStatic(app: Express) {
   // Google doesn't flag every random URL as a soft 404. Keep CLIENT_ROUTES in
   // sync with the <Route>s in client/src/App.tsx.
   app.use("/{*path}", (req, res) => {
-    const known = CLIENT_ROUTES.some((re) => re.test(req.path));
+    // originalUrl, not req.path: under app.use("/{*path}") Express strips the
+    // matched mount path, so req.path is always "/" here.
+    const urlPath = req.originalUrl.split("?")[0];
+    const known = CLIENT_ROUTES.some((re) => re.test(urlPath));
     res.status(known ? 200 : 404).sendFile(path.resolve(distPath, "index.html"));
   });
 }
