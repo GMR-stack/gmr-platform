@@ -16,6 +16,8 @@ const NAVY = "#03045E";
 // Gold/amber accent instead of the home page's cyan — reads as business
 // cards & networking rather than the Navy brand's digital-ocean theme.
 const GOLD = "#D4AF37";
+const APP_STORE_URL = "https://apps.apple.com/app/id6799007050";
+const GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.thenavy.cardlogue";
 
 function Header() {
   const { lang } = useLang();
@@ -54,7 +56,7 @@ function DownloadButtons({ variant = "large" }: { variant?: "large" | "compact" 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
       <Magnetic>
-        <a href="#">
+        <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
           <Button
             size={variant === "large" ? "lg" : "default"}
             className="font-brand gap-2 font-semibold"
@@ -66,7 +68,7 @@ function DownloadButtons({ variant = "large" }: { variant?: "large" | "compact" 
         </a>
       </Magnetic>
       <Magnetic>
-        <a href="#">
+        <a href={GOOGLE_PLAY_URL} target="_blank" rel="noopener noreferrer">
           <Button
             size={variant === "large" ? "lg" : "default"}
             variant="outline"
