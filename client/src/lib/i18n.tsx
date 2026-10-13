@@ -6,6 +6,9 @@ const STORAGE_KEY = "navy-lang";
 
 function detectLang(): Lang {
   if (typeof window === "undefined") return "en";
+  // A language-prefixed URL (/ko/cardlogue) is an explicit choice that beats
+  // any stored preference, so the page matches what the server rendered.
+  if (window.location.pathname.startsWith("/ko/")) return "ko";
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (stored === "en" || stored === "ko") return stored;
   return window.navigator.language.toLowerCase().startsWith("ko") ? "ko" : "en";

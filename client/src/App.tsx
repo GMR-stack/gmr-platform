@@ -52,6 +52,7 @@ function Router() {
     <Switch>
       <Route path="/" component={isCardlogueOnlyHost ? CardloguePage : LandingPage} />
       <Route path="/cardlogue" component={CardloguePage} />
+      <Route path="/ko/cardlogue" component={CardloguePage} />
       <Route path="/cardlogue/card/:id" component={CardlogueCardPage} />
       <Route path="/team/payment" component={TeamPaymentPage} />
       <Route path="/team/login" component={TeamLoginPage} />

@@ -19,6 +19,7 @@ function escapeHtml(s: string): string {
 const CARDLOGUE_ONLY_HOST = "cardlogue.globalmarketradar.com";
 const CARDLOGUE_ONLY_ALLOWED_PREFIXES = [
   "/cardlogue",
+  "/ko/cardlogue",
   "/team",
   "/privacy",
   "/terms",
@@ -31,6 +32,7 @@ const CARDLOGUE_ONLY_ALLOWED_PREFIXES = [
 const CLIENT_ROUTES: RegExp[] = [
   /^\/$/,
   /^\/cardlogue\/?$/,
+  /^\/ko\/cardlogue\/?$/,
   /^\/cardlogue\/card\/[^/]+\/?$/,
   /^\/team\/(payment|login|manage|cards)\/?$/,
   /^\/(privacy|terms|refund|account-deletion|login|auth|reset-password|dashboard|archive|admin)\/?$/,
@@ -45,9 +47,24 @@ const CLIENT_ROUTES: RegExp[] = [
 // Navy's own copy — a verifier that doesn't follow redirects (Google's OAuth
 // branding check appears not to) must see this directly at "/", a 302
 // isn't enough.
-function renderCardloguePage(distPath: string, req: express.Request, res: express.Response) {
+const SITE = "https://globalmarketradar.com";
+const CARDLOGUE_EN_URL = `${SITE}/cardlogue`;
+const CARDLOGUE_KO_URL = `${SITE}/ko/cardlogue`;
+
+// forcedLang: "/ko/cardlogue" always renders Korean regardless of the
+// visitor's Accept-Language (Googlebot sends none and would otherwise only
+// ever see English). "/cardlogue" keeps choosing by Accept-Language.
+function renderCardloguePage(
+  distPath: string,
+  req: express.Request,
+  res: express.Response,
+  forcedLang?: "ko" | "en",
+) {
   let html = fs.readFileSync(path.resolve(distPath, "index.html"), "utf-8");
-  const isKo = (req.headers["accept-language"] || "").toLowerCase().startsWith("ko");
+  const isKo = forcedLang
+    ? forcedLang === "ko"
+    : (req.headers["accept-language"] || "").toLowerCase().startsWith("ko");
+  const selfUrl = forcedLang === "ko" ? CARDLOGUE_KO_URL : CARDLOGUE_EN_URL;
   const title = isKo
     ? "카드로그 — 광고 없는 명함관리 앱 | AI 명함 스캔·팀 명함첩"
     : "Cardlogue — AI Business Card Scanner & Team Card Book";
@@ -64,7 +81,7 @@ function renderCardloguePage(distPath: string, req: express.Request, res: expres
     name: "Cardlogue",
     alternateName: "카드로그",
     description,
-    url: "https://globalmarketradar.com/cardlogue",
+    url: selfUrl,
     image,
     applicationCategory: "BusinessApplication",
     operatingSystem: "Android, iOS",
@@ -95,10 +112,12 @@ function renderCardloguePage(distPath: string, req: express.Request, res: expres
     // rel="canonical"> tags on one page is invalid and Google's own
     // guidance says the outcome is undefined, so this must overwrite, not
     // add to, the existing tag.
-    .replace(/<link rel="canonical" href=".*?"\s*\/>/, `<link rel="canonical" href="https://globalmarketradar.com/cardlogue" />`)
+    .replace(/<link rel="canonical" href=".*?"\s*\/>/, `<link rel="canonical" href="${selfUrl}" />`)
     .replace(
       "</head>",
-      `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /><script type="application/ld+json">${jsonLd}</script></head>`,
+      // hreflang pairs are what let Google serve the Korean URL to Korean
+      // searchers; each page must list both itself and its sibling.
+      `<link rel="alternate" hreflang="ko" href="${CARDLOGUE_KO_URL}" /><link rel="alternate" hreflang="en" href="${CARDLOGUE_EN_URL}" /><link rel="alternate" hreflang="x-default" href="${CARDLOGUE_EN_URL}" /><meta property="og:locale" content="${isKo ? "ko_KR" : "en_US"}" /><meta property="og:url" content="${selfUrl}" /><meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /><script type="application/ld+json">${jsonLd}</script></head>`,
     );
   res.setHeader("Content-Type", "text/html");
   res.send(html);
@@ -180,6 +199,15 @@ export function serveStatic(app: Express) {
   app.get("/cardlogue", (req, res, next) => {
     try {
       return renderCardloguePage(distPath, req, res);
+    } catch (err) {
+      return next();
+    }
+  });
+
+  // Korean-only URL for search (see forcedLang above); hreflang ties it to /cardlogue.
+  app.get("/ko/cardlogue", (req, res, next) => {
+    try {
+      return renderCardloguePage(distPath, req, res, "ko");
     } catch (err) {
       return next();
     }

@@ -1,11 +1,17 @@
-import { useLang } from "@/lib/i18n";
+import { useLang, type Lang } from "@/lib/i18n";
 
 interface LanguageToggleProps {
   variant?: "dark" | "light";
+  // Runs after the language changes — used by pages whose URL encodes the language.
+  onChange?: (lang: Lang) => void;
 }
 
-export function LanguageToggle({ variant = "light" }: LanguageToggleProps) {
-  const { lang, setLang } = useLang();
+export function LanguageToggle({ variant = "light", onChange }: LanguageToggleProps) {
+  const { lang, setLang: setLangState } = useLang();
+  const setLang = (next: Lang) => {
+    setLangState(next);
+    onChange?.(next);
+  };
   const isLight = variant === "light";
 
   const baseClass = isLight ? "text-white/50 hover:text-white" : "text-muted-foreground hover:text-foreground";

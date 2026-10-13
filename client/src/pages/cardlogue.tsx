@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import { PageGlow } from "@/components/page-glow";
@@ -38,6 +38,10 @@ function Header() {
   // Navy, regardless of which domain it's viewed on — same reasoning as why
   // the icon+wordmark below is Cardlogue's own, not NavyLogo.
   const isCardlogueSubdomain = typeof window !== "undefined" && window.location.hostname === "cardlogue.globalmarketradar.com";
+  const [, navigate] = useLocation();
+  // The URL encodes the page language here (/ko/cardlogue vs /cardlogue), so
+  // switching language moves to the matching URL instead of leaving them out of sync.
+  const goToLang = (next: "ko" | "en") => navigate(next === "ko" ? "/ko/cardlogue" : "/cardlogue");
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#03045E]/90 backdrop-blur">
       <div className="max-w-5xl mx-auto flex items-center justify-between px-4 h-14">
@@ -51,7 +55,7 @@ function Header() {
               {t.cardlogue.nav.home}
             </Link>
           )}
-          <LanguageToggle variant="light" />
+          <LanguageToggle variant="light" onChange={goToLang} />
         </div>
       </div>
     </header>
@@ -403,6 +407,10 @@ function BottomCta() {
 export default function CardloguePage() {
   const { lang } = useLang();
   const t = translations[lang].cardlogue;
+  // /ko/cardlogue is the Korean URL, /cardlogue the default one (see
+  // server/static.ts) — the canonical must follow the path the visitor is on.
+  const [location] = useLocation();
+  const isKoPath = location.startsWith("/ko/");
 
   return (
     <div className="min-h-screen text-white" style={{ background: `linear-gradient(180deg, #0077B6 0%, ${NAVY} 100%)` }}>
@@ -410,7 +418,10 @@ export default function CardloguePage() {
       <Helmet>
         <title>{t.meta.title}</title>
         <meta name="description" content={t.meta.description} />
-        <link rel="canonical" href="https://globalmarketradar.com/cardlogue" />
+        <link rel="canonical" href={isKoPath ? "https://globalmarketradar.com/ko/cardlogue" : "https://globalmarketradar.com/cardlogue"} />
+        <link rel="alternate" hrefLang="ko" href="https://globalmarketradar.com/ko/cardlogue" />
+        <link rel="alternate" hrefLang="en" href="https://globalmarketradar.com/cardlogue" />
+        <link rel="alternate" hrefLang="x-default" href="https://globalmarketradar.com/cardlogue" />
         <meta name="robots" content="index, follow" />
       </Helmet>
       <Header />
