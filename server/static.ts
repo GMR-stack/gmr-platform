@@ -26,6 +26,17 @@ const CARDLOGUE_ONLY_ALLOWED_PREFIXES = [
   "/api",
 ];
 
+// Mirrors the <Route> paths in client/src/App.tsx (trailing slash allowed).
+const CLIENT_ROUTES: RegExp[] = [
+  /^\/$/,
+  /^\/cardlogue\/?$/,
+  /^\/cardlogue\/card\/[^/]+\/?$/,
+  /^\/team\/(payment|login|manage|cards)\/?$/,
+  /^\/(privacy|terms|refund|account-deletion|login|auth|reset-password|dashboard|archive|admin)\/?$/,
+  /^\/oauth\/consent\/?$/,
+  /^\/report\/[^/]+\/?$/,
+];
+
 // Renders index.html with Cardlogue's own title/description/OG tags baked
 // in server-side, for crawlers that never run client JS (react-helmet-async
 // is client-side only). Shared by both the registered OAuth/Paddle homepage
@@ -66,6 +77,10 @@ function renderCardloguePage(distPath: string, req: express.Request, res: expres
   }).replace(/</g, "\\u003c");
   html = html
     .replace(/<html lang=".*?"/, `<html lang="${isKo ? "ko" : "en"}"`)
+    // index.html pins maximum-scale=1 for the payment WebView (stops iOS
+    // zooming on input focus); this marketing page has no such inputs, so
+    // let people pinch-zoom here (Lighthouse accessibility + Google mobile UX).
+    .replace(/<meta name="viewport" content=".*?"\s*\/>/, `<meta name="viewport" content="width=device-width, initial-scale=1.0" />`)
     .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
     .replace(/<meta name="description" content=".*?"\s*\/>/, `<meta name="description" content="${description}" />`)
     .replace(/<meta property="og:image" content=".*?"\s*\/>/, `<meta property="og:image" content="${image}" />`)
@@ -121,7 +136,9 @@ export function serveStatic(app: Express) {
   app.get("/cardlogue/card/:id", async (req, res, next) => {
     try {
       const card = await getPublicMyCard(req.params.id);
-      if (!card) return next();
+      // Unknown/private card: still serve the SPA shell (its page shows the
+      // not-found state) but with a real 404 so crawlers don't index it.
+      if (!card) return res.status(404).sendFile(path.resolve(distPath, "index.html"));
       let html = fs.readFileSync(path.resolve(distPath, "index.html"), "utf-8");
       // Same "ko unless the client says otherwise" default as the client's
       // own detectLang (client/src/lib/i18n.tsx) — most crawlers/browsers
@@ -165,8 +182,13 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  // fall through to index.html if the file doesn't exist
-  app.use("/{*path}", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+  // Fall through to the SPA shell if the file doesn't exist. Paths the client
+  // router actually knows get 200; anything else gets the same shell with a
+  // real 404 (the client's NotFound page still renders for people), so
+  // Google doesn't flag every random URL as a soft 404. Keep CLIENT_ROUTES in
+  // sync with the <Route>s in client/src/App.tsx.
+  app.use("/{*path}", (req, res) => {
+    const known = CLIENT_ROUTES.some((re) => re.test(req.path));
+    res.status(known ? 200 : 404).sendFile(path.resolve(distPath, "index.html"));
   });
 }

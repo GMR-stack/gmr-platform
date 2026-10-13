@@ -194,8 +194,11 @@ function Screenshots() {
                   <img
                     src={`/screenshots/${lang}/${item.file}.jpg`}
                     alt={item.caption}
+                    width={1080}
+                    height={2340}
                     className="w-full h-auto block"
                     loading="lazy"
+                    decoding="async"
                   />
                 </div>
                 <p className="text-xs text-white/50 text-center leading-relaxed px-1">{item.caption}</p>
