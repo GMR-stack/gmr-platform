@@ -5,4 +5,4 @@ Disallow: /admin
 Disallow: /archive
 Disallow: /oauth/consent
 
-Sitemap: https://www.globalmarketradar.com/sitemap.xml
+Sitemap: https://globalmarketradar.com/sitemap.xml

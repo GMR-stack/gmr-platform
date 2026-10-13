@@ -21,7 +21,7 @@ export default function TermsPage() {
       <Helmet>
         <title>{t.terms.title} — The Navy</title>
         <meta name="description" content="The terms that govern your use of The Navy's apps and websites, including Cardlogue." />
-        <link rel="canonical" href="https://www.globalmarketradar.com/terms" />
+        <link rel="canonical" href="https://globalmarketradar.com/terms" />
         <meta name="robots" content="index, follow" />
       </Helmet>
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#03045E]/90 backdrop-blur">

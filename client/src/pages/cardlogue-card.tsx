@@ -60,7 +60,7 @@ export default function CardloguerCardPage() {
       (f) => !!f,
     );
 
-  const pageUrl = card ? `https://www.globalmarketradar.com/cardlogue/card/${card.id}` : "";
+  const pageUrl = card ? `https://globalmarketradar.com/cardlogue/card/${card.id}` : "";
   const pageTitle = card ? [card.name, card.company].filter(Boolean).join(" · ") || t.defaultTitle : t.defaultTitle;
 
   const isPortrait = card ? (side === "front" ? card.orientation === "portrait" : card.back_orientation === "portrait") : false;
@@ -79,7 +79,7 @@ export default function CardloguerCardPage() {
           <meta property="og:description" content={[card.company, card.title].filter(Boolean).join(" · ") || t.defaultDescription} />
           <meta property="og:url" content={pageUrl} />
           <meta property="og:type" content="profile" />
-          <meta property="og:image" content={card.profile_image_url || "https://www.globalmarketradar.com/cardlogue-icon.png"} />
+          <meta property="og:image" content={card.profile_image_url || "https://globalmarketradar.com/cardlogue-icon.png"} />
         </Helmet>
       )}
 

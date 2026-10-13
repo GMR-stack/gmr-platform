@@ -21,7 +21,7 @@ export default function PrivacyPage() {
       <Helmet>
         <title>{t.privacy.title} — The Navy</title>
         <meta name="description" content="How The Navy collects, uses, and protects your information across our apps, including Cardlogue." />
-        <link rel="canonical" href="https://www.globalmarketradar.com/privacy" />
+        <link rel="canonical" href="https://globalmarketradar.com/privacy" />
         <meta name="robots" content="index, follow" />
       </Helmet>
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#03045E]/90 backdrop-blur">

@@ -62,7 +62,7 @@ export default function AccountDeletionPage() {
       <Helmet>
         <title>{d.title} — The Navy</title>
         <meta name="description" content="How to delete your Cardlogue account and what happens to your data." />
-        <link rel="canonical" href="https://www.globalmarketradar.com/account-deletion" />
+        <link rel="canonical" href="https://globalmarketradar.com/account-deletion" />
         <meta name="robots" content="index, follow" />
       </Helmet>
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#03045E]/90 backdrop-blur">

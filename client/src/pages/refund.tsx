@@ -21,7 +21,7 @@ export default function RefundPage() {
       <Helmet>
         <title>{t.refund.title} — Cardlogue — The Navy</title>
         <meta name="description" content="Refund policy for Cardlogue's paid subscriptions, operated by The Navy." />
-        <link rel="canonical" href="https://www.globalmarketradar.com/refund" />
+        <link rel="canonical" href="https://globalmarketradar.com/refund" />
         <meta name="robots" content="index, follow" />
       </Helmet>
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#03045E]/90 backdrop-blur">

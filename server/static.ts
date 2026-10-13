@@ -40,7 +40,7 @@ function renderCardloguePage(distPath: string, req: express.Request, res: expres
   const description = isKo
     ? "AI 명함 스캔, 팀 명함첩, 디지털 명함 공유를 제공하는 카드로그."
     : "Cardlogue offers AI business card scanning, team card books, and digital business card sharing.";
-  const image = "https://www.globalmarketradar.com/cardlogue-icon.png";
+  const image = "https://globalmarketradar.com/cardlogue-icon.png";
   html = html
     .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
     .replace(/<meta name="description" content=".*?"\s*\/>/, `<meta name="description" content="${description}" />`)
@@ -51,7 +51,7 @@ function renderCardloguePage(distPath: string, req: express.Request, res: expres
     // rel="canonical"> tags on one page is invalid and Google's own
     // guidance says the outcome is undefined, so this must overwrite, not
     // add to, the existing tag.
-    .replace(/<link rel="canonical" href=".*?"\s*\/>/, `<link rel="canonical" href="https://www.globalmarketradar.com/cardlogue" />`)
+    .replace(/<link rel="canonical" href=".*?"\s*\/>/, `<link rel="canonical" href="https://globalmarketradar.com/cardlogue" />`)
     .replace(
       "</head>",
       `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /></head>`,
@@ -107,7 +107,7 @@ export function serveStatic(app: Express) {
       const defaultDescription = isKo ? "카드로그 디지털 명함" : "A digital business card, made with Cardlogue";
       const title = escapeHtml([card.name, card.company].filter(Boolean).join(" · ") || defaultTitle);
       const description = escapeHtml([card.company, card.title].filter(Boolean).join(" · ") || defaultDescription);
-      const image = card.profile_image_url ? escapeHtml(card.profile_image_url) : "https://www.globalmarketradar.com/cardlogue-icon.png";
+      const image = card.profile_image_url ? escapeHtml(card.profile_image_url) : "https://globalmarketradar.com/cardlogue-icon.png";
       html = html
         .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
         .replace(/<meta name="description" content=".*?"\s*\/>/, `<meta name="description" content="${description}" />`)

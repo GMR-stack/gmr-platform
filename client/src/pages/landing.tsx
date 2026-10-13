@@ -27,7 +27,7 @@ import {
 
 const NAVY = "#03045E";
 const CYAN = "#00D4FF";
-const SITE_URL = "https://www.globalmarketradar.com";
+const SITE_URL = "https://globalmarketradar.com";
 
 function Seo() {
   const { lang } = useLang();
