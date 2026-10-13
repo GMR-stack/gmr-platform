@@ -36,12 +36,36 @@ const CARDLOGUE_ONLY_ALLOWED_PREFIXES = [
 function renderCardloguePage(distPath: string, req: express.Request, res: express.Response) {
   let html = fs.readFileSync(path.resolve(distPath, "index.html"), "utf-8");
   const isKo = (req.headers["accept-language"] || "").toLowerCase().startsWith("ko");
-  const title = isKo ? "카드로그 — 광고 없는 디지털 명함 관리" : "Cardlogue — Ad-free Digital Business Card Management";
+  const title = isKo
+    ? "카드로그 — 광고 없는 명함관리 앱 | AI 명함 스캔·팀 명함첩"
+    : "Cardlogue — AI Business Card Scanner & Team Card Book";
   const description = isKo
-    ? "AI 명함 스캔, 팀 명함첩, 디지털 명함 공유를 제공하는 카드로그."
-    : "Cardlogue offers AI business card scanning, team card books, and digital business card sharing.";
+    ? "광고 없는 명함관리 앱 카드로그(Cardlogue). AI로 명함을 스캔하고, 디지털 명함을 QR코드로 공유하고, 팀원과 팀 명함첩을 함께 관리하세요. 7일 무료 체험."
+    : "Ad-free business card manager. Scan business cards with AI, share your digital business card by QR code, and keep a shared team card book. Try it free for 7 days.";
   const image = "https://globalmarketradar.com/cardlogue-icon.png";
+  // Structured data for crawlers that don't run client JS. No aggregateRating
+  // on purpose — the app has no ratings yet and fabricating one is a policy
+  // violation; add it only once the stores report real numbers.
+  const jsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "MobileApplication",
+    name: "Cardlogue",
+    alternateName: "카드로그",
+    description,
+    url: "https://globalmarketradar.com/cardlogue",
+    image,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Android, iOS",
+    inLanguage: ["ko", "en"],
+    offers: { "@type": "Offer", price: "0", priceCurrency: "KRW" },
+    sameAs: [
+      "https://apps.apple.com/kr/app/id6799007050",
+      "https://play.google.com/store/apps/details?id=com.thenavy.cardlogue",
+    ],
+    publisher: { "@type": "Organization", name: "The Navy", url: "https://globalmarketradar.com" },
+  }).replace(/</g, "\\u003c");
   html = html
+    .replace(/<html lang=".*?"/, `<html lang="${isKo ? "ko" : "en"}"`)
     .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
     .replace(/<meta name="description" content=".*?"\s*\/>/, `<meta name="description" content="${description}" />`)
     .replace(/<meta property="og:image" content=".*?"\s*\/>/, `<meta property="og:image" content="${image}" />`)
@@ -54,7 +78,7 @@ function renderCardloguePage(distPath: string, req: express.Request, res: expres
     .replace(/<link rel="canonical" href=".*?"\s*\/>/, `<link rel="canonical" href="https://globalmarketradar.com/cardlogue" />`)
     .replace(
       "</head>",
-      `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /></head>`,
+      `<meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /><script type="application/ld+json">${jsonLd}</script></head>`,
     );
   res.setHeader("Content-Type", "text/html");
   res.send(html);

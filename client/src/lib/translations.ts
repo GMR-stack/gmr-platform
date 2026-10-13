@@ -55,8 +55,8 @@ export const translations = {
     },
     cardlogue: {
       meta: {
-        title: "Cardlogue — Business Card Management for Teams",
-        description: "Scan, organize, and share business cards as a team with Cardlogue's AI-powered OCR and digital card book.",
+        title: "Cardlogue — AI Business Card Scanner & Team Card Book",
+        description: "Ad-free business card manager. Scan business cards with AI, share your digital business card by QR code, and keep a shared team card book. Try it free for 7 days.",
       },
       nav: { home: "Home" },
       hero: {
@@ -783,8 +783,8 @@ export const translations = {
     },
     cardlogue: {
       meta: {
-        title: "카드로그 — 팀을 위한 명함 관리",
-        description: "AI 기반 OCR과 팀명함첩으로 명함을 스캔하고 정리하고 공유하세요.",
+        title: "카드로그 — 광고 없는 명함관리 앱 | AI 명함 스캔·팀 명함첩",
+        description: "광고 없는 명함관리 앱 카드로그(Cardlogue). AI로 명함을 스캔하고, 디지털 명함을 QR코드로 공유하고, 팀원과 팀 명함첩을 함께 관리하세요. 7일 무료 체험.",
       },
       nav: { home: "홈" },
       hero: {
