@@ -1,5 +1,5 @@
 import { Switch, Route, useLocation } from "wouter";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -10,24 +10,28 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ProtectedRoute } from "@/components/protected-route";
 import { HelmetProvider } from "react-helmet-async";
 import NotFound from "@/pages/not-found";
-import LoginPage from "@/pages/login";
-import DashboardPage from "@/pages/dashboard";
-import ArchivePage from "@/pages/archive";
-import AdminPage from "@/pages/admin";
-import OAuthConsentPage from "@/pages/oauth-consent";
 import LandingPage from "@/pages/landing";
 import CardloguePage from "@/pages/cardlogue";
-import CardlogueCardPage from "@/pages/cardlogue-card";
-import TeamPaymentPage from "@/pages/team-payment";
-import TeamLoginPage from "@/pages/team-login";
-import TeamManagePage from "@/pages/team-manage";
-import TeamCardsPage from "@/pages/team-cards";
 import PrivacyPage from "@/pages/privacy";
 import TermsPage from "@/pages/terms";
 import RefundPage from "@/pages/refund";
 import AccountDeletionPage from "@/pages/account-deletion";
-import ResetPasswordPage from "@/pages/reset-password";
-import ReportPage from "@/pages/report";
+
+// Everything except the public/marketing pages is split out of the main
+// bundle: visitors (and crawlers) landing on /cardlogue no longer download the
+// dashboard, admin, team-payment or digital-card-template code.
+const LoginPage = lazy(() => import("@/pages/login"));
+const DashboardPage = lazy(() => import("@/pages/dashboard"));
+const ArchivePage = lazy(() => import("@/pages/archive"));
+const AdminPage = lazy(() => import("@/pages/admin"));
+const OAuthConsentPage = lazy(() => import("@/pages/oauth-consent"));
+const CardlogueCardPage = lazy(() => import("@/pages/cardlogue-card"));
+const TeamPaymentPage = lazy(() => import("@/pages/team-payment"));
+const TeamLoginPage = lazy(() => import("@/pages/team-login"));
+const TeamManagePage = lazy(() => import("@/pages/team-manage"));
+const TeamCardsPage = lazy(() => import("@/pages/team-cards"));
+const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
+const ReportPage = lazy(() => import("@/pages/report"));
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -89,7 +93,9 @@ function App() {
               <TooltipProvider>
                 <Toaster />
                 <ScrollToTop />
-                <Router />
+                <Suspense fallback={null}>
+                  <Router />
+                </Suspense>
               </TooltipProvider>
             </AuthProvider>
           </LanguageProvider>

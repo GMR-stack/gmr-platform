@@ -104,7 +104,7 @@ function renderCardloguePage(
     // let people pinch-zoom here (Lighthouse accessibility + Google mobile UX).
     .replace(/<meta name="viewport" content=".*?"\s*\/>/, `<meta name="viewport" content="width=device-width, initial-scale=1.0" />`)
     .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
-    .replace(/<meta name="description" content=".*?"\s*\/>/, `<meta name="description" content="${description}" />`)
+    .replace(/<meta name="description" content=".*?"\s*\/>/, `<meta name="description" data-rh="true" content="${description}" />`)
     .replace(/<meta property="og:image" content=".*?"\s*\/>/, `<meta property="og:image" content="${image}" />`)
     .replace(/<meta name="twitter:image" content=".*?"\s*\/>/, `<meta name="twitter:image" content="${image}" />`)
     // Replace index.html's static default canonical (which points at the
@@ -112,12 +112,12 @@ function renderCardloguePage(
     // rel="canonical"> tags on one page is invalid and Google's own
     // guidance says the outcome is undefined, so this must overwrite, not
     // add to, the existing tag.
-    .replace(/<link rel="canonical" href=".*?"\s*\/>/, `<link rel="canonical" href="${selfUrl}" />`)
+    .replace(/<link rel="canonical" href=".*?"\s*\/>/, `<link rel="canonical" data-rh="true" href="${selfUrl}" />`)
     .replace(
       "</head>",
       // hreflang pairs are what let Google serve the Korean URL to Korean
       // searchers; each page must list both itself and its sibling.
-      `<link rel="alternate" hreflang="ko" href="${CARDLOGUE_KO_URL}" /><link rel="alternate" hreflang="en" href="${CARDLOGUE_EN_URL}" /><link rel="alternate" hreflang="x-default" href="${CARDLOGUE_EN_URL}" /><meta property="og:locale" content="${isKo ? "ko_KR" : "en_US"}" /><meta property="og:url" content="${selfUrl}" /><meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /><script type="application/ld+json">${jsonLd}</script></head>`,
+      `<link rel="alternate" data-rh="true" hreflang="ko" href="${CARDLOGUE_KO_URL}" /><link rel="alternate" data-rh="true" hreflang="en" href="${CARDLOGUE_EN_URL}" /><link rel="alternate" data-rh="true" hreflang="x-default" href="${CARDLOGUE_EN_URL}" /><meta property="og:locale" content="${isKo ? "ko_KR" : "en_US"}" /><meta property="og:url" content="${selfUrl}" /><meta property="og:title" content="${title}" /><meta property="og:description" content="${description}" /><script type="application/ld+json">${jsonLd}</script></head>`,
     );
   res.setHeader("Content-Type", "text/html");
   res.send(html);

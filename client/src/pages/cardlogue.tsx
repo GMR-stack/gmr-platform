@@ -38,10 +38,15 @@ function Header() {
   // Navy, regardless of which domain it's viewed on — same reasoning as why
   // the icon+wordmark below is Cardlogue's own, not NavyLogo.
   const isCardlogueSubdomain = typeof window !== "undefined" && window.location.hostname === "cardlogue.globalmarketradar.com";
-  const [, navigate] = useLocation();
   // The URL encodes the page language here (/ko/cardlogue vs /cardlogue), so
-  // switching language moves to the matching URL instead of leaving them out of sync.
-  const goToLang = (next: "ko" | "en") => navigate(next === "ko" ? "/ko/cardlogue" : "/cardlogue");
+  // switching language moves to the matching URL. A full load, not a wouter
+  // navigate: the server bakes canonical/hreflang/title into the HTML, and a
+  // client-side swap left two canonical tags (the server's stale one plus
+  // Helmet's), which is exactly what must not happen on a canonical tag.
+  const goToLang = (next: "ko" | "en") => {
+    const target = next === "ko" ? "/ko/cardlogue" : "/cardlogue";
+    if (window.location.pathname.replace(/\/$/, "") !== target) window.location.assign(target);
+  };
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#03045E]/90 backdrop-blur">
       <div className="max-w-5xl mx-auto flex items-center justify-between px-4 h-14">
@@ -195,15 +200,19 @@ function Screenshots() {
                   className="rounded-2xl border-2 overflow-hidden shadow-xl"
                   style={{ borderColor: "rgba(255,255,255,0.12)", boxShadow: "0 12px 30px -14px rgba(0,0,0,0.6)" }}
                 >
-                  <img
-                    src={`/screenshots/${lang}/${item.file}.jpg`}
-                    alt={item.caption}
-                    width={1080}
-                    height={2340}
-                    className="w-full h-auto block"
-                    loading="lazy"
-                    decoding="async"
-                  />
+                  <picture>
+                    {/* 540px WebP (~15-25KB) vs the original 1080px JPG (150-300KB). */}
+                    <source type="image/webp" srcSet={`/screenshots/${lang}/${item.file}.webp`} />
+                    <img
+                      src={`/screenshots/${lang}/${item.file}.jpg`}
+                      alt={item.caption}
+                      width={1080}
+                      height={2340}
+                      className="w-full h-auto block"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </picture>
                 </div>
                 <p className="text-xs text-white/50 text-center leading-relaxed px-1">{item.caption}</p>
               </div>
